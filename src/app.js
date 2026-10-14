@@ -42,11 +42,38 @@ function updateRate() {
 
 // TASAS DEL DÍA (BCV / BINANCE P2P)
 const BS_METHOD_RE = /(bs|bol[ií]var|pago\s*m[oó]vil|transferencia|punto|biopago|d[eé]bito)/i;
+const RATES_URL = 'https://icwlksxcrqlbpwvqyxxz.supabase.co/functions/v1/tasas';
+let rateAuto = localStorage.getItem('ns_rate_auto') !== '0';
+let rateLiveAt = localStorage.getItem('ns_rate_live_at') || '';
+async function fetchLiveRates(userAction) {
+    if (userAction) { rateAuto = true; localStorage.setItem('ns_rate_auto', '1'); }
+    if (!rateAuto || !currentProfile) return;
+    document.querySelectorAll('.rate-live-btn i').forEach(i => i.classList.add('fa-spin'));
+    try {
+        const r = await fetch(RATES_URL, { cache: 'no-store' });
+        const d = await r.json();
+        if (!d.bcv && !d.binance) throw new Error('sin datos');
+        if (d.bcv) setDailyRate('BCV', d.bcv.rate, true);
+        if (d.binance) setDailyRate('Binance P2P', d.binance.rate, true);
+        rateLiveAt = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+        localStorage.setItem('ns_rate_live_at', rateLiveAt);
+        syncRateInputs();
+        const saleRate = document.getElementById('sale-rate');
+        if (saleRate && document.activeElement !== saleRate) { saleRate.value = getRate(rateType) || ''; if (typeof updateSettleBalance === 'function') updateSettleBalance(); }
+    } catch (e) {
+        if (userAction) alert('No se pudo obtener la tasa en vivo. Revise su conexión a internet o escríbala a mano.');
+    } finally {
+        document.querySelectorAll('.rate-live-btn i').forEach(i => i.classList.remove('fa-spin'));
+    }
+}
+setInterval(() => fetchLiveRates(false), 10 * 60 * 1000);
 function getRate(type) {
     return parseFloat(type === 'Binance P2P' ? binanceRate : bcvRate) || 0;
 }
-function setDailyRate(type, value) {
+function setDailyRate(type, value, live) {
     const v = parseFloat(value);
+    if (!live && v > 0) { rateAuto = false; localStorage.setItem('ns_rate_auto', '0'); }
+    if (live && v === getRate(type) && rateDate === new Date().toLocaleDateString('es-VE')) return;
     if (!(v > 0)) { syncRateInputs(); return alert('Ingrese una tasa válida'); }
     if (type === 'Binance P2P') {
         binanceRate = String(v);
@@ -68,6 +95,16 @@ function syncRateInputs() {
     const today = new Date().toLocaleDateString('es-VE');
     document.querySelectorAll('.rate-date').forEach(el => {
         const fresh = rateDate === today;
+        if (rateAuto && fresh && rateLiveAt) {
+            el.className = 'rate-date text-[10px] font-semibold text-green-600';
+            el.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1"></span>En vivo · ${rateLiveAt}`;
+            return;
+        }
+        if (!rateAuto && fresh) {
+            el.className = 'rate-date text-[10px] font-semibold text-blue-600';
+            el.innerText = 'Manual · hoy';
+            return;
+        }
         el.className = 'rate-date text-[10px] font-semibold ' + (fresh ? 'text-green-600' : 'text-amber-500');
         el.innerText = fresh ? `Actualizada hoy` : (rateDate ? `Última actualización: ${rateDate} · actualice la tasa` : 'Actualice la tasa del día');
     });
@@ -1159,6 +1196,7 @@ async function startApp(profile) {
     currentProfile = profile;
     document.body.classList.add(profile.role === 'admin' ? 'role-admin' : 'role-vendedor');
     await reloadData();
+    fetchLiveRates(false);
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     showSection(profile.role === 'admin' ? 'dashboard' : 'pos');
     if (profile.role === 'admin') { renderUsersAdmin(); renderAudit(); }
@@ -1166,6 +1204,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

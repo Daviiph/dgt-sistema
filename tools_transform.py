@@ -262,6 +262,9 @@ s=sub1(r"// INITIALIZATION.*$",
             subscribeChanges(() => syncChain.then(reloadData).then(refreshAllViews).catch(console.error));
         }""", s)
 
+s=sub1(r"if \(!rateAuto\) return;", "if (!rateAuto || !currentProfile) return;", s)
+s=sub1(r"await reloadData\(\);\n            document\.getElementById\('current-date'\)", "await reloadData();\n            fetchLiveRates(false);\n            document.getElementById('current-date')", s)
+
 # dedent 8 spaces
 s='\n'.join(l[8:] if l.startswith('        ') else l for l in s.split('\n'))
 names=sorted(set(re.findall(r'^(?:async\s+)?function\s+(\w+)', s, re.M)))
