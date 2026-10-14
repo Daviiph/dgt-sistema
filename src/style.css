@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+.active-link { border-left: 4px solid #7C3AED; background-color: rgba(124, 58, 237, 0.1); color: #7C3AED !important; }
+.section-transition { animation: slideIn 0.4s ease-out; }
+@keyframes slideIn { 0% { opacity: 0; transform: translateX(20px); } 100% { opacity: 1; transform: translateX(0); } }
+@media print { .no-print { display: none !important; } .print-only { display: block !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+.print-only { display: none; }
+.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+.color-dot.active { border-color: #7C3AED; transform: scale(1.2); box-shadow: 0 0 10px rgba(124, 58, 237, 0.5); }
+
+/* Permisos visuales del rol Vendedor (la base de datos también lo impide) */
+body:not(.role-admin) .admin-only,
+body:not(.role-admin) #link-brands,
+body:not(.role-admin) #link-sellers,
+body:not(.role-admin) #link-payments,
+body:not(.role-admin) #link-config,
+body:not(.role-admin) [onclick^="openCancelSale"],
+body:not(.role-admin) [onclick^="deleteSale"],
+body:not(.role-admin) [onclick^="deleteItem"],
+body:not(.role-admin) [onclick^="editProduct"],
+body:not(.role-admin) [onclick^="duplicateProduct"],
+body:not(.role-admin) [onclick^="editBrand"],
+body:not(.role-admin) [onclick^="editSeller"],
+body:not(.role-admin) [onclick^="editPayment"],
+body:not(.role-admin) [onclick="openModal('modal-product')"],
+body:not(.role-admin) [onclick="openModal('modal-brand')"],
+body:not(.role-admin) [onclick="openModal('modal-seller')"],
+body:not(.role-admin) [onclick="openModal('modal-payment')"] { display: none !important; }
