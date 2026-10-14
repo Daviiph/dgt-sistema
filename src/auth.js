@@ -96,7 +96,7 @@ export async function initAuth() {
     const { data, error } = await supabase.auth.signUp({
       email: $('signup-email').value.trim(),
       password,
-      options: { data: { full_name: $('signup-name').value.trim() }, emailRedirectTo: location.origin },
+      options: { data: { full_name: $('signup-name').value.trim() }, emailRedirectTo: location.origin + import.meta.env.BASE_URL },
     })
     busy(e.target, false)
     if (error) return setMessage(tr(error.message))
@@ -109,7 +109,7 @@ export async function initAuth() {
     e.preventDefault()
     busy(e.target, true)
     const { error } = await supabase.auth.resetPasswordForEmail($('forgot-email').value.trim(), {
-      redirectTo: location.origin + '/?recovery=1',
+      redirectTo: location.origin + import.meta.env.BASE_URL + '?recovery=1',
     })
     busy(e.target, false)
     if (error) return setMessage(tr(error.message))

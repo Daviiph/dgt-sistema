@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: process.env.BASE_PATH || '/',
   build: { chunkSizeWarningLimit: 2000 },
   plugins: [
     VitePWA({
@@ -12,8 +13,8 @@ export default defineConfig({
         short_name: 'DGT Sistema',
         description: 'Sistema de ventas e inventario de DGT Technology',
         lang: 'es',
-        start_url: '/',
-        scope: '/',
+        start_url: '.',
+        scope: '.',
         display: 'standalone',
         theme_color: '#7C3AED',
         background_color: '#ffffff',
@@ -26,7 +27,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,woff,woff2,ttf}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        navigateFallback: '/index.html',
+        navigateFallback: 'index.html',
       },
     }),
   ],
