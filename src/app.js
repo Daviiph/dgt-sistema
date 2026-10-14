@@ -6,6 +6,10 @@ let products = [], brands = [], customers = [], sellers = [], payments = [], sal
 let appCurrency = '$';
 let globalRate = '36.50';
 let currentProfile = null;
+let bcvRate = localStorage.getItem('ns_rate_bcv') || globalRate;
+let binanceRate = localStorage.getItem('ns_rate_binance') || globalRate;
+let rateType = localStorage.getItem('ns_rate_type') || 'BCV';
+let rateDate = localStorage.getItem('ns_rate_date') || '';
 let cart = [];
 
 const AVAILABLE_COLORS = [
@@ -33,8 +37,62 @@ function updateCurrency() {
 }
 
 function updateRate() {
-    globalRate = document.getElementById('config-rate').value;
-    saveSetting('rate', globalRate).catch(err => alert('No se pudo guardar: ' + err.message));
+    setDailyRate('BCV', document.getElementById('config-rate').value);
+}
+
+// TASAS DEL DÍA (BCV / BINANCE P2P)
+const BS_METHOD_RE = /(bs|bol[ií]var|pago\s*m[oó]vil|transferencia|punto|biopago|d[eé]bito)/i;
+function getRate(type) {
+    return parseFloat(type === 'Binance P2P' ? binanceRate : bcvRate) || 0;
+}
+function setDailyRate(type, value) {
+    const v = parseFloat(value);
+    if (!(v > 0)) { syncRateInputs(); return alert('Ingrese una tasa válida'); }
+    if (type === 'Binance P2P') {
+        binanceRate = String(v);
+        saveSetting('rate_binance', binanceRate).catch(err => alert('No se pudo guardar la tasa: ' + err.message));
+    } else {
+        bcvRate = String(v);
+        globalRate = bcvRate;
+        saveSetting('rate_bcv', bcvRate).catch(err => alert('No se pudo guardar la tasa: ' + err.message));
+        saveSetting('rate', globalRate).catch(err => alert('No se pudo guardar: ' + err.message));
+    }
+    rateDate = new Date().toLocaleDateString('es-VE');
+    saveSetting('rate_date', rateDate).catch(err => alert('No se pudo guardar la tasa: ' + err.message));
+    syncRateInputs();
+}
+function syncRateInputs() {
+    document.querySelectorAll('[data-rate]').forEach(inp => {
+        if (document.activeElement !== inp) inp.value = getRate(inp.dataset.rate) || '';
+    });
+    const today = new Date().toLocaleDateString('es-VE');
+    document.querySelectorAll('.rate-date').forEach(el => {
+        const fresh = rateDate === today;
+        el.className = 'rate-date text-[10px] font-semibold ' + (fresh ? 'text-green-600' : 'text-amber-500');
+        el.innerText = fresh ? `Actualizada hoy` : (rateDate ? `Última actualización: ${rateDate} · actualice la tasa` : 'Actualice la tasa del día');
+    });
+}
+function selectRateType(type) {
+    rateType = type === 'Binance P2P' ? 'Binance P2P' : 'BCV';
+    localStorage.setItem('ns_rate_type', rateType);
+    const on = 'bg-brand text-white border-brand', off = 'bg-white dark:bg-gray-900 text-gray-500 border-gray-200 dark:border-gray-700';
+    document.getElementById('rate-btn-bcv').className = 'flex-1 py-1 rounded-lg text-xs font-bold border transition ' + (rateType === 'BCV' ? on : off);
+    document.getElementById('rate-btn-binance').className = 'flex-1 py-1 rounded-lg text-xs font-bold border transition ' + (rateType === 'Binance P2P' ? on : off);
+    document.getElementById('sale-rate').value = getRate(rateType) || '';
+    updateSettleBalance();
+}
+function onSaleRateInput(value) {
+    if (parseFloat(value) > 0) setDailyRate(rateType, value);
+    updateSettleBalance();
+}
+function onPayMethodChange(sel) {
+    const m = payments.find(p => p.id == sel.value);
+    const cur = sel.closest('div').querySelector('.pay-currency');
+    if (m && cur) cur.value = BS_METHOD_RE.test(m.name) ? 'VES' : 'USD';
+    updateSettleBalance();
+}
+function fmtBs(n) {
+    return 'Bs. ' + (Number(n) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // NAVIGATION
@@ -642,11 +700,10 @@ function openPaymentModal() {
     
     const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
     document.getElementById('settle-total').innerText = `${appCurrency}${total.toFixed(2)}`;
-    document.getElementById('sale-rate').value = globalRate;
-    
     currentSettlePayments = [];
     document.getElementById('settle-payments-list').innerHTML = '';
-    
+    selectRateType(rateType);
+
     addPaymentRow();
     updateSettleBalance();
     
@@ -659,16 +716,27 @@ function addPaymentRow() {
     row.className = 'flex gap-3 items-center animate-slide-in bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border dark:border-gray-700';
     row.id = `pay-row-${id}`;
     
+    row.className = 'flex flex-wrap gap-2 items-center animate-slide-in bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border dark:border-gray-700';
     const methodsOptions = payments.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    
+    const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
+    let paid = 0;
+    document.querySelectorAll('#settle-payments-list .pay-amount').forEach(i => paid += parseFloat(i.value) || 0);
+    const remaining = Math.max(0, total - paid);
+
     row.innerHTML = `
-        <select onchange="updateSettleBalance()" class="flex-1 p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-brand">
+        <select onchange="onPayMethodChange(this)" class="pay-method flex-1 min-w-[120px] p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-brand">
             ${methodsOptions || '<option>Cree un método de pago</option>'}
         </select>
-        <input type="number" step="0.01" oninput="updateSettleBalance()" placeholder="Monto" class="w-24 p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-brand">
+        <input type="number" step="0.01" min="0" oninput="updateSettleBalance()" placeholder="Monto $" value="${remaining > 0 ? remaining.toFixed(2) : ''}" title="Monto en divisas" class="pay-amount w-24 p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-brand">
+        <select onchange="updateSettleBalance()" title="¿En qué moneda paga?" class="pay-currency p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm outline-none focus:ring-2 focus:ring-brand">
+            <option value="USD">Paga en $</option>
+            <option value="VES">Paga en Bs.</option>
+        </select>
         <button onclick="removePaymentRow(${id})" class="text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>
+        <p class="pay-bs w-full text-xs font-bold text-brand hidden"></p>
     `;
     document.getElementById('settle-payments-list').appendChild(row);
+    onPayMethodChange(row.querySelector('.pay-method'));
 }
 
 function removePaymentRow(id) {
@@ -680,16 +748,28 @@ function updateSettleBalance() {
     const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
     let paid = 0;
     
+    const rate = parseFloat(document.getElementById('sale-rate').value) || 0;
+    let needsRate = false;
+
     document.querySelectorAll('#settle-payments-list > div').forEach(row => {
-        const amount = parseFloat(row.querySelector('input').value) || 0;
+        const amount = parseFloat(row.querySelector('.pay-amount').value) || 0;
         paid += amount;
+        const isBs = row.querySelector('.pay-currency').value === 'VES';
+        const info = row.querySelector('.pay-bs');
+        info.classList.toggle('hidden', !isBs);
+        if (isBs) {
+            if (!(rate > 0)) needsRate = true;
+            info.innerText = rate > 0 ? `Cobrar ${fmtBs(amount * rate)} · Tasa ${rateType} ${rate.toFixed(2)}` : 'Indique la tasa del día';
+        }
     });
-    
+
     const remaining = total - paid;
     const remainingEl = document.getElementById('settle-remaining');
     remainingEl.innerText = `${appCurrency}${remaining.toFixed(2)}`;
-    
-    if(remaining <= 0 && paid > 0) {
+    document.getElementById('settle-total-bs').innerText = rate > 0 ? `${fmtBs(total * rate)} (${rateType})` : '';
+    document.getElementById('settle-remaining-bs').innerText = rate > 0 && Math.abs(remaining) > 0.005 ? fmtBs(remaining * rate) : '';
+
+    if(remaining <= 0.005 && paid > 0 && !needsRate) {
         remainingEl.className = 'text-xl font-bold text-green-500';
         document.getElementById('btn-finalize-sale').disabled = false;
         document.getElementById('btn-finalize-sale').classList.remove('opacity-50', 'cursor-not-allowed');
@@ -710,9 +790,14 @@ async function executeFinalSale() {
 
     const paymentsMade = [];
     document.querySelectorAll('#settle-payments-list > div').forEach(row => {
+        const amount = parseFloat(row.querySelector('.pay-amount').value) || 0;
+        const currency = row.querySelector('.pay-currency').value;
         paymentsMade.push({
-            methodId: row.querySelector('select').value,
-            amount: parseFloat(row.querySelector('input').value) || 0
+            methodId: row.querySelector('.pay-method').value,
+            amount: amount,
+            currency: currency,
+            amountBs: currency === 'VES' ? Math.round(amount * rate * 100) / 100 : null,
+            rateType: rateType
         });
     });
 
@@ -722,6 +807,7 @@ async function executeFinalSale() {
         customerId: custId,
         sellerId: sellId,
         rate: rate,
+        rateType: rateType,
         docType: docType,
         mainCurrency: mainCurrency,
         payments: paymentsMade,
@@ -864,7 +950,11 @@ function fillInvoice(sale) {
 
     document.getElementById('inv-payment-details').innerHTML = (sale.payments || []).map(p => {
         const m = payments.find(meth => meth.id == p.methodId);
-        return `<div class="flex justify-between" style="max-width:260px;"><span>${m ? m.name : 'Método'}</span><span class="font-semibold">${appCurrency} ${fmtMoney(p.amount)}</span></div>`;
+        if (p.currency === 'VES') {
+            const bs = p.amountBs != null ? p.amountBs : p.amount * rate;
+            return `<div style="max-width:300px;"><div class="flex justify-between"><span>${m ? m.name : 'Método'}</span><span class="font-semibold">Bs. ${fmtMoney(bs)}</span></div><p class="text-right" style="font-size:10px;color:#8A8AA0;">${appCurrency} ${fmtMoney(p.amount)} · Tasa ${p.rateType || sale.rateType || ''} ${fmtMoney(rate)}</p></div>`;
+        }
+        return `<div class="flex justify-between" style="max-width:300px;"><span>${m ? m.name : 'Método'}</span><span class="font-semibold">${appCurrency} ${fmtMoney(p.amount)}</span></div>`;
     }).join('') || '<p style="color:#8A8AA0;">S/D</p>';
 
     const units = sale.items.reduce((a, i) => a + i.qty, 0);
@@ -875,10 +965,10 @@ function fillInvoice(sale) {
     const main = document.getElementById('inv-total-main');
     if(sale.mainCurrency === 'BS' || sale.mainCurrency === 'Bs' || sale.mainCurrency === 'VES') {
         main.innerHTML = `<span style="font-size:12px;opacity:.8;">Bs.</span> ${fmtMoney(totalBs)}`;
-        set('inv-total-sec', `${appCurrency} ${fmtMoney(totalUsd)}`);
+        set('inv-total-sec', `${appCurrency} ${fmtMoney(totalUsd)} (Tasa ${sale.rateType ? sale.rateType + ' ' : ''}${fmtMoney(rate)})`);
     } else {
         main.innerHTML = `<span style="font-size:12px;opacity:.8;">${appCurrency}</span> ${fmtMoney(totalUsd)}`;
-        set('inv-total-sec', `Bs. ${fmtMoney(totalBs)} (Tasa ${fmtMoney(rate)})`);
+        set('inv-total-sec', `Bs. ${fmtMoney(totalBs)} (Tasa ${sale.rateType ? sale.rateType + ' ' : ''}${fmtMoney(rate)})`);
     }
 }
 
@@ -974,6 +1064,8 @@ async function reloadData() {
     products = d.products; brands = d.brands; customers = d.customers;
     sellers = d.sellers; payments = d.payments; sales = d.sales;
     appCurrency = d.appCurrency; globalRate = d.globalRate;
+    bcvRate = d.bcvRate; binanceRate = d.binanceRate; rateDate = d.rateDate;
+    syncRateInputs();
     document.getElementById('config-currency').value = appCurrency;
     document.getElementById('config-rate').value = globalRate;
 }
@@ -1028,7 +1120,7 @@ async function renderAudit() {
 }
 
 function exportData() {
-    const data = { products, brands, customers, sellers, payments, sales, appCurrency, globalRate };
+    const data = { products, brands, customers, sellers, payments, sales, appCurrency, globalRate, bcvRate, binanceRate, rateType, rateDate };
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1051,7 +1143,11 @@ function importData(event) {
         sales = data.sales || [];
         appCurrency = data.appCurrency || '$';
         globalRate = data.globalRate || '36.50';
-        importAll({ products, brands, customers, sellers, payments, sales, appCurrency, globalRate })
+        bcvRate = data.bcvRate || globalRate;
+        binanceRate = data.binanceRate || globalRate;
+        rateType = data.rateType || 'BCV';
+        rateDate = data.rateDate || '';
+        importAll({ products, brands, customers, sellers, payments, sales, appCurrency, globalRate, bcvRate, binanceRate, rateDate })
             .then(() => { alert('Datos importados a la nube con éxito'); location.reload(); })
             .catch(err => alert('Error al importar: ' + err.message));
     };
@@ -1070,6 +1166,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fillInvoice, filterPOS, fmtMoney, formatUSD, getInitials, getProductHistory, importData, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, setupProductModal, showSection, startApp, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

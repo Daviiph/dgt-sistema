@@ -8,7 +8,7 @@ const TABLES = {
   sellers: { table: 'sellers', cols: ['id', 'name', 'comm'] },
   payments: { table: 'payment_methods', cols: ['id', 'name'] },
 }
-const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date']
+const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'rate_type', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date']
 const TEXT_COLS = new Set(['brand_id', 'customer_id', 'seller_id', 'date', 'cancel_date'])
 const META_COLS = new Set(['extra', 'updated_at', 'created_at', 'created_by', 'cancelled_by'])
 
@@ -65,6 +65,9 @@ export async function fetchAll() {
   const s = Object.fromEntries(check(settings).map((r) => [r.key, r.value]))
   out.appCurrency = s.currency || '$'
   out.globalRate = s.rate || '36.50'
+  out.bcvRate = s.rate_bcv || out.globalRate
+  out.binanceRate = s.rate_binance || out.globalRate
+  out.rateDate = s.rate_date || ''
   return out
 }
 
@@ -109,6 +112,9 @@ export async function importAll(data) {
   for (let i = 0; i < sales.length; i += 500) check(await supabase.from('sales').upsert(sales.slice(i, i + 500)))
   await saveSetting('currency', data.appCurrency || '$')
   await saveSetting('rate', data.globalRate || '36.50')
+  await saveSetting('rate_bcv', data.bcvRate || data.globalRate || '36.50')
+  await saveSetting('rate_binance', data.binanceRate || data.globalRate || '36.50')
+  if (data.rateDate) await saveSetting('rate_date', data.rateDate)
 }
 
 export async function listProfiles() {

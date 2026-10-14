@@ -1,8 +1,11 @@
 import re
 SRC='/home/ubuntu/out/sistema.html'
 L=open(SRC,encoding='utf-8').read().split('\n')
-body_inner='\n'.join(L[41:598])      # lines 42..598
-script='\n'.join(L[599:1610])        # lines 600..1610 (inside <script>)
+b0=next(i for i,l in enumerate(L) if l.startswith('<body'))
+s0=max(i for i,l in enumerate(L) if l.strip()=='<script>')
+s1=max(i for i,l in enumerate(L) if l.strip()=='</script>')
+body_inner='\n'.join(L[b0+1:s0])
+script='\n'.join(L[s0+1:s1])
 
 def subfirst(pat, rep, s, flags=re.S):
     assert re.search(pat, s, flags), pat
@@ -143,6 +146,8 @@ s=sub1(r"let products = JSON\.parse.*?let globalRate = localStorage\.getItem\('n
  "let products = [], brands = [], customers = [], sellers = [], payments = [], sales = [];\n        let appCurrency = '$';\n        let globalRate = '36.50';\n        let currentProfile = null;", s)
 s=subfirst(r"localStorage\.setItem\('ns_currency', appCurrency\);", "saveSetting('currency', appCurrency).catch(err => alert('No se pudo guardar: ' + err.message));", s)
 s=subfirst(r"localStorage\.setItem\('ns_rate', globalRate\);", "saveSetting('rate', globalRate).catch(err => alert('No se pudo guardar: ' + err.message));", s)
+for key, name in [('ns_rate_binance', "'rate_binance', binanceRate"), ('ns_rate_bcv', "'rate_bcv', bcvRate"), ('ns_rate_date', "'rate_date', rateDate")]:
+    s=subfirst(r"localStorage\.setItem\('%s', \w+\);" % key, "saveSetting(%s).catch(err => alert('No se pudo guardar la tasa: ' + err.message));" % name, s)
 s=sub1(r"id: 'INV-' \+ Date\.now\(\)\.toString\(\)\.slice\(-6\)", "id: 'INV-' + Date.now().toString().slice(-8)", s)
 s=sub1(r"cart\.forEach\(item => \{\s*const p = products\.find\(x => x\.id == item\.id\);\s*p\.stock -= item\.qty;\s*\}\);.*?sales\.push\(sale\);\s*save\(\);",
 """try {
@@ -171,7 +176,7 @@ s=sub1(r"sales = sales\.filter\(x => x\.id !== id\);\s*save\(\);",
             await reloadData();""", s)
 s=sub1(r"function importData\(event\) \{", "function importData(event) {\n            if (!currentProfile || currentProfile.role !== 'admin') return alert('Solo un administrador puede importar datos');", s)
 s=sub1(r"save\(\);\s*alert\('Datos importados con éxito'\);\s*location\.reload\(\);",
-"""importAll({ products, brands, customers, sellers, payments, sales, appCurrency, globalRate })
+"""importAll({ products, brands, customers, sellers, payments, sales, appCurrency, globalRate, bcvRate, binanceRate, rateDate })
                     .then(() => { alert('Datos importados a la nube con éxito'); location.reload(); })
                     .catch(err => alert('Error al importar: ' + err.message));""", s)
 s=sub1(r"function save\(\) \{.*?\n        \}",
@@ -191,6 +196,8 @@ s=sub1(r"function save\(\) \{.*?\n        \}",
             products = d.products; brands = d.brands; customers = d.customers;
             sellers = d.sellers; payments = d.payments; sales = d.sales;
             appCurrency = d.appCurrency; globalRate = d.globalRate;
+            bcvRate = d.bcvRate; binanceRate = d.binanceRate; rateDate = d.rateDate;
+            syncRateInputs();
             document.getElementById('config-currency').value = appCurrency;
             document.getElementById('config-rate').value = globalRate;
         }
