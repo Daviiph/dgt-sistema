@@ -7,9 +7,10 @@ const TABLES = {
   customers: { table: 'customers', cols: ['id', 'name', 'cedula', 'rif', 'email', 'phone', 'total_spent'] },
   sellers: { table: 'sellers', cols: ['id', 'name', 'comm'] },
   payments: { table: 'payment_methods', cols: ['id', 'name'] },
+  resale: { table: 'resale_items', cols: ['id', 'brand', 'name', 'color', 'serial', 'supplier', 'cost', 'price', 'stock', 'notes', 'acquired_at'] },
 }
-const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'rate_type', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date']
-const TEXT_COLS = new Set(['brand_id', 'customer_id', 'seller_id', 'date', 'cancel_date'])
+const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'rate_type', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date', 'channel', 'cost_total']
+const TEXT_COLS = new Set(['brand_id', 'customer_id', 'seller_id', 'date', 'cancel_date', 'acquired_at'])
 const META_COLS = new Set(['extra', 'updated_at', 'created_at', 'created_by', 'cancelled_by'])
 
 const toSnake = (k) => k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())
@@ -38,7 +39,7 @@ function fromRow(row) {
   const obj = {}
   for (const [k, v] of Object.entries(row)) {
     if (META_COLS.has(k)) continue
-    obj[toCamel(k)] = typeof v === 'string' && /^(price|stock|comm|rate|total|total_spent)$/.test(k) ? Number(v) : v
+    obj[toCamel(k)] = typeof v === 'string' && /^(price|stock|comm|rate|total|total_spent|cost|cost_total)$/.test(k) ? Number(v) : v
   }
   return clean({ ...(row.extra || {}), ...obj })
 }
@@ -61,13 +62,15 @@ export async function fetchAll() {
     out[name] = check(rest[i]).map(fromRow)
     snapshot[name] = new Map(out[name].map((o) => [String(o.id), JSON.stringify(o)]))
   })
-  out.sales = check(rest[rest.length - 1]).map(fromRow)
+  out.sales = check(rest[rest.length - 1]).map((row) => ({ channel: 'tienda', ...fromRow(row), createdAt: row.created_at }))
   const s = Object.fromEntries(check(settings).map((r) => [r.key, r.value]))
   out.appCurrency = s.currency || '$'
   out.globalRate = s.rate || '36.50'
   out.bcvRate = s.rate_bcv || out.globalRate
   out.binanceRate = s.rate_binance || out.globalRate
   out.rateDate = s.rate_date || ''
+  out.brandColor = s.brand_color || ''
+  out.brandLogo = s.brand_logo || ''
   return out
 }
 
@@ -105,7 +108,8 @@ export async function importAll(data) {
     if (rows.length) check(await supabase.from(def.table).upsert(rows))
   }
   const sales = (data.sales || []).map((s) => {
-    const r = toRow({ status: 'activa', ...s }, SALE_COLS)
+    const { createdAt, ...sale } = s
+    const r = toRow({ status: 'activa', channel: 'tienda', ...sale }, SALE_COLS)
     if (r.status !== 'cancelada') r.status = 'activa'
     return r
   })

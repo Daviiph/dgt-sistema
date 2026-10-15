@@ -72,7 +72,7 @@ export async function initAuth() {
   const recovering = new URLSearchParams(location.search).has('recovery')
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') showView('recovery')
-    if (event === 'SIGNED_OUT') location.replace('/')
+    if (event === 'SIGNED_OUT') location.replace(import.meta.env.BASE_URL)
   })
 
   $('form-login').onsubmit = async (e) => {
@@ -124,7 +124,7 @@ export async function initAuth() {
     const { data, error } = await supabase.auth.updateUser({ password })
     busy(e.target, false)
     if (error) return setMessage(tr(error.message))
-    history.replaceState(null, '', '/')
+    history.replaceState(null, '', import.meta.env.BASE_URL)
     await enter(data.user)
   }
 

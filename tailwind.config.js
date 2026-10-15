@@ -5,9 +5,19 @@ export default {
   theme: {
     extend: {
       fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
-      colors: { brand: { light: '#A78BFA', DEFAULT: '#7C3AED', dark: '#5B21B6' } },
-      animation: { 'slide-in': 'slideIn 0.5s ease-out', 'pulse-gold': 'pulseGold 2s infinite' },
+      colors: {
+        brand: {
+          DEFAULT: 'rgb(var(--brand) / <alpha-value>)',
+          light: 'rgb(var(--brand-light) / <alpha-value>)',
+          dark: 'rgb(var(--brand-dark) / <alpha-value>)',
+          soft: 'rgb(var(--brand-soft) / <alpha-value>)',
+          deep: 'rgb(var(--brand-deep) / <alpha-value>)',
+          ink: 'rgb(var(--brand-ink) / <alpha-value>)',
+        },
+      },
+      animation: { 'fade-up': 'fadeUp .6s ease-out both', 'slide-in': 'slideIn 0.5s ease-out', 'pulse-gold': 'pulseGold 2s infinite' },
       keyframes: {
+        fadeUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
         slideIn: { '0%': { opacity: '0', transform: 'translateX(20px)' }, '100%': { opacity: '1', transform: 'translateX(0)' } },
         pulseGold: { '0%, 100%': { boxShadow: '0 0 0 0 rgba(234, 179, 8, 0.7)' }, '50%': { boxShadow: '0 0 0 10px rgba(234, 179, 8, 0)' } },
       },

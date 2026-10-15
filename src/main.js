@@ -4,6 +4,20 @@ import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import './style.css'
+import { initThemeFromCache } from './theme.js'
+import { mountProgramBrand } from './brand.js'
 import { initAuth } from './auth.js'
 
-initAuth()
+// Colores y logo de la tienda guardados: la pantalla de inicio ya sale con la marca
+initThemeFromCache()
+mountProgramBrand()
+
+// Pantalla de bienvenida del programa: se muestra al menos 1.3 s y hasta que cargue la sesión
+const shownAt = Date.now()
+function hideSplash() {
+  const wait = Math.max(0, 1300 - (Date.now() - shownAt))
+  setTimeout(() => document.getElementById('splash')?.classList.add('done'), wait)
+}
+
+initAuth().finally(hideSplash)
+setTimeout(hideSplash, 6000)

@@ -2,14 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Paleta de la tienda (se reemplaza en vivo desde theme.js según el logo) */
+:root {
+  --brand: 124 58 237;
+  --brand-light: 167 139 250;
+  --brand-dark: 91 33 182;
+  --brand-soft: 240 235 254;
+  --brand-softer: 247 244 254;
+  --brand-line: 228 220 251;
+  --brand-deep: 67 26 140;
+  --brand-ink: 18 9 34;
+}
+
 body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
-.active-link { border-left: 4px solid #7C3AED; background-color: rgba(124, 58, 237, 0.1); color: #7C3AED !important; }
+.dark body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgb(var(--brand) / 0.22), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(var(--brand-dark) / 0.25), transparent 60%),
+    #060816;
+  background-attachment: fixed;
+}
+/* Tarjetas tipo vidrio en modo oscuro */
+.dark .dark\:bg-gray-900 { background-color: rgb(13 17 38 / 0.72); backdrop-filter: blur(14px); }
+.dark .dark\:border-gray-800 { border-color: rgb(255 255 255 / 0.07); }
+
+.active-link { border-left: 4px solid rgb(var(--brand)); background-color: rgb(var(--brand) / 0.1); color: rgb(var(--brand)) !important; }
+.dark .active-link { color: rgb(var(--brand-light)) !important; background-color: rgb(var(--brand) / 0.18); }
 .section-transition { animation: slideIn 0.4s ease-out; }
 @keyframes slideIn { 0% { opacity: 0; transform: translateX(20px); } 100% { opacity: 1; transform: translateX(0); } }
 @media print { .no-print { display: none !important; } .print-only { display: block !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
 .print-only { display: none; }
 .color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
-.color-dot.active { border-color: #7C3AED; transform: scale(1.2); box-shadow: 0 0 10px rgba(124, 58, 237, 0.5); }
+.color-dot.active { border-color: rgb(var(--brand)); transform: scale(1.2); box-shadow: 0 0 10px rgb(var(--brand) / 0.5); }
+
+/* Tarjetas del panel estilo "Vision" (siempre oscuras, teñidas con el color de la tienda) */
+.vision-card {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  border-radius: 1.25rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(var(--brand) / 0.38) 0%, transparent 55%),
+    linear-gradient(135deg, rgb(var(--brand-ink)) 0%, #070a1a 100%);
+  box-shadow: 0 20px 45px -25px rgb(var(--brand) / 0.55);
+}
+.vision-card .muted { color: rgb(255 255 255 / 0.55); }
+.icon-tile {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; border-radius: 0.9rem; color: #fff;
+  background: linear-gradient(135deg, rgb(var(--brand-light)), rgb(var(--brand)));
+  box-shadow: 0 10px 20px -10px rgb(var(--brand) / 0.8);
+}
+.balance-card {
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(80% 120% at 100% 0%, rgb(255 255 255 / 0.35), transparent 60%),
+    linear-gradient(135deg, rgb(var(--brand-light)), rgb(var(--brand)) 55%, rgb(var(--brand-dark)));
+  box-shadow: 0 25px 40px -20px rgb(var(--brand) / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+.progress-track { height: 6px; border-radius: 999px; background: rgb(127 127 127 / 0.15); overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--brand)), rgb(var(--brand-light))); }
+
+/* Selector Tienda / Reventa */
+.mode-switch button { transition: all .25s; }
+.mode-switch button.on { background: rgb(var(--brand)); color: #fff; box-shadow: 0 8px 20px -10px rgb(var(--brand) / 0.9); }
+body.mode-reventa .mode-switch button.on { background: linear-gradient(90deg, #059669, #10B981); box-shadow: 0 8px 20px -10px rgb(16 185 129 / 0.9); }
+body.mode-tienda [data-mode="reventa"], body.mode-reventa [data-mode="tienda"] { display: none !important; }
+
+/* Pantalla de bienvenida del programa */
+#splash { transition: opacity .5s ease, visibility .5s; }
+#splash.done { opacity: 0; visibility: hidden; }
+.splash-logo { animation: splashIn .9s cubic-bezier(.2,.8,.2,1) both; }
+.splash-name { animation: fadeUp .7s .35s ease-out both; }
+.splash-bar::after { content: ''; display: block; height: 100%; width: 40%; border-radius: 999px; background: #38BDF8; animation: splashBar 1.1s ease-in-out infinite; }
+@keyframes splashIn { 0% { opacity: 0; transform: scale(.7); filter: blur(6px); } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
+@keyframes splashBar { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+@keyframes fadeUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
+
+/* Logo con fondo de cuadros para ver la transparencia */
+.checker { background-color: #fff; background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+
+/* Menú lateral en celular */
+@media (max-width: 1023px) {
+  #sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; transform: translateX(-105%); transition: transform .3s ease; }
+  body.nav-open #sidebar { transform: translateX(0); }
+  body.nav-open #nav-overlay { display: block; }
+}
+.bottom-nav a.on { color: rgb(var(--brand)); }
+.dark .bottom-nav a.on { color: rgb(var(--brand-light)); }
 
 /* Permisos visuales del rol Vendedor (la base de datos también lo impide) */
 body:not(.role-admin) .admin-only,
@@ -17,6 +98,8 @@ body:not(.role-admin) #link-brands,
 body:not(.role-admin) #link-sellers,
 body:not(.role-admin) #link-payments,
 body:not(.role-admin) #link-config,
+body:not(.role-admin) #link-resale-dashboard,
+body:not(.role-admin) #link-resale-items,
 body:not(.role-admin) [onclick^="openCancelSale"],
 body:not(.role-admin) [onclick^="deleteSale"],
 body:not(.role-admin) [onclick^="deleteItem"],
@@ -25,7 +108,9 @@ body:not(.role-admin) [onclick^="duplicateProduct"],
 body:not(.role-admin) [onclick^="editBrand"],
 body:not(.role-admin) [onclick^="editSeller"],
 body:not(.role-admin) [onclick^="editPayment"],
+body:not(.role-admin) [onclick^="editResale"],
 body:not(.role-admin) [onclick="openModal('modal-product')"],
 body:not(.role-admin) [onclick="openModal('modal-brand')"],
 body:not(.role-admin) [onclick="openModal('modal-seller')"],
-body:not(.role-admin) [onclick="openModal('modal-payment')"] { display: none !important; }
+body:not(.role-admin) [onclick="openModal('modal-payment')"],
+body:not(.role-admin) [onclick^="openResaleModal"] { display: none !important; }

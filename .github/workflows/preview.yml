@@ -1,0 +1,30 @@
+name: Compilar rama (sin publicar)
+on:
+  push:
+    branches-ignore: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Compilación real (igual que producción)
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL: https://icwlksxcrqlbpwvqyxxz.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_2LboCybPWEcayGDEZuYW5A_l-4trGDe
+      - name: Compilación de prueba con datos de ejemplo
+        run: npx vite build --outDir dist-mock
+        env:
+          VITE_MOCK: '1'
+          BASE_PATH: /
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-mock
+          path: dist-mock
+          retention-days: 3
