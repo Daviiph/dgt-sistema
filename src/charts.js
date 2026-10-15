@@ -1,13 +1,13 @@
 // Gráficas en SVG puro (sin librerías), pensadas para las tarjetas oscuras del panel
 let uid = 0
 
-function smoothPath(pts) {
+function smoothPath(pts, floor = Infinity) {
   if (pts.length < 2) return ''
   let d = `M${pts[0][0]},${pts[0][1]}`
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6]
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6]
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, Math.min(floor, p1[1] + (p2[1] - p0[1]) / 6)]
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, Math.min(floor, p2[1] - (p3[1] - p1[1]) / 6)]
     d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`
   }
   return d
@@ -36,7 +36,7 @@ export function areaChart({ labels, series, height = 220, format = (v) => v }) {
   const xl = labels.map((lb, i) => (i % step === 0 || i === n - 1 ? `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity=".45">${lb}</text>` : '')).join('')
   const paths = series.map((s, si) => {
     const pts = s.values.map((v, i) => [x(i), y(v)])
-    const line = smoothPath(pts)
+    const line = smoothPath(pts, y(0))
     const area = `${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z`
     const col = s.color || 'var(--brand)'
     return `<defs><linearGradient id="${id}g${si}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(${col})" stop-opacity=".55"/><stop offset="1" stop-color="rgb(${col})" stop-opacity="0"/></linearGradient></defs>
