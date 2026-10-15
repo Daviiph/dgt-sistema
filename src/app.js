@@ -1666,31 +1666,96 @@ function exportData() {
     a.click();
 }
 
+// IMPORTAR / RECUPERAR VENTAS ANTERIORES
+// Sólo agrega lo que falta en la nube: nunca reemplaza el stock, clientes ni ventas que ya existen.
+function missingOnly(incoming, current) {
+    const have = new Set((current || []).map(x => String(x.id)));
+    return (Array.isArray(incoming) ? incoming : []).filter(x => x && x.id != null && !have.has(String(x.id)));
+}
+
+function buildMerge(data) {
+    const add = {
+        brands: missingOnly(data.brands, brands),
+        products: missingOnly(data.products, products),
+        customers: missingOnly(data.customers, customers),
+        sellers: missingOnly(data.sellers, sellers),
+        payments: missingOnly(data.payments, payments),
+        resale: missingOnly(data.resale, resale),
+        sales: missingOnly(data.sales, sales).map(s => ({ ...s, channel: s.channel || 'tienda' })),
+    };
+    const count = Object.values(add).reduce((a, l) => a + l.length, 0);
+    return { add, count };
+}
+
+function describeMerge(add) {
+    const parts = [['sales', 'ventas'], ['customers', 'clientes'], ['products', 'productos'], ['brands', 'marcas'], ['sellers', 'vendedores'], ['payments', 'métodos de pago'], ['resale', 'equipos de reventa']]
+        .filter(([k]) => add[k].length).map(([k, l]) => `${add[k].length} ${l}`);
+    const total = add.sales.filter(s => s.status !== 'cancelada').reduce((a, s) => a + (Number(s.total) || 0), 0);
+    return parts.join(', ') + (add.sales.length ? `\nTotal en ventas: ${money(total)}` : '');
+}
+
+async function mergeIntoCloud(add) {
+    await importAll(add, { settings: false });
+    await reloadData();
+    refreshAllViews();
+}
+
 function importData(event) {
-    if (!currentProfile || currentProfile.role !== 'admin') return alert('Solo un administrador puede importar datos');
+    if (!isAdmin()) return alert('Solo un administrador puede importar datos');
     const file = event.target.files[0];
+    event.target.value = '';
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
-        const data = JSON.parse(e.target.result);
-        products = data.products || [];
-        brands = data.brands || [];
-        customers = data.customers || [];
-        sellers = data.sellers || [];
-        payments = data.payments || [];
-        sales = data.sales || [];
-        resale = data.resale || [];
-        appCurrency = data.appCurrency || '$';
-        globalRate = data.globalRate || '36.50';
-        bcvRate = data.bcvRate || globalRate;
-        binanceRate = data.binanceRate || globalRate;
-        rateType = data.rateType || 'BCV';
-        rateDate = data.rateDate || '';
-        importAll({ products, brands, customers, sellers, payments, sales, resale, appCurrency, globalRate, bcvRate, binanceRate, rateDate })
-            .then(() => { alert('Datos importados a la nube con éxito'); location.reload(); })
-            .catch(err => alert('Error al importar: ' + err.message));
+    reader.onload = async (e) => {
+        let data;
+        try { data = JSON.parse(e.target.result); } catch { return alert('El archivo no es un respaldo válido (.json)'); }
+        const { add, count } = buildMerge(data);
+        if (!count) return alert('Todo lo que trae ese respaldo ya está en el sistema. No hay nada nuevo que agregar.');
+        if (!confirm(`Se agregarán al sistema:\n${describeMerge(add)}\n\nNo se modifica nada de lo que ya existe (stock, ventas ni clientes). ¿Continuar?`)) return;
+        try {
+            await mergeIntoCloud(add);
+            alert('Datos importados con éxito.');
+        } catch (err) { alert('Error al importar: ' + err.message); }
     };
     reader.readAsText(file);
+}
+
+// El sistema anterior (antes de la nube) guardaba todo en este navegador. Si quedan datos aquí, se ofrecen para subirlos.
+function readLegacyLocal() {
+    const out = {};
+    const looks = {
+        sales: (a) => a.some(x => x && Array.isArray(x.items) && 'total' in x),
+        products: (a) => a.some(x => x && 'stock' in x && 'price' in x && !('cost' in x)),
+        customers: (a) => a.some(x => x && ('cedula' in x || 'totalSpent' in x)),
+        sellers: (a) => a.some(x => x && 'comm' in x),
+    };
+    const byName = { brands: 'ns_brands', payments: 'ns_payments' };
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!/^ns_/.test(key)) continue;
+            let val;
+            try { val = JSON.parse(localStorage.getItem(key)); } catch { continue; }
+            if (!Array.isArray(val) || !val.length) continue;
+            for (const [k, test] of Object.entries(looks)) if (!out[k] && test(val)) out[k] = val;
+            for (const [k, name] of Object.entries(byName)) if (key === name) out[k] = val;
+        }
+    } catch { /* almacenamiento bloqueado */ }
+    return out;
+}
+
+async function offerLegacyRecovery() {
+    if (!isAdmin() || sessionStorage.getItem('ns_legacy_checked') === '1') return;
+    sessionStorage.setItem('ns_legacy_checked', '1');
+    const legacy = readLegacyLocal();
+    if (!legacy.sales || !legacy.sales.length) return;
+    const { add, count } = buildMerge(legacy);
+    if (!count || !add.sales.length) return;
+    if (!confirm(`Se encontraron datos del sistema anterior guardados en este navegador que no están en la nube:\n\n${describeMerge(add)}\n\n¿Desea recuperarlos ahora? (No se modifica nada de lo que ya existe)`)) return;
+    try {
+        await mergeIntoCloud(add);
+        alert('Ventas anteriores recuperadas con éxito.');
+    } catch (err) { alert('No se pudieron recuperar: ' + err.message); }
 }
 
 // INITIALIZATION
@@ -1706,11 +1771,14 @@ async function startApp(profile) {
     showSection(appMode === 'reventa' ? (admin ? 'resale-dashboard' : 'pos') : (admin ? 'dashboard' : 'pos'));
     if (admin) { renderUsersAdmin(); renderAudit(); }
     // Al entrar, el administrador sin logo configurado recibe la invitación a subir el PNG
-    if (admin && !brandLogo && sessionStorage.getItem('ns_logo_later') !== '1') setTimeout(() => openLogoModal(true), 600);
+    if (admin) setTimeout(async () => {
+        await offerLegacyRecovery();
+        if (!brandLogo && sessionStorage.getItem('ns_logo_later') !== '1') openLogoModal(true);
+    }, 600);
     subscribeChanges(() => syncChain.then(reloadData).then(refreshAllViews).catch(console.error));
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

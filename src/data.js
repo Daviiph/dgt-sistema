@@ -44,6 +44,20 @@ function fromRow(row) {
   return clean({ ...(row.extra || {}), ...obj })
 }
 
+// Interpreta la fecha de texto de una venta ("13/10/2026, 10:32:34 p. m." o "10/15/2026, 7:06:38 PM")
+export function parseSaleDate(text) {
+  const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap])?\.?\s*(m)?)?/i.exec(String(text || ''))
+  if (!m) return null
+  let [, a, b, y, hh = '0', mm = '0', ss = '0', ap] = m
+  const english = /\b[AP]M\b/.test(text)
+  let day = +a, month = +b
+  if (english || (+a <= 12 && +b > 12)) { day = +b; month = +a }
+  let h = +hh
+  if (ap) { const pm = ap.toLowerCase() === 'p'; if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0 }
+  const d = new Date(+y, month - 1, day, h, +mm, +ss)
+  return isNaN(d) || month > 12 ? null : d
+}
+
 function check({ data, error }) {
   if (error) throw new Error(error.message)
   return data
@@ -112,7 +126,7 @@ export async function deleteSaleRemote(id) {
   check(await supabase.rpc('delete_sale', { p_id: id }))
 }
 
-export async function importAll(data) {
+export async function importAll(data, opts = {}) {
   for (const [name, def] of Object.entries(TABLES)) {
     const rows = (data[name] || []).map((o) => toRow(o, def.cols))
     if (rows.length) check(await supabase.from(def.table).upsert(rows))
@@ -121,9 +135,12 @@ export async function importAll(data) {
     const { createdAt, ...sale } = s
     const r = toRow({ status: 'activa', channel: 'tienda', ...sale }, SALE_COLS)
     if (r.status !== 'cancelada') r.status = 'activa'
+    const when = createdAt ? new Date(createdAt) : parseSaleDate(sale.date)
+    if (when && !isNaN(when)) r.created_at = when.toISOString()
     return r
   })
   for (let i = 0; i < sales.length; i += 500) check(await supabase.from('sales').upsert(sales.slice(i, i + 500)))
+  if (opts.settings === false) return
   await saveSetting('currency', data.appCurrency || '$')
   await saveSetting('rate', data.globalRate || '36.50')
   await saveSetting('rate_bcv', data.bcvRate || data.globalRate || '36.50')
