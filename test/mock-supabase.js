@@ -65,7 +65,7 @@ class Query {
     if (this.op === 'upsert') {
       for (const row of this.payload) {
         const i = all.findIndex((r) => String(r[key]) === String(row[key]))
-        if (i >= 0) all[i] = { ...all[i], ...row }; else all.push({ ...row, created_at: new Date().toISOString() })
+        if (i >= 0) all[i] = { ...all[i], ...row }; else all.push({ created_at: new Date().toISOString(), ...row })
       }
       return { data: null, error: null }
     }
