@@ -1223,6 +1223,7 @@ function seriesByDay(list, days, fn) {
     list.forEach(s => { const t = saleTime(s); if (t) { const k = dayKey(t); map[k] = (map[k] || 0) + fn(s); } });
     return days.map(d => map[dayKey(d)] || 0);
 }
+const money = (v) => `${appCurrency}${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const shortMoney = (v) => v >= 1000 ? `${appCurrency}${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : `${appCurrency}${Math.round(v)}`;
 const dayLabel = (d) => d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }).replace('.', '');
 
@@ -1238,12 +1239,12 @@ function updateDashboard() {
     const todayTotal = activeSales.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; }).reduce((a, s) => a + s.total, 0);
     const monthTotal = activeSales.filter(s => { const t = saleTime(s); return t && t.getMonth() === now.getMonth() && t.getFullYear() === now.getFullYear(); }).reduce((a, s) => a + s.total, 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
-    set('dash-total-sales', `${appCurrency}${total.toFixed(2)}`);
-    set('dash-today-sales', `${appCurrency}${todayTotal.toFixed(2)}`);
-    set('dash-total-commissions', `${appCurrency}${totalComm.toFixed(2)}`);
+    set('dash-total-sales', money(total));
+    set('dash-today-sales', money(todayTotal));
+    set('dash-total-commissions', money(totalComm));
     set('dash-total-products', products.length);
     set('dash-low-stock', products.filter(p => p.stock < 5).length);
-    set('dash-month-sales', `${appCurrency}${monthTotal.toFixed(2)}`);
+    set('dash-month-sales', money(monthTotal));
     set('dash-month-label', now.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' }));
     set('dash-hello', currentProfile ? (currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] : '—');
 
@@ -1431,9 +1432,9 @@ function renderResaleDashboard() {
     const active = sales.filter(s => isResaleSale(s) && s.status !== 'cancelada');
     const tot = active.reduce((a, s) => a + s.total, 0), cost = active.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
-    set('rs-total', `${appCurrency}${tot.toFixed(2)}`);
-    set('rs-cost', `${appCurrency}${cost.toFixed(2)}`);
-    set('rs-profit', `${appCurrency}${(tot - cost).toFixed(2)}`);
+    set('rs-total', money(tot));
+    set('rs-cost', money(cost));
+    set('rs-profit', money((tot - cost)));
     set('rs-margin', tot > 0 ? `${(((tot - cost) / tot) * 100).toFixed(1)}%` : '0%');
     const avail = resale.filter(r => r.stock > 0);
     set('rs-available', avail.reduce((a, r) => a + r.stock, 0));

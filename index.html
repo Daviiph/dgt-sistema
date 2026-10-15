@@ -25,7 +25,8 @@
     </div>
 
     <!-- INICIO DE SESIÓN -->
-    <div id="auth-screen" class="hidden min-h-screen lg:grid lg:grid-cols-2 bg-white dark:bg-gray-950">
+    <div id="auth-screen" class="hidden bg-white dark:bg-gray-950">
+      <div class="min-h-screen lg:grid lg:grid-cols-2">
         <!-- Panel de marca con curva -->
         <div class="relative overflow-hidden bg-[#07080f] text-white h-[38vh] min-h-[250px] lg:h-auto lg:min-h-screen">
             <div class="absolute inset-0" style="background:radial-gradient(700px 500px at 20% 10%, rgb(var(--brand) / .55), transparent 65%), radial-gradient(500px 400px at 90% 90%, rgb(var(--brand-dark) / .5), transparent 70%)"></div>
@@ -33,9 +34,9 @@
             <svg class="hidden lg:block absolute top-0 -right-px h-full w-32 text-white dark:text-gray-950" viewBox="0 0 100 400" preserveAspectRatio="none"><path d="M100 0 L60 0 C 110 120, -10 260, 30 400 L100 400 Z" fill="currentColor"/></svg>
             <div class="relative h-full flex flex-col justify-start lg:justify-center p-8 lg:p-16 pt-10">
                 <div class="flex items-center gap-4">
-                    <img data-brand-logo data-default="/logo.png" src="/logo.png" alt="Logo de la tienda" class="h-14 lg:h-20 w-auto drop-shadow-xl">
+                    <img data-brand-logo src="/logo.png" alt="Logo de la tienda" class="h-14 lg:h-20 w-auto max-w-[220px] object-contain rounded-2xl bg-white/95 p-1.5 shadow-xl">
                 </div>
-                <h1 class="mt-5 lg:mt-10 text-3xl lg:text-5xl font-semibold tracking-[0.25em] uppercase">DgtTecnology<span class="text-brand-light">Vzla</span></h1>
+                <h1 class="mt-5 lg:mt-10 text-2xl sm:text-3xl xl:text-4xl font-semibold tracking-[0.12em] uppercase break-words">DgtTecnology<span class="text-brand-light">Vzla</span></h1>
                 <p class="mt-2 lg:mt-4 text-sm lg:text-lg text-white/60">¡Bienvenido de nuevo! Inicia sesión para continuar.</p>
                 <div class="hidden lg:flex mt-12 gap-3 text-xs text-white/50">
                     <span class="px-3 py-1 rounded-full border border-white/15"><i class="fas fa-store mr-1"></i>Tienda</span>
@@ -99,6 +100,7 @@
                 <span data-program-logo="18"></span><span data-program-credit></span>
             </div>
         </div>
+      </div>
     </div>
 
     <div id="app-shell" class="hidden">
@@ -113,7 +115,7 @@
                         <div data-brand-logo-fallback class="w-full h-full bg-brand rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/30"><i class="fas fa-mobile-alt text-xl"></i></div>
                     </div>
                     <div class="min-w-0">
-                        <h1 class="text-lg font-bold leading-tight text-gray-900 dark:text-white truncate">DgtTecnology<span class="text-brand">Vzla</span></h1>
+                        <h1 class="text-base font-bold leading-tight text-gray-900 dark:text-white truncate">DgtTecnology<span class="text-brand">Vzla</span></h1>
                         <p class="text-[10px] text-gray-400 uppercase tracking-widest"><span data-mode="tienda">Tienda</span><span data-mode="reventa" class="text-emerald-500 font-bold">Modo reventa</span></p>
                     </div>
                     <button onclick="toggleNav(false)" class="ml-auto lg:hidden w-9 h-9 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Cerrar menú"><i class="fas fa-xmark"></i></button>
@@ -175,19 +177,19 @@
                 <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
                     <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3">
                         <div class="min-w-0"><p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm">Ventas Totales</p><h3 id="dash-total-sales" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div>
-                        <span class="icon-tile shrink-0"><i class="fas fa-wallet"></i></span>
+                        <span class="icon-tile kpi-icon shrink-0"><i class="fas fa-wallet"></i></span>
                     </div>
                     <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3">
                         <div class="min-w-0"><p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm">Ventas de Hoy</p><h3 id="dash-today-sales" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div>
-                        <span class="icon-tile shrink-0"><i class="fas fa-bolt"></i></span>
+                        <span class="icon-tile kpi-icon shrink-0"><i class="fas fa-bolt"></i></span>
                     </div>
                     <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3">
                         <div class="min-w-0"><p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm">Comisiones</p><h3 id="dash-total-commissions" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div>
-                        <span class="icon-tile shrink-0"><i class="fas fa-percentage"></i></span>
+                        <span class="icon-tile kpi-icon shrink-0"><i class="fas fa-percentage"></i></span>
                     </div>
                     <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3">
                         <div class="min-w-0"><p class="text-gray-500 dark:text-gray-400 text-xs md:text-sm">Productos · <span class="text-red-500">Stock bajo</span></p><h3 class="text-lg md:text-2xl font-bold"><span id="dash-total-products">0</span> · <span id="dash-low-stock" class="text-red-500">0</span></h3></div>
-                        <span class="icon-tile shrink-0"><i class="fas fa-box"></i></span>
+                        <span class="icon-tile kpi-icon shrink-0"><i class="fas fa-box"></i></span>
                     </div>
                 </div>
                 <!-- Bienvenida + indicadores -->
@@ -268,10 +270,10 @@
                     <p class="text-sm text-gray-500">Equipos conseguidos por fuera cuando no hay en tienda: control de inversión y ganancia.</p>
                 </div>
                 <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
-                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Vendido en reventa</p><h3 id="rs-total" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div><span class="icon-tile shrink-0"><i class="fas fa-sack-dollar"></i></span></div>
-                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Costo de equipos</p><h3 id="rs-cost" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div><span class="icon-tile shrink-0"><i class="fas fa-hand-holding-dollar"></i></span></div>
-                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Ganancia</p><h3 id="rs-profit" class="text-lg md:text-2xl font-bold text-emerald-500 truncate">$0.00</h3></div><span class="icon-tile shrink-0" style="background:linear-gradient(135deg,#34D399,#059669)"><i class="fas fa-arrow-trend-up"></i></span></div>
-                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Margen promedio</p><h3 id="rs-margin" class="text-lg md:text-2xl font-bold truncate">0%</h3></div><span class="icon-tile shrink-0"><i class="fas fa-percent"></i></span></div>
+                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Vendido en reventa</p><h3 id="rs-total" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-sack-dollar"></i></span></div>
+                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Costo de equipos</p><h3 id="rs-cost" class="text-lg md:text-2xl font-bold truncate">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-hand-holding-dollar"></i></span></div>
+                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Ganancia</p><h3 id="rs-profit" class="text-lg md:text-2xl font-bold text-emerald-500 truncate">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0" style="background:linear-gradient(135deg,#34D399,#059669)"><i class="fas fa-arrow-trend-up"></i></span></div>
+                    <div class="bg-white dark:bg-gray-900 p-4 md:p-5 rounded-2xl shadow-sm border dark:border-gray-800 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Margen promedio</p><h3 id="rs-margin" class="text-lg md:text-2xl font-bold truncate">0%</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-percent"></i></span></div>
                 </div>
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                     <div class="vision-card p-6 xl:col-span-2">
@@ -476,7 +478,7 @@
                     <h3 class="text-xl font-bold"><i class="fas fa-palette text-brand mr-2"></i>Identidad de la tienda</h3>
                     <div class="flex flex-col sm:flex-row gap-6 items-start">
                         <div class="checker w-32 h-32 rounded-2xl border dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
-                            <img data-brand-logo data-default="/logo.png" src="/logo.png" alt="Logo actual" class="max-w-full max-h-full object-contain">
+                            <img data-brand-logo src="/logo.png" alt="Logo actual" class="max-w-full max-h-full object-contain">
                         </div>
                         <div class="space-y-3 flex-1">
                             <p class="text-sm text-gray-500">Suba el logo de la tienda en <b>PNG con fondo transparente</b>. El sistema toma sus colores y ajusta la paleta (botones, menú, panel y factura) sin cambiar el diseño.</p>

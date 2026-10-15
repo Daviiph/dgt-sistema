@@ -61,6 +61,7 @@ body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, colo
     linear-gradient(135deg, rgb(var(--brand-light)), rgb(var(--brand)) 55%, rgb(var(--brand-dark)));
   box-shadow: 0 25px 40px -20px rgb(var(--brand) / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.35);
 }
+@media (max-width: 639px) { .icon-tile.kpi-icon { display: none; } }
 .progress-track { height: 6px; border-radius: 999px; background: rgb(127 127 127 / 0.15); overflow: hidden; }
 .progress-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--brand)), rgb(var(--brand-light))); }
 
