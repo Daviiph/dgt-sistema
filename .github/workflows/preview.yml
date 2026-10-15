@@ -1,7 +1,9 @@
 name: Compilar rama (sin publicar)
 on:
   push:
-    branches-ignore: [main]
+    branches-ignore: [main, preview-dist]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,8 +25,10 @@ jobs:
         env:
           VITE_MOCK: '1'
           BASE_PATH: /
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist-mock
-          path: dist-mock
-          retention-days: 3
+      - name: Guardar la compilación de prueba en la rama temporal preview-dist
+        run: |
+          cd dist-mock
+          git init -q -b preview-dist
+          git add -A
+          git -c user.name=ci -c user.email=ci@local commit -q -m "preview ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" preview-dist
