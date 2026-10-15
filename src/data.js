@@ -57,8 +57,15 @@ export async function fetchAll() {
     ...Object.values(TABLES).map((t) => supabase.from(t.table).select('*').order('id')),
     supabase.from('sales').select('*').order('created_at'),
   ])
-  const out = {}
+  const out = { resaleReady: true }
   Object.keys(TABLES).forEach((name, i) => {
+    // Si la tabla de reventa aún no existe en la nube, el resto del sistema sigue funcionando
+    if (name === 'resale' && rest[i].error) {
+      out.resaleReady = false
+      out[name] = []
+      snapshot[name] = new Map()
+      return
+    }
     out[name] = check(rest[i]).map(fromRow)
     snapshot[name] = new Map(out[name].map((o) => [String(o.id), JSON.stringify(o)]))
   })
@@ -71,12 +78,15 @@ export async function fetchAll() {
   out.rateDate = s.rate_date || ''
   out.brandColor = s.brand_color || ''
   out.brandLogo = s.brand_logo || ''
+  resaleReady = out.resaleReady
   return out
 }
 
 // Compara los arreglos con la última versión de la nube y envía sólo los cambios
+let resaleReady = true
 export async function syncTables(state) {
   for (const [name, def] of Object.entries(TABLES)) {
+    if (name === 'resale' && !resaleReady) continue
     const prev = snapshot[name] || new Map()
     const current = new Map((state[name] || []).map((o) => [String(o.id), o]))
     const upserts = []

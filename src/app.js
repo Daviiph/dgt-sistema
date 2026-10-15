@@ -1592,6 +1592,7 @@ async function reloadData() {
     const d = await fetchAll();
     products = d.products; brands = d.brands; customers = d.customers;
     sellers = d.sellers; payments = d.payments; sales = d.sales; resale = d.resale;
+    document.querySelectorAll('.resale-not-ready').forEach(el => el.classList.toggle('hidden', d.resaleReady));
     if (d.brandColor !== brandColor || d.brandLogo !== brandLogo) {
         brandColor = d.brandColor; brandLogo = d.brandLogo;
         applyPalette(brandColor || DEFAULT_COLOR);

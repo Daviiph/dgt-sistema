@@ -71,6 +71,7 @@ class Query {
     }
     if (this.op === 'update') { all.filter(match).forEach((r) => Object.assign(r, this.payload)); return { data: null, error: null } }
     if (this.op === 'delete') { db[this.t] = all.filter((r) => !match(r)); return { data: null, error: null } }
+    if (this.t === 'resale_items' && new URLSearchParams(location.search).has('noresale')) return { data: null, error: { message: 'relation "resale_items" does not exist' } }
     let out = all.filter(match).map((r) => JSON.parse(JSON.stringify(r)))
     if (this.ord) { const [c, asc] = this.ord; out.sort((a, b) => (a[c] > b[c] ? 1 : a[c] < b[c] ? -1 : 0) * (asc ? 1 : -1)) }
     if (this.lim) out = out.slice(0, this.lim)
