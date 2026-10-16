@@ -9,6 +9,13 @@ import { mountProgramBrand } from './brand.js'
 import { initAuth } from './auth.js'
 import { registerSW } from 'virtual:pwa-register'
 
+// Los enlaces del menú no deben dejar "#" en la dirección (al recargar, la página debe abrir normal)
+if (location.hash === '#' || location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search)
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('a[href="#"]')
+  if (a) e.preventDefault()
+}, true)
+
 // Colores y logo de la tienda guardados: la pantalla de inicio ya sale con la marca
 initThemeFromCache()
 mountProgramBrand()
@@ -27,6 +34,11 @@ setTimeout(hideSplash, 6000)
 try {
   registerSW({
     immediate: true,
-    onRegisteredSW(_url, reg) { if (reg) setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000) },
+    onRegisteredSW(_url, reg) {
+      if (!reg) return
+      reg.update().catch(() => {})
+      setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000)
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}) })
+    },
   })
 } catch { /* sin service worker */ }
