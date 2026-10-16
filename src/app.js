@@ -1,7 +1,7 @@
 import html2pdf from 'html2pdf.js'
-import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean } from './data.js'
+import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
-import { areaChart, barChart, gauge } from './charts.js'
+import { mountAreaChart, mountRankBars, gauge } from './charts.js'
 
 // STATE
 let products = [], brands = [], customers = [], sellers = [], payments = [], sales = [], resale = [];
@@ -342,28 +342,49 @@ function editProduct(id) {
 
 function renderInventory() {
     const tbody = document.getElementById('inventory-table-body');
-    if(products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">No hay productos en stock</td></tr>';
+    bindSeg('inv-filter', 'f', invFilter, (f) => { invFilter = f; renderInventory(); });
+    const brandSel = document.getElementById('inv-brand');
+    const prevBrand = brandSel.value;
+    brandSel.innerHTML = '<option value="">Todas las marcas</option>' + brands.map(b => `<option value="${b.id}">${escHtml(b.name)}</option>`).join('');
+    brandSel.value = brands.some(b => String(b.id) === prevBrand) ? prevBrand : '';
+    const q = (document.getElementById('inv-search').value || '').toLowerCase().trim();
+    const units = products.reduce((a, p) => a + (p.stock || 0), 0);
+    document.getElementById('inv-summary').innerText = `${products.length} productos · ${units.toLocaleString('en-US')} unidades · valor ${money(products.reduce((a, p) => a + (p.stock || 0) * (p.price || 0), 0))}`;
+    const list = products.filter(p => {
+        const brand = brands.find(b => b.id == p.brandId);
+        if (brandSel.value && String(p.brandId) !== brandSel.value) return false;
+        if (invFilter === 'bajo' && !(p.stock < 5)) return false;
+        if (invFilter === 'agotado' && p.stock > 0) return false;
+        return !q || `${brand ? brand.name : ''} ${p.name} ${p.category || ''}`.toLowerCase().includes(q);
+    }).sort((a, b) => invFilter === 'todos' ? 0 : a.stock - b.stock);
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-500">Aún no hay productos. <button onclick="openModal(\'modal-product\')" class="text-brand font-semibold hover:underline">Agrega el primero</button></td></tr>';
         return;
     }
-    tbody.innerHTML = products.map(p => {
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-500">Ningún producto coincide con la búsqueda o el filtro.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(p => {
         const brand = brands.find(b => b.id == p.brandId);
+        const colorName = AVAILABLE_COLORS.find(c => c.hex === p.color)?.name || '';
+        const stockCls = p.stock === 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : p.stock < 5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300';
         return `
-            <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                <td class="p-4 font-bold text-brand">${brand ? brand.name : 'S/M'}</td>
-                <td class="p-4">${p.name}</td>
-                <td class="p-4"><div class="color-dot" style="background-color: ${p.color}; border: 1px solid #ccc"></div></td>
-                <td class="p-4">${appCurrency}${p.price.toFixed(2)}</td>
-                <td class="p-4"><span class="${p.stock < 5 ? 'text-red-500 font-bold' : ''}">${p.stock} u</span></td>
-                <td class="p-4 text-center flex justify-center gap-3">
-                    <button onclick="duplicateProduct(${p.id})" class="text-green-500 hover:text-green-700" title="Duplicar"><i class="fas fa-copy"></i></button>
-                    <button onclick="editProduct(${p.id})" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteItem('products', ${p.id}, renderInventory)" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `;
+            <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+                <td class="p-4 font-semibold text-brand">${escHtml(brand ? brand.name : 'Sin marca')}</td>
+                <td class="p-4"><p class="font-medium">${escHtml(p.name)}</p><p class="text-xs text-gray-400">${escHtml(p.category || '')}</p></td>
+                <td class="p-4"><span class="inline-flex items-center gap-2 text-sm"><span class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" style="background:${p.color}"></span>${escHtml(colorName)}</span></td>
+                <td class="p-4 font-semibold">${money(p.price)}</td>
+                <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${stockCls}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></td>
+                <td class="p-4"><div class="flex justify-center gap-1">
+                    <button onclick="duplicateProduct(${p.id})" class="w-9 h-9 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" title="Duplicar para otro color"><i class="fas fa-copy"></i></button>
+                    <button onclick="editProduct(${p.id})" class="w-9 h-9 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteItem('products', ${p.id}, renderInventory)" class="w-9 h-9 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Eliminar"><i class="fas fa-trash"></i></button>
+                </div></td>
+            </tr>`;
     }).join('');
 }
+
 
 // CUSTOMERS LOGIC
 document.getElementById('form-customer').onsubmit = (e) => {
@@ -447,13 +468,17 @@ function renderCustomers() {
         const total = custSales.reduce((acc, sl) => acc + sl.total, 0);
         return { c, allSales, custSales, units, total, history: getProductHistory(custSales) };
     }).sort((a, b) => b.total - a.total);
+    data.forEach((d, i) => d.rank = i);
+    const cq = (document.getElementById('cust-search')?.value || '').toLowerCase().trim();
+    const view = cq ? data.filter(d => [d.c.name, d.c.cedula, d.c.rif, d.c.phone, d.c.email].join(' ').toLowerCase().includes(cq)) : data;
 
     if(data.length === 0) {
         container.innerHTML = '<div class="col-span-full p-8 text-center text-gray-500 bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">No hay clientes registrados</div>';
         return;
     }
     const openPanels = [...container.querySelectorAll('[id^="cust-history-"]:not(.hidden), [id^="cust-invoices-"]:not(.hidden)')].map(el => el.id).filter(id => !id.includes('icon'));
-    container.innerHTML = data.map(({ c, allSales, custSales, units, total, history }, idx) => {
+    if (!view.length) { container.innerHTML = '<div class="col-span-full p-8 text-center text-gray-500">Ningún cliente coincide con la búsqueda.</div>'; return; }
+    container.innerHTML = view.map(({ c, allSales, custSales, units, total, history, rank: idx }) => {
         let badge = '';
         if(idx === 0 && total > 0) badge = '<span class="px-2 py-1 text-xs font-bold bg-yellow-400 text-black rounded-full animate-pulse-gold">🥇 GOLD</span>';
         else if(idx === 1 && total > 0) badge = '<span class="px-2 py-1 text-xs font-bold bg-gray-300 text-black rounded-full">🥈 SILVER</span>';
@@ -1031,43 +1056,62 @@ async function downloadPDF(saleId) {
     element.classList.remove('block');
 }
 
-function renderSales() {
-    const tbody = document.getElementById('sales-table-body');
-    const list = sales.filter(s => !isResaleSale(s));
-    if(list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No hay ventas de tienda registradas</td></tr>';
-        return;
-    }
-    tbody.innerHTML = [...list].reverse().map(s => {
+let salesPeriod = 'todo', salesStatus = 'todas';
+function salesTableRows(list, withProfit) {
+    return [...list].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0)).map(s => {
         const cust = customers.find(c => c.id == s.customerId);
         const cancelled = s.status === 'cancelada';
-        const paySummary = (s.payments || []).map(p => {
-            const m = payments.find(meth => meth.id == p.methodId);
-            return m ? m.name : 'N/A';
-        }).join(', ');
-
+        const t = saleTime(s);
+        const paySummary = (s.payments || []).map(p => payments.find(m => m.id == p.methodId)?.name || 'N/A').join(', ');
+        const names = (s.items || []).map(i => `${i.name}${i.qty > 1 ? ' ×' + i.qty : ''}`).join(', ');
+        const profit = s.total - (Number(s.costTotal) || 0);
         return `
-            <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition ${cancelled ? 'opacity-70' : ''}">
-                <td class="p-4">
-                    <p class="font-mono">${s.id}</p>
-                    <p class="text-xs text-gray-400">${s.docType || ''} · ${s.date}</p>
-                    ${cancelled ? `<span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">ANULADA</span><p class="text-xs text-red-500 mt-1">Motivo: ${s.cancelReason}</p>` : ''}
-                </td>
-                <td class="p-4">${cust ? cust.name : 'General'}</td>
-                <td class="p-4 text-xs">${paySummary}</td>
-                <td class="p-4 font-bold ${cancelled ? 'line-through text-gray-400' : ''}">${appCurrency}${s.total.toFixed(2)}</td>
-                <td class="p-4 text-center">
-                    <div class="flex justify-center gap-3">
-                        <button onclick="reprint('${s.id}', true)" class="text-brand hover:underline">PDF</button>
-                        <button onclick="reprint('${s.id}', false)" class="text-gray-600 hover:underline">Imprimir</button>
-                        ${cancelled
-                            ? `<button onclick="deleteSale('${s.id}')" class="text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>`
-                            : `<button onclick="openCancelSale('${s.id}')" class="text-red-500 hover:text-red-700" title="Anular"><i class="fas fa-ban"></i></button>`}
-                    </div>
-                </td>
-            </tr>
-        `;
+        <tr class="border-b dark:border-gray-800 row-click hover:bg-gray-50 dark:hover:bg-white/5 transition ${cancelled ? 'opacity-70' : ''}" onclick="if(!event.target.closest('button'))openSaleDetail('${s.id}')" tabindex="0" onkeydown="if(event.key==='Enter')openSaleDetail('${s.id}')">
+            <td class="p-4"><p class="font-mono font-medium">${s.id}</p><p class="text-xs text-gray-400">${escHtml(s.docType || '')} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</p>
+                ${cancelled ? `<span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">Anulada</span>` : ''}</td>
+            <td class="p-4">${escHtml(cust ? cust.name : 'Cliente general')}</td>
+            ${withProfit ? `<td class="p-4 text-sm">${escHtml(names)}</td><td class="p-4 admin-only">${money(s.costTotal)}</td>` : `<td class="p-4 text-xs">${escHtml(paySummary)}</td>`}
+            <td class="p-4 font-bold ${cancelled ? 'line-through text-gray-400' : ''}">${money(s.total)}</td>
+            ${withProfit ? `<td class="p-4 admin-only font-bold ${cancelled ? 'line-through text-gray-400' : profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">${money(profit)}</td>` : ''}
+            <td class="p-4"><div class="flex justify-center gap-1">
+                <button onclick="reprint('${s.id}', true)" class="w-9 h-9 rounded-lg text-brand hover:bg-brand/10" title="Descargar PDF"><i class="fas fa-file-pdf"></i></button>
+                <button onclick="reprint('${s.id}', false)" class="w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10" title="Imprimir"><i class="fas fa-print"></i></button>
+                ${cancelled
+                    ? `<button onclick="deleteSale('${s.id}')" class="w-9 h-9 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Eliminar"><i class="fas fa-trash"></i></button>`
+                    : `<button onclick="openCancelSale('${s.id}')" class="w-9 h-9 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Anular"><i class="fas fa-ban"></i></button>`}
+            </div></td>
+        </tr>`;
     }).join('');
+}
+
+function matchSale(s, q) {
+    if (!q) return true;
+    const c = customers.find(x => x.id == s.customerId);
+    return `${s.id} ${c ? c.name + ' ' + (c.cedula || '') : ''} ${(s.items || []).map(i => i.name + ' ' + (i.serial || '')).join(' ')}`.toLowerCase().includes(q);
+}
+
+function summaryCards(list, extra = []) {
+    const act = list.filter(s => s.status !== 'cancelada');
+    const tot = act.reduce((a, s) => a + s.total, 0);
+    return [['Vendido', money(tot), ''], ['Ventas', `${act.length}${list.length - act.length ? ` <span class="text-xs font-normal text-gray-400">+${list.length - act.length} anuladas</span>` : ''}`, ''], ...extra]
+        .map(([l, v, c]) => `<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4"><p class="text-xs text-gray-400">${l}</p><p class="text-lg md:text-xl font-bold tabular-nums ${c}">${v}</p></div>`).join('');
+}
+
+function renderSales() {
+    bindSeg('sales-period', 'p', salesPeriod, (p) => { salesPeriod = p; renderSales(); });
+    bindSeg('sales-status', 's', salesStatus, (v) => { salesStatus = v; renderSales(); });
+    const tbody = document.getElementById('sales-table-body');
+    const all = sales.filter(s => !isResaleSale(s));
+    const r = periodRange(salesPeriod, all);
+    const q = (document.getElementById('sales-search').value || '').toLowerCase().trim();
+    const list = all.filter(s => (salesPeriod === 'todo' || inRange(s, r)) && (salesStatus === 'todas' || (s.status || 'activa') === salesStatus) && matchSale(s, q));
+    const act = list.filter(s => s.status !== 'cancelada');
+    document.getElementById('sales-summary').innerHTML = summaryCards(list, [['Ticket promedio', money(act.length ? act.reduce((a, s) => a + s.total, 0) / act.length : 0), '']]);
+    if (!all.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-500">Aún no hay ventas de tienda. <button onclick="showSection(\'pos\')" class="text-brand font-semibold hover:underline">Registrar la primera</button></td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.length ? salesTableRows(list, false) : '<tr><td colspan="5" class="p-10 text-center text-gray-500">Ninguna venta coincide con la búsqueda o el filtro.</td></tr>';
 }
 
 async function reprint(id, asPDF) {
@@ -1205,100 +1249,280 @@ function refreshSalesViews() {
 
 // FECHAS DE VENTA (created_at de la nube; respaldo: texto de la fecha)
 function saleTime(s) {
-    if (s.createdAt) return new Date(s.createdAt);
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s.date || '');
-    if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
-    const d = new Date(s.date);
-    return isNaN(d) ? null : d;
+    if (s.createdAt) { const d = new Date(s.createdAt); if (!isNaN(d)) return d; }
+    return parseSaleDate(s.date);
 }
 const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-function lastDays(n) {
+const money = (v) => `${appCurrency}${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const shortMoney = (v) => Math.abs(v) >= 1000 ? `${appCurrency}${(v / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)}k` : `${appCurrency}${Math.round(v)}`;
+const dayLabel = (d) => d.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '');
+const unitsOf = (s) => (s.items || []).reduce((a, i) => a + (Number(i.qty) || 0), 0);
+const escHtml = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// PERÍODOS: hoy, 7, 30, mes, todo → rango [desde, hasta) y cubetas para la gráfica
+const PERIOD_TEXT = { hoy: 'Hoy', 7: 'Últimos 7 días', 30: 'Últimos 30 días', mes: 'Este mes', todo: 'Todo el historial' };
+function periodRange(p, list = []) {
+    const now = new Date();
+    const start = new Date(now); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    if (p === 'hoy') return { from: start, to: end };
+    if (p === '7' || p === '30') { const f = new Date(start); f.setDate(f.getDate() - (+p - 1)); return { from: f, to: end }; }
+    if (p === 'mes') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: end };
+    const times = list.map(saleTime).filter(Boolean);
+    const first = times.length ? new Date(Math.min(...times)) : start;
+    first.setHours(0, 0, 0, 0);
+    return { from: first, to: end };
+}
+function previousRange(p, r) {
+    if (p === 'todo') return null;
+    if (p === 'mes') { const f = new Date(r.from); f.setMonth(f.getMonth() - 1); const t = new Date(f); t.setDate(t.getDate() + Math.round((r.to - r.from) / 864e5)); return { from: f, to: t }; }
+    const span = r.to - r.from;
+    return { from: new Date(r.from - span), to: new Date(r.from) };
+}
+const inRange = (s, r) => { const t = saleTime(s); return t && t >= r.from && t < r.to; };
+
+// Cubetas: por hora (hoy), por día (≤ 62 días) o por mes
+function buckets(p, r) {
     const out = [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    for (let i = n - 1; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); out.push(d); }
+    if (p === 'hoy') {
+        for (let h = 0; h < 24; h++) { const f = new Date(r.from); f.setHours(h); const t = new Date(f); t.setHours(h + 1); out.push({ from: f, to: t, label: `${h}h`, title: `Hoy de ${h}:00 a ${h + 1}:00` }); }
+        return out;
+    }
+    const days = Math.round((r.to - r.from) / 864e5);
+    if (days <= 62) {
+        for (let i = 0; i < days; i++) { const f = new Date(r.from); f.setDate(f.getDate() + i); const t = new Date(f); t.setDate(t.getDate() + 1); out.push({ from: f, to: t, label: dayLabel(f), title: f.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' }) }); }
+        return out;
+    }
+    let f = new Date(r.from.getFullYear(), r.from.getMonth(), 1);
+    while (f < r.to) { const t = new Date(f.getFullYear(), f.getMonth() + 1, 1); out.push({ from: f, to: t, label: f.toLocaleDateString('es-VE', { month: 'short', year: '2-digit' }).replace('.', ''), title: f.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' }) }); f = t; }
     return out;
 }
-function seriesByDay(list, days, fn) {
-    const map = {};
-    list.forEach(s => { const t = saleTime(s); if (t) { const k = dayKey(t); map[k] = (map[k] || 0) + fn(s); } });
-    return days.map(d => map[dayKey(d)] || 0);
+
+// Controles segmentados (botones con data-*)
+function bindSeg(id, attr, value, onChange) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('on', b.dataset[attr] === value);
+        b.setAttribute('aria-pressed', b.dataset[attr] === value);
+        b.onclick = () => onChange(b.dataset[attr]);
+    });
 }
-const money = (v) => `${appCurrency}${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const shortMoney = (v) => v >= 1000 ? `${appCurrency}${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : `${appCurrency}${Math.round(v)}`;
-const dayLabel = (d) => d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }).replace('.', '');
+
+let dashPeriod = localStorage.getItem('ns_dash_period') || '30';
+let dashMetric = 'monto';
+const METRIC = {
+    monto: { name: 'Vendido', fn: (s) => s.total, fmt: (v) => shortMoney(v), full: (v) => money(v) },
+    ventas: { name: 'Ventas', fn: () => 1, fmt: (v) => String(Math.round(v)), full: (v) => `${Math.round(v)} venta(s)` },
+    equipos: { name: 'Equipos', fn: unitsOf, fmt: (v) => String(Math.round(v)), full: (v) => `${Math.round(v)} equipo(s)` },
+};
+
+function deltaText(cur, prev) {
+    if (prev == null) return '';
+    if (!prev) return cur > 0 ? '<span class="text-emerald-600">Nuevo frente al período anterior</span>' : '<span class="text-gray-400">Sin ventas en el período anterior</span>';
+    const d = ((cur - prev) / prev) * 100;
+    const up = d >= 0;
+    return `<span class="${up ? 'text-emerald-600' : 'text-red-500'}"><i class="fas fa-arrow-${up ? 'up' : 'down'} text-[10px]"></i> ${Math.abs(d).toFixed(0)}%</span> <span class="text-gray-400">vs. período anterior</span>`;
+}
 
 function updateDashboard() {
-    const activeSales = sales.filter(s => s.status !== 'cancelada' && !isResaleSale(s));
-    const total = activeSales.reduce((acc, cur) => acc + cur.total, 0);
-    const totalComm = activeSales.reduce((acc, s) => {
-        const sell = sellers.find(sl => sl.id == s.sellerId);
-        return acc + (sell ? s.total * sell.comm : 0);
-    }, 0);
-    const now = new Date();
-    const todayK = dayKey(now);
-    const todayTotal = activeSales.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; }).reduce((a, s) => a + s.total, 0);
-    const monthTotal = activeSales.filter(s => { const t = saleTime(s); return t && t.getMonth() === now.getMonth() && t.getFullYear() === now.getFullYear(); }).reduce((a, s) => a + s.total, 0);
+    const storeSales = sales.filter(s => !isResaleSale(s));
+    const active = storeSales.filter(s => s.status !== 'cancelada');
+    const r = periodRange(dashPeriod, active);
+    const inP = active.filter(s => inRange(s, r));
+    const prevR = previousRange(dashPeriod, r);
+    const prev = prevR ? active.filter(s => inRange(s, prevR)) : null;
+    const sum = (l) => l.reduce((a, s) => a + s.total, 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
-    set('dash-total-sales', money(total));
-    set('dash-today-sales', money(todayTotal));
-    set('dash-total-commissions', money(totalComm));
-    set('dash-total-products', products.length);
-    set('dash-low-stock', products.filter(p => p.stock < 5).length);
-    set('dash-month-sales', money(monthTotal));
-    set('dash-month-label', now.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' }));
-    set('dash-hello', currentProfile ? (currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] : '—');
+    const html = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
 
-    // Salud del inventario
-    const healthy = products.length ? products.filter(p => p.stock >= 5).length / products.length : 0;
-    document.getElementById('dash-gauge').innerHTML = gauge(healthy, { label: 'stock ≥ 5 u' });
-    set('dash-units-stock', products.reduce((a, p) => a + (p.stock || 0), 0));
-    set('dash-stock-value', `${appCurrency}${products.reduce((a, p) => a + (p.stock || 0) * (p.price || 0), 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
+    bindSeg('dash-period', 'p', dashPeriod, (p) => { dashPeriod = p; localStorage.setItem('ns_dash_period', p); updateDashboard(); });
+    bindSeg('dash-metric', 'm', dashMetric, (m) => { dashMetric = m; updateDashboard(); });
+    set('dash-period-label', `${r.from.toLocaleDateString('es-VE')} – ${new Date(r.to - 1).toLocaleDateString('es-VE')}`);
+    set('dash-hello', currentProfile ? ((currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] || '—') : '—');
+
+    const total = sum(inP);
+    set('dash-total-sales', money(total));
+    html('dash-total-delta', deltaText(total, prev ? sum(prev) : null));
+    set('dash-count-sales', inP.length);
+    set('dash-ticket', inP.length ? `Ticket promedio ${money(total / inP.length)}` : 'Sin ventas en el período');
+    const comm = inP.reduce((a, s) => { const sl = sellers.find(x => x.id == s.sellerId); return a + (sl ? s.total * sl.comm : 0); }, 0);
+    set('dash-total-commissions', money(comm));
+    set('dash-units', `${inP.reduce((a, s) => a + unitsOf(s), 0)} equipos vendidos`);
+    const low = products.filter(p => p.stock < 5);
+    set('dash-low-stock', low.length);
+    set('dash-total-products', products.length);
+
+    // Hoy
+    const todayK = dayKey(new Date());
+    const today = active.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; });
+    set('dash-today-sales', money(sum(today)));
+    set('dash-today-count', today.length ? `${today.length} venta(s) · ${today.reduce((a, s) => a + unitsOf(s), 0)} equipo(s)` : 'Aún no hay ventas hoy');
+    set('dash-today-label', new Date().toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short' }));
     const bcv = getRate('BCV'), bin = getRate('Binance P2P');
     set('dash-rate-gap', bcv > 0 && bin > 0 ? `${(((bin - bcv) / bcv) * 100).toFixed(1)}%` : '—');
 
-    // Ventas últimos 14 días
-    const days14 = lastDays(14);
-    document.getElementById('dash-area').innerHTML = areaChart({
-        labels: days14.map(dayLabel),
-        series: [{ values: seriesByDay(activeSales, days14, s => s.total), color: 'var(--brand-light)' }],
-        format: shortMoney,
-    });
-    const days7 = lastDays(7);
-    const units7 = seriesByDay(activeSales, days7, s => (s.items || []).reduce((a, i) => a + i.qty, 0));
-    document.getElementById('dash-bars').innerHTML = barChart({ labels: days7.map(d => d.toLocaleDateString('es-VE', { weekday: 'narrow' }).toUpperCase()), values: units7 });
-    const last7 = activeSales.filter(s => { const t = saleTime(s); return t && t >= days7[0]; });
-    const t7 = last7.reduce((a, s) => a + s.total, 0);
-    const mini = [
-        ['fa-receipt', 'Ventas', last7.length],
-        ['fa-box', 'Equipos', units7.reduce((a, b) => a + b, 0)],
-        ['fa-users', 'Clientes', new Set(last7.map(s => s.customerId)).size],
-        ['fa-ticket', 'Ticket prom.', shortMoney(last7.length ? t7 / last7.length : 0)],
-    ];
-    document.getElementById('dash-mini-stats').innerHTML = mini.map(([ic, lb, v]) => `
-        <div><p class="muted text-[11px] flex items-center gap-2"><span class="w-6 h-6 rounded-lg bg-brand flex items-center justify-center text-white text-[10px]"><i class="fas ${ic}"></i></span>${lb}</p>
-        <p class="font-bold text-lg mt-1">${v}</p></div>`).join('');
+    // Gráfica principal
+    const bk = buckets(dashPeriod, r);
+    const M = METRIC[dashMetric];
+    const values = bk.map(b => inP.filter(s => inRange(s, b)).reduce((a, s) => a + M.fn(s), 0));
+    set('dash-chart-sub', `${PERIOD_TEXT[dashPeriod]} · ${M.full(values.reduce((a, b) => a + b, 0))}`);
+    const area = document.getElementById('dash-area');
+    if (area && !area.closest('section').classList.contains('hidden')) {
+        mountAreaChart(area, {
+            labels: bk.map(b => b.label),
+            series: [{ name: M.name, values, color: 'var(--brand-light)' }],
+            format: M.fmt,
+            ariaLabel: `${M.name} por ${dashPeriod === 'hoy' ? 'hora' : 'día'}. Use las flechas para recorrer y Enter para ver las ventas.`,
+            detail: (i) => { const l = inP.filter(s => inRange(s, bk[i])); return dashMetric === 'monto' ? `${l.length} venta(s)` : money(sum(l)); },
+            onSelect: (i) => openSalesList(bk[i].title, inP.filter(s => inRange(s, bk[i]))),
+        });
+    }
 
-    // Productos más vendidos
-    const top = getProductHistory(activeSales).slice(0, 6);
+    // Por vendedor
+    const bySeller = {};
+    inP.forEach(s => { const k = s.sellerId || '—'; (bySeller[k] = bySeller[k] || []).push(s); });
+    mountRankBars(document.getElementById('dash-by-seller'), {
+        items: Object.entries(bySeller).map(([id, l]) => {
+            const sl = sellers.find(x => x.id == id);
+            return { id, label: sl ? sl.name : 'Sin vendedor', value: sum(l), sub: `${l.length} venta(s) · comisión ${money(sl ? sum(l) * sl.comm : 0)}`, list: l };
+        }).sort((a, b) => b.value - a.value).slice(0, 6),
+        format: money,
+        onSelect: (it) => openSalesList(`Ventas de ${it.label}`, it.list),
+    });
+
+    // Por método de pago
+    const byMethod = {};
+    inP.forEach(s => (s.payments || []).forEach(p => {
+        const m = payments.find(x => x.id == p.methodId);
+        const k = m ? m.name : 'Otro';
+        (byMethod[k] = byMethod[k] || { value: 0, list: new Set(), bs: 0 });
+        byMethod[k].value += Number(p.amount) || 0;
+        if (p.currency === 'VES') byMethod[k].bs += Number(p.amountBs) || 0;
+        byMethod[k].list.add(s);
+    }));
+    mountRankBars(document.getElementById('dash-by-method'), {
+        items: Object.entries(byMethod).map(([k, v]) => ({ label: k, value: v.value, sub: `${v.list.size} venta(s)${v.bs ? ' · ' + fmtBs(v.bs) : ''}`, list: [...v.list] })).sort((a, b) => b.value - a.value),
+        format: money,
+        onSelect: (it) => openSalesList(`Pagos con ${it.label}`, it.list),
+    });
+
+    // Inventario
+    const healthy = products.length ? products.filter(p => p.stock >= 5).length / products.length : 0;
+    html('dash-gauge', gauge(healthy, { size: 120, label: 'stock sano' }));
+    set('dash-units-stock', products.reduce((a, p) => a + (p.stock || 0), 0).toLocaleString('en-US'));
+    set('dash-stock-value', money(products.reduce((a, p) => a + (p.stock || 0) * (p.price || 0), 0)));
+    html('dash-low-list', low.length ? [...low].sort((a, b) => a.stock - b.stock).slice(0, 4).map(p => {
+        const b = brands.find(x => x.id == p.brandId);
+        const color = AVAILABLE_COLORS.find(c => c.hex === p.color)?.name || '';
+        return `<li><button onclick="editProduct(${p.id})" class="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 text-sm hover:bg-white/5 text-left">
+            <span class="truncate">${escHtml((b ? b.name + ' ' : '') + p.name)} <span class="muted text-xs">${escHtml(color)}</span></span>
+            <span class="shrink-0 text-xs font-semibold ${p.stock === 0 ? 'text-red-400' : 'text-amber-300'}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></button></li>`;
+    }).join('') : '<li class="text-sm muted py-2">Todo el inventario tiene 5 u o más.</li>');
+
+    // Productos más vendidos (período)
+    const top = getProductHistory(inP).slice(0, 6);
     const maxQty = Math.max(1, ...top.map(t => t.qty));
     const totalUnits = top.reduce((a, t) => a + t.qty, 0) || 1;
-    document.getElementById('dash-top-products').innerHTML = top.length ? top.map(t => `
-        <tr class="border-t dark:border-gray-800">
-            <td class="py-3 pr-3"><div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border dark:border-gray-700 shrink-0" style="background:${t.color || '#ccc'}"></span><span class="font-medium truncate">${t.name}</span></div></td>
-            <td class="py-3 pr-3 font-semibold">${t.qty}</td>
-            <td class="py-3 pr-3">${formatUSD(t.total)}</td>
-            <td class="py-3"><div class="flex items-center gap-2"><span class="text-xs text-gray-400 w-9">${Math.round((t.qty / totalUnits) * 100)}%</span><div class="progress-track flex-1"><div class="progress-bar" style="width:${(t.qty / maxQty) * 100}%"></div></div></div></td>
-        </tr>`).join('') : '<tr><td colspan="4" class="py-6 text-center text-gray-400">Aún no hay ventas</td></tr>';
+    html('dash-top-products', top.length ? top.map(t => `
+        <tr class="border-t dark:border-gray-800 row-click hover:bg-gray-50 dark:hover:bg-white/5" data-pid="${escHtml(String(t.id))}" data-name="${escHtml(t.name)}" onclick="openProductSales(this)" tabindex="0" onkeydown="if(event.key==='Enter')openProductSales(this)">
+            <td class="py-2.5 pr-3"><div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border dark:border-gray-700 shrink-0" style="background:${t.color || '#ccc'}"></span><span class="font-medium truncate">${escHtml(t.name)}</span></div></td>
+            <td class="py-2.5 pr-3 text-right font-semibold">${t.qty}</td>
+            <td class="py-2.5 pr-3 text-right">${money(t.total)}</td>
+            <td class="py-2.5"><div class="flex items-center gap-2"><div class="progress-track flex-1"><div class="progress-bar" style="width:${(t.qty / maxQty) * 100}%"></div></div><span class="text-xs text-gray-400 w-9 text-right">${Math.round((t.qty / totalUnits) * 100)}%</span></div></td>
+        </tr>`).join('') : '<tr><td colspan="4" class="py-8 text-center text-gray-400">No hay ventas en este período. <button onclick="showSection(\'pos\')" class="text-brand font-semibold hover:underline">Registrar una venta</button></td></tr>');
+    productSalesScope = inP;
 
-    // Últimas ventas
-    const recent = [...activeSales].reverse().slice(0, 6);
-    document.getElementById('dash-recent').innerHTML = recent.length ? recent.map(s => {
-        const c = customers.find(x => x.id == s.customerId);
-        return `<li class="flex gap-3">
-            <span class="mt-0.5 w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0"><i class="fas fa-receipt text-xs"></i></span>
-            <div class="min-w-0 flex-1"><p class="text-sm font-semibold truncate">${formatUSD(s.total)} · ${c ? c.name : 'Cliente General'}</p><p class="text-[11px] text-gray-400">${s.id} · ${s.date}</p></div>
-        </li>`;
-    }).join('') : '<li class="text-sm text-gray-400 text-center py-6">Sin ventas todavía</li>';
+    // Últimas ventas (período)
+    const recent = [...inP].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0)).slice(0, 7);
+    html('dash-recent', recent.length ? recent.map(saleRowHtml).join('') : '<li class="text-sm text-gray-400 text-center py-8">Sin ventas en este período</li>');
+}
+
+function saleRowHtml(s) {
+    const c = customers.find(x => x.id == s.customerId);
+    const cancelled = s.status === 'cancelada';
+    const t = saleTime(s);
+    return `<li><button onclick="openSaleDetail('${s.id}')" class="w-full flex items-center gap-3 rounded-xl px-2 py-2 -mx-2 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition">
+        <span class="w-9 h-9 rounded-xl ${isResaleSale(s) ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-brand/10 text-brand'} flex items-center justify-center shrink-0"><i class="fas ${isResaleSale(s) ? 'fa-recycle' : 'fa-receipt'} text-xs"></i></span>
+        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-gray-400">${s.id} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</span></span>
+        <span class="text-sm font-bold tabular-nums ${cancelled ? 'line-through text-gray-400' : ''}">${money(s.total)}</span></button></li>`;
+}
+
+let productSalesScope = [];
+function openProductSales(row) {
+    const pid = row.dataset.pid;
+    openSalesList('Ventas de ' + row.dataset.name, productSalesScope.filter(s => (s.items || []).some(i => String(i.id) === pid)));
+}
+
+// Lista de ventas de un día / vendedor / método
+function openSalesList(title, list) {
+    const sorted = [...list].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0));
+    document.getElementById('day-title').innerText = title.charAt(0).toUpperCase() + title.slice(1);
+    const act = sorted.filter(s => s.status !== 'cancelada');
+    document.getElementById('day-sub').innerText = sorted.length ? `${act.length} venta(s) · ${money(act.reduce((a, s) => a + s.total, 0))} · ${act.reduce((a, s) => a + unitsOf(s), 0)} equipo(s)` : 'No hubo ventas';
+    document.getElementById('day-list').innerHTML = sorted.length ? sorted.map(saleRowHtml).join('') : '<li class="py-8 text-center text-gray-400 text-sm">No hay ventas aquí.</li>';
+    openModal('modal-day');
+}
+
+// Detalle de una venta
+function openSaleDetail(id) {
+    const s = sales.find(x => x.id === id);
+    if (!s) return;
+    const c = customers.find(x => x.id == s.customerId);
+    const sl = sellers.find(x => x.id == s.sellerId);
+    const cancelled = s.status === 'cancelada';
+    const resaleS = isResaleSale(s);
+    const t = saleTime(s);
+    const items = (s.items || []).map(i => {
+        const b = brands.find(x => x.id == i.brandId);
+        const label = i.source === 'reventa' ? (i.colorLabel || '') : (AVAILABLE_COLORS.find(cc => cc.hex === i.color)?.name || '');
+        return `<li class="flex items-center justify-between gap-3 py-2"><span class="min-w-0"><span class="block text-sm font-medium truncate">${escHtml((b ? b.name + ' ' : '') + i.name)}</span><span class="block text-xs text-gray-400">${escHtml(label)}${i.serial ? ' · S/N ' + escHtml(i.serial) : ''} · ${money(i.price)} × ${i.qty}</span></span><b class="tabular-nums text-sm">${money(i.price * i.qty)}</b></li>`;
+    }).join('');
+    const pays = (s.payments || []).map(p => {
+        const m = payments.find(x => x.id == p.methodId);
+        return `<li class="flex justify-between gap-3 text-sm py-1"><span>${escHtml(m ? m.name : 'Método')}</span><span class="tabular-nums">${money(p.amount)}${p.currency === 'VES' && p.amountBs != null ? ` <span class="text-xs text-gray-400">(${fmtBs(p.amountBs)})</span>` : ''}</span></li>`;
+    }).join('') || '<li class="text-sm text-gray-400">Sin detalle de pago</li>';
+    const profit = resaleS ? s.total - (Number(s.costTotal) || 0) : null;
+    document.getElementById('sale-detail').innerHTML = `
+        <div class="p-6 pb-4 ${cancelled ? 'bg-red-50 dark:bg-red-900/10' : ''} rounded-t-3xl">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm text-gray-500">${escHtml(s.docType || 'Venta')} · <span class="${resaleS ? 'text-emerald-600' : 'text-brand'} font-semibold">${resaleS ? 'Reventa' : 'Tienda'}</span></p>
+                    <h3 class="text-2xl font-bold tracking-tight font-mono">${s.id}</h3>
+                    <p class="text-sm text-gray-500">${t ? t.toLocaleString('es-VE', { dateStyle: 'full', timeStyle: 'short' }) : escHtml(s.date)}</p>
+                </div>
+                <button onclick="closeModal('modal-sale')" class="w-9 h-9 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 shrink-0" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+            </div>
+            ${cancelled ? `<p class="mt-3 text-sm text-red-600"><b>Anulada</b> · ${escHtml(s.cancelReason || '')}</p>` : ''}
+        </div>
+        <div class="px-6 pb-6 space-y-5">
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="rounded-xl bg-gray-50 dark:bg-white/5 p-3"><p class="text-xs text-gray-400">Cliente</p><p class="font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</p><p class="text-xs text-gray-400 truncate">${escHtml(c ? (c.cedula || c.rif || '') : '')}</p></div>
+                <div class="rounded-xl bg-gray-50 dark:bg-white/5 p-3"><p class="text-xs text-gray-400">Vendedor</p><p class="font-semibold truncate">${escHtml(sl ? sl.name : 'Sin vendedor')}</p><p class="text-xs text-gray-400">Tasa ${escHtml(s.rateType || '')} ${fmtMoney(s.rate)}</p></div>
+            </div>
+            <div><p class="text-sm font-semibold mb-1">Productos</p><ul class="divide-y dark:divide-gray-800">${items}</ul></div>
+            <div><p class="text-sm font-semibold mb-1">Pagos</p><ul>${pays}</ul></div>
+            <div class="rounded-2xl p-4 text-white" style="background:linear-gradient(90deg, rgb(var(--brand-dark)), rgb(var(--brand)))">
+                <div class="flex justify-between items-center"><span class="text-sm opacity-80">Total</span><span class="text-2xl font-bold tabular-nums ${cancelled ? 'line-through opacity-70' : ''}">${money(s.total)}</span></div>
+                <p class="text-right text-xs opacity-80">${fmtBs(s.total * (s.rate || 0))}</p>
+                ${profit != null ? `<p class="admin-only flex justify-between text-sm mt-2 pt-2 border-t border-white/20"><span class="opacity-80">Costo ${money(s.costTotal)}</span><b>Ganancia ${money(profit)}</b></p>` : ''}
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="reprint('${s.id}', true)" class="btn-primary flex-1 justify-center"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button onclick="reprint('${s.id}', false)" class="btn-ghost flex-1 justify-center"><i class="fas fa-print"></i> Imprimir</button>
+                ${cancelled
+                    ? `<button onclick="closeModal('modal-sale'); deleteSale('${s.id}')" class="admin-only btn-ghost !text-red-500 hover:!border-red-400 flex-1 justify-center"><i class="fas fa-trash"></i> Eliminar</button>`
+                    : `<button onclick="closeModal('modal-sale'); openCancelSale('${s.id}')" class="admin-only btn-ghost !text-red-500 hover:!border-red-400 flex-1 justify-center"><i class="fas fa-ban"></i> Anular</button>`}
+            </div>
+        </div>`;
+    openModal('modal-sale');
+}
+
+// Atajo: inventario filtrado por stock bajo
+let invFilter = 'todos';
+function showLowStock() {
+    invFilter = 'bajo';
+    showSection('inventory');
 }
 
 // REVENTA: EQUIPOS
@@ -1311,7 +1535,8 @@ function renderResaleItems() {
         b.className = 'px-4 py-1.5 rounded-full text-sm font-semibold border transition ' + (on ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-gray-900 text-gray-500 dark:border-gray-700');
     });
     const tbody = document.getElementById('resale-table-body');
-    const list = resale.filter(r => resaleFilter === 'todos' || (resaleFilter === 'disponible' ? r.stock > 0 : r.stock <= 0));
+    const rq = (document.getElementById('resale-search')?.value || '').toLowerCase().trim();
+    const list = resale.filter(r => (resaleFilter === 'todos' || (resaleFilter === 'disponible' ? r.stock > 0 : r.stock <= 0)) && (!rq || [r.brand, r.name, r.color, r.serial, r.supplier].join(' ').toLowerCase().includes(rq)));
     if (!list.length) {
         tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">${resale.length ? 'No hay equipos en este filtro' : 'Aún no hay equipos de reventa. Use "Nuevo equipo" para registrar uno conseguido por fuera.'}</td></tr>`;
         return;
@@ -1393,62 +1618,47 @@ function resaleProfit(s) { return s.total - (Number(s.costTotal) || 0); }
 
 function renderResaleSales() {
     const tbody = document.getElementById('resale-sales-table-body');
-    const list = sales.filter(isResaleSale);
-    const active = list.filter(s => s.status !== 'cancelada');
-    const tot = active.reduce((a, s) => a + s.total, 0), cost = active.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
-    document.getElementById('resale-sales-summary').innerHTML = [
-        ['Vendido', tot, ''], ['Costo', cost, ''], ['Ganancia', tot - cost, 'text-emerald-600'],
-    ].map(([l, v, c]) => `<div class="bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800 p-4"><p class="text-xs text-gray-400">${l}</p><p class="text-lg md:text-xl font-bold ${c}">${appCurrency}${v.toFixed(2)}</p></div>`).join('');
-    if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-gray-500">No hay ventas de reventa registradas</td></tr>';
+    const all = sales.filter(isResaleSale);
+    const q = (document.getElementById('rsales-search').value || '').toLowerCase().trim();
+    const list = all.filter(s => matchSale(s, q));
+    const act = list.filter(s => s.status !== 'cancelada');
+    const tot = act.reduce((a, s) => a + s.total, 0), cost = act.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
+    document.getElementById('resale-sales-summary').innerHTML = [['Vendido', money(tot), ''], ['Costo', money(cost), ''], ['Ganancia', money(tot - cost), 'text-emerald-600']]
+        .map(([l, v, c]) => `<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4"><p class="text-xs text-gray-400">${l}</p><p class="text-lg md:text-xl font-bold tabular-nums ${c}">${v}</p></div>`).join('');
+    if (!all.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center text-gray-500">Aún no hay ventas de reventa. <button onclick="setMode(\'reventa\',{section:\'pos\'})" class="text-emerald-600 font-semibold hover:underline">Vender un equipo</button></td></tr>';
         return;
     }
-    tbody.innerHTML = [...list].reverse().map(s => {
-        const cust = customers.find(c => c.id == s.customerId);
-        const cancelled = s.status === 'cancelada';
-        const names = (s.items || []).map(i => `${i.name}${i.qty > 1 ? ' x' + i.qty : ''}`).join(', ');
-        const profit = resaleProfit(s);
-        return `
-        <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition ${cancelled ? 'opacity-70' : ''}">
-            <td class="p-4"><p class="font-mono">${s.id}</p><p class="text-xs text-gray-400">${s.docType || ''} · ${s.date}</p>
-                ${cancelled ? `<span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">ANULADA</span><p class="text-xs text-red-500 mt-1">Motivo: ${s.cancelReason}</p>` : ''}</td>
-            <td class="p-4">${cust ? cust.name : 'General'}</td>
-            <td class="p-4 text-sm">${names}</td>
-            <td class="p-4 admin-only">${appCurrency}${(Number(s.costTotal) || 0).toFixed(2)}</td>
-            <td class="p-4 font-bold ${cancelled ? 'line-through text-gray-400' : ''}">${appCurrency}${s.total.toFixed(2)}</td>
-            <td class="p-4 admin-only font-bold ${cancelled ? 'line-through text-gray-400' : profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">${appCurrency}${profit.toFixed(2)}</td>
-            <td class="p-4 text-center"><div class="flex justify-center gap-3">
-                <button onclick="reprint('${s.id}', true)" class="text-brand hover:underline">PDF</button>
-                <button onclick="reprint('${s.id}', false)" class="text-gray-600 dark:text-gray-300 hover:underline">Imprimir</button>
-                ${cancelled
-                    ? `<button onclick="deleteSale('${s.id}')" class="text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>`
-                    : `<button onclick="openCancelSale('${s.id}')" class="text-red-500 hover:text-red-700" title="Anular"><i class="fas fa-ban"></i></button>`}
-            </div></td>
-        </tr>`;
-    }).join('');
+    tbody.innerHTML = list.length ? salesTableRows(list, true) : '<tr><td colspan="7" class="p-10 text-center text-gray-500">Ninguna venta coincide con la búsqueda.</td></tr>';
 }
 
+let rsPeriod = localStorage.getItem('ns_rs_period') || '30';
 function renderResaleDashboard() {
-    const active = sales.filter(s => isResaleSale(s) && s.status !== 'cancelada');
+    bindSeg('rs-period', 'p', rsPeriod, (p) => { rsPeriod = p; localStorage.setItem('ns_rs_period', p); renderResaleDashboard(); });
+    const allAct = sales.filter(s => isResaleSale(s) && s.status !== 'cancelada');
+    const r = periodRange(rsPeriod, allAct);
+    const active = allAct.filter(s => inRange(s, r));
     const tot = active.reduce((a, s) => a + s.total, 0), cost = active.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
     set('rs-total', money(tot));
     set('rs-cost', money(cost));
-    set('rs-profit', money((tot - cost)));
+    set('rs-profit', money(tot - cost));
     set('rs-margin', tot > 0 ? `${(((tot - cost) / tot) * 100).toFixed(1)}%` : '0%');
     const avail = resale.filter(r => r.stock > 0);
     set('rs-available', avail.reduce((a, r) => a + r.stock, 0));
-    set('rs-capital', shortMoney(avail.reduce((a, r) => a + r.stock * r.cost, 0)));
-    set('rs-expected', shortMoney(avail.reduce((a, r) => a + r.stock * (r.price - r.cost), 0)));
-    const days = lastDays(14);
+    set('rs-capital', money(avail.reduce((a, r) => a + r.stock * r.cost, 0)));
+    set('rs-expected', money(avail.reduce((a, r) => a + r.stock * (r.price - r.cost), 0)));
+    const bk = buckets(rsPeriod, r);
+    const sold = bk.map(b => active.filter(s => inRange(s, b)).reduce((a, s) => a + s.total, 0));
+    const gain = bk.map(b => active.filter(s => inRange(s, b)).reduce((a, s) => a + resaleProfit(s), 0));
+    set('rs-chart-sub', `${PERIOD_TEXT[rsPeriod]} · ganancia ${money(tot - cost)}`);
     const el = document.getElementById('rs-area');
-    if (el) el.innerHTML = areaChart({
-        labels: days.map(dayLabel),
-        series: [
-            { values: seriesByDay(active, days, s => s.total), color: '255 255 255' },
-            { values: seriesByDay(active, days, resaleProfit), color: '52 211 153' },
-        ],
+    if (el && !el.closest('section').classList.contains('hidden')) mountAreaChart(el, {
+        labels: bk.map(b => b.label),
+        series: [{ name: 'Vendido', values: sold, color: '255 255 255' }, { name: 'Ganancia', values: gain, color: '52 211 153' }],
         format: shortMoney,
+        ariaLabel: 'Ventas y ganancia de reventa',
+        onSelect: (i) => openSalesList(bk[i].title, active.filter(s => inRange(s, bk[i]))),
     });
 }
 
@@ -1779,6 +1989,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }
