@@ -1031,7 +1031,7 @@ function addTradeIn() {
     row.innerHTML = `
         <input type="hidden" class="pay-method" value="tradein">
         <i class="${t.brand === 'Apple' ? 'fab fa-apple' : 'fas fa-mobile-screen'} text-sky-600 text-lg"></i>
-        <div class="flex-1 min-w-[140px] text-sm"><p class="font-semibold">Se recibe ${escHtml(tradeInTitle(t))}</p><p class="text-xs text-gray-500 truncate">${escHtml(tradeInDesc(t).replace(t.name, '').replace(/^ · /, ''))}</p></div>
+        <div class="flex-1 min-w-[140px] text-sm"><p class="font-semibold">Se recibe ${escHtml(tradeInTitle(t))}</p><p class="text-xs text-gray-500 truncate">${escHtml(tradeInDesc(t).replace(tradeInTitle(t), '').replace(/^\s*(· )?/, ''))}</p></div>
         <input type="number" class="pay-amount w-24 p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm font-bold" value="${value.toFixed(2)}" readonly title="Se descuenta del pago">
         <select class="pay-currency hidden"><option value="USD" selected>USD</option></select>
         <button onclick="removePaymentRow(${t.id})" class="text-red-500 hover:text-red-700" title="Quitar"><i class="fas fa-times"></i></button>
