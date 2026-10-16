@@ -1,6 +1,6 @@
 // Envía la factura (PDF) al correo del cliente desde la cuenta Gmail de la tienda.
 // Secretos necesarios (Supabase → Edge Functions → Secrets):
-//   GMAIL_USER          = dgttecnologivzla@gmail.com
+//   GMAIL_USER          = dgttecnologiavzla@gmail.com
 //   GMAIL_APP_PASSWORD  = contraseña de aplicación de Google (16 letras)
 // Gmail por SMTP seguro en el puerto 465 (Supabase bloquea 25 y 587).
 import { createClient } from 'npm:@supabase/supabase-js@2'
