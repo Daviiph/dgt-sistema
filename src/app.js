@@ -1852,10 +1852,15 @@ async function askPriceAI() {
     const body = document.getElementById('price-assistant-body');
     if (!f.name || !(f.cost > 0)) { body.innerHTML = '<span class="text-amber-600">Escriba el modelo y el costo primero.</span>'; return; }
     if (!navigator.onLine) { body.innerHTML = '<span class="text-amber-600">La consulta a la IA necesita internet. Use "Sugerir con mi historial".</span>'; return; }
+    // Ahorro: la misma consulta (modelo + condición) se reutiliza por 3 días sin volver a pagar a la IA
+    const cacheKey = 'ns_ai_' + normModel(`${f.brand} ${f.name} ${f.condition}`);
+    let cached = null;
+    try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c && Date.now() - c.at < 3 * 864e5) cached = c.r; } catch { /* sin caché */ }
     body.innerHTML = '<p class="flex items-center gap-2"><i class="fas fa-circle-notch fa-spin text-emerald-600"></i> Buscando precios de mercado… puede tardar unos segundos.</p>';
-    const history = resale.filter(r => r.cost > 0 && r.price > 0).slice(-15).map(r => ({ modelo: [r.brand, r.name].filter(Boolean).join(' '), condicion: condOf(r) || 'usado', costo: r.cost, precio: r.price, vendido: r.stock <= 0 }));
+    const history = resale.filter(r => r.cost > 0 && r.price > 0).slice(-6).map(r => ({ modelo: [r.brand, r.name].filter(Boolean).join(' '), condicion: condOf(r) || 'usado', costo: r.cost, precio: r.price, vendido: r.stock <= 0 }));
     try {
-        const r = await askPriceAssistant({ brand: f.brand, name: f.name, color: f.color, condition: f.condition, cost: f.cost, currency: appCurrency, history });
+        const r = cached || await askPriceAssistant({ brand: f.brand, name: f.name, color: f.color, condition: f.condition, cost: f.cost, currency: appCurrency, history });
+        if (!cached) { try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), r })); } catch { /* sin almacenamiento */ } }
         const gain = r.precio - f.cost;
         const sources = (r.fuentes || []).slice(0, 3).map(x => `<a href="${escHtml(x.url)}" target="_blank" rel="noopener" class="underline hover:text-emerald-600">${escHtml(x.title || x.url)}</a>`).join(' · ');
         body.innerHTML = `

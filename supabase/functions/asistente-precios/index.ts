@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   const modelName = `${it.brand ?? ''} ${it.name ?? ''}`.trim().slice(0, 120)
   if (!modelName || !(cost > 0)) return json({ error: 'Faltan el modelo o el costo' }, 400)
   const condition = it.condition === 'sellado' ? 'sellado (nuevo, caja cerrada)' : 'usado'
-  const history = JSON.stringify(Array.isArray(it.history) ? it.history.slice(0, 15) : [])
+  const history = JSON.stringify(Array.isArray(it.history) ? it.history.slice(0, 6) : [])
 
   const prompt = `Eres asesor de precios de una tienda de teléfonos en Venezuela (Caracas) que revende equipos conseguidos por fuera.
 Equipo: ${modelName}${it.color ? ' color ' + String(it.color).slice(0, 40) : ''}, condición: ${condition}.
@@ -41,16 +41,16 @@ Historial de la tienda (costo y precio que puso a otros equipos): ${history}
 
 Busca en internet el precio actual de este equipo en Venezuela en USD (MercadoLibre Venezuela, tiendas y grupos de venta locales) para la misma condición. Luego recomienda un precio de venta que sea competitivo y deje ganancia sobre el costo.
 Responde SOLO con un objeto JSON, sin texto adicional, con esta forma:
-{"precio": número, "minimo": número, "maximo": número, "margen_pct": número, "explicacion": "2 o 3 frases en español, simples, mencionando el rango de mercado encontrado"}`
+{"precio": número, "minimo": número, "maximo": número, "margen_pct": número, "explicacion": "1 o 2 frases cortas en español con el rango de mercado"}`
 
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
-      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3, user_location: { type: 'approximate', country: 'VE', city: 'Caracas', timezone: 'America/Caracas' } }],
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2, user_location: { type: 'approximate', country: 'VE', city: 'Caracas', timezone: 'America/Caracas' } }],
     }),
   })
   const data = await r.json().catch(() => ({}))
