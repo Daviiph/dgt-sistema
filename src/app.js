@@ -984,7 +984,7 @@ function usedMarkup(full) {
     return Math.min(Math.max(m, 0.05), 0.6);
 }
 function tradeInSuggest() {
-    const model = document.getElementById('ti-model').value.trim(), cap = document.getElementById('ti-capacity').value;
+    const model = document.getElementById('ti-model').value.trim(), cap = '';
     const value = parseFloat(document.getElementById('ti-value').value) || 0;
     const el = document.getElementById('ti-suggest');
     if (!model || !(value > 0)) { el.innerText = ''; return null; }
@@ -996,10 +996,8 @@ function openTradeIn(brand = 'Apple') {
     closeTradeIn();
     document.getElementById('ti-brand').value = brand;
     const apple = brand === 'Apple';
-    document.getElementById('ti-model').setAttribute('list', apple ? 'ti-models' : 'ti-models-samsung');
-    document.getElementById('ti-model').placeholder = apple ? 'Modelo (ej: iPhone 14 Pro)' : 'Modelo (ej: Galaxy S26 Ultra)';
-    document.getElementById('ti-title').innerHTML = `<i class="${apple ? 'fab fa-apple' : 'fas fa-mobile-screen'} mr-1"></i> Se recibe ${apple ? 'iPhone' : 'Samsung'}`;
-    document.getElementById('ti-sim').classList.toggle('hidden', !apple);
+    document.getElementById('ti-model').placeholder = apple ? 'Modelo (ej: iPhone 14 Pro 256GB)' : 'Modelo (ej: S26 Ultra 512GB)';
+    document.getElementById('ti-title').innerHTML = apple ? '<i class="fab fa-apple mr-1"></i> Recepción de iPhone' : '<span class="font-extrabold tracking-widest text-[#1428A0] dark:text-blue-300 text-xs mr-1">SAMSUNG</span> Recepción de equipo';
     document.getElementById('tradein-form').classList.remove('hidden');
     document.getElementById('ti-model').focus();
 }
@@ -1009,10 +1007,9 @@ function closeTradeIn() {
     f.querySelectorAll('input').forEach(i => i.value = '');
     f.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
     document.getElementById('ti-suggest').innerText = '';
-    document.getElementById('ti-sim')?.classList.remove('hidden');
 }
 function addTradeIn() {
-    const g = (id) => document.getElementById(id).value.trim();
+    const g = (id) => (document.getElementById(id)?.value || '').trim();
     const model = g('ti-model'), value = parseFloat(g('ti-value')) || 0;
     if (!model) return alert('Escriba el modelo del equipo recibido');
     if (!(value > 0)) return alert('Indique el valor que se le reconoce al equipo');
@@ -1020,7 +1017,7 @@ function addTradeIn() {
     document.querySelectorAll('#settle-payments-list .pay-amount').forEach(i => paidOthers += parseFloat(i.value) || 0);
     if (value > grandTotal()) return alert('El valor del equipo no puede ser mayor que el total de la venta');
     const t = {
-        id: Date.now(), brand: g('ti-brand') || 'Apple', name: [model.replace(/^(apple|samsung)\s+/i, ''), g('ti-capacity'), g('ti-brand') === 'Apple' && g('ti-sim') === 'eSIM' ? 'eSIM' : ''].filter(Boolean).join(' '), sim: g('ti-sim'),
+        id: Date.now(), brand: g('ti-brand') || 'Apple', name: model.replace(/^(apple|samsung)\s+/i, ''),
         color: g('ti-color'), imei: g('ti-imei'), appleId: g('ti-appleid'), battery: g('ti-battery'), notes: g('ti-state'),
         suggestedPrice: tradeInSuggest() || roundPrice(value * 1.2),
     };
