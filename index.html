@@ -143,6 +143,7 @@
                     <div class="min-w-0 flex-1">
                         <p id="user-email" class="text-sm font-semibold truncate"></p>
                         <p id="user-role" class="text-[10px] uppercase tracking-widest text-brand font-bold"></p>
+                        <p id="net-status" class="hidden"></p>
                     </div>
                     <button onclick="logout()" title="Cerrar sesión" class="w-9 h-9 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-gray-800 transition"><i class="fas fa-right-from-bracket"></i></button>
                 </div>
@@ -158,6 +159,7 @@
                 <button id="mode-btn-tienda" onclick="setMode('tienda')" class="on px-4 md:px-6 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-store mr-1.5"></i>Tienda</button>
                 <button id="mode-btn-reventa" onclick="setMode('reventa')" class="px-4 md:px-6 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-recycle mr-1.5"></i>Reventa</button>
             </div>
+            <span id="net-pill" class="hidden ml-auto lg:ml-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 flex items-center gap-1.5"></span>
             <div class="hidden md:block text-sm text-gray-500 ml-auto capitalize" id="current-date"></div>
             <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border dark:border-gray-800 text-gray-500 dark:text-yellow-300 md:ml-0" title="Modo oscuro" aria-label="Cambiar modo oscuro"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:inline"></i></button>
         </header>
@@ -353,6 +355,7 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                 <div class="search-box"><i class="fas fa-search"></i><input id="resale-search" type="search" oninput="renderResaleItems()" placeholder="Buscar modelo, IMEI o proveedor"></div>
+                <div id="resale-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
                 <div class="flex flex-wrap gap-2" id="resale-filter">
                     <button onclick="setResaleFilter('disponible')" data-f="disponible" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Disponibles</button>
                     <button onclick="setResaleFilter('vendido')" data-f="vendido" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Vendidos</button>
@@ -401,6 +404,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="search-box"><i class="fas fa-search"></i><input id="inv-search" type="search" oninput="renderInventory()" placeholder="Buscar producto o marca"></div>
                     <div id="inv-filter" class="seg"><button data-f="todos">Todos</button><button data-f="bajo">Stock bajo</button><button data-f="agotado">Agotados</button></div>
+                    <div id="inv-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
                     <select id="inv-brand" onchange="renderInventory()" class="field-sm"><option value="">Todas las marcas</option></select>
                 </div>
                 <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
@@ -436,6 +440,7 @@
                             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand transition-colors"></i>
                             <input type="text" id="pos-search" onkeyup="filterPOS()" placeholder="Buscar producto o marca..." class="w-full pl-12 p-3 border rounded-2xl outline-none focus:ring-2 focus:ring-brand bg-white dark:bg-gray-900 dark:border-gray-800 transition-all">
                         </div>
+                        <div id="pos-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
                         <div id="pos-products-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4"></div>
                     </div>
                     <div id="pos-cart-panel" class="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-2xl shadow-xl border dark:border-gray-800 h-fit space-y-4 lg:sticky lg:top-4">
@@ -672,6 +677,14 @@
                 </div>
                 <input type="text" id="prod-name" placeholder="Nombre del Producto" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
                 <input type="text" id="prod-cat" placeholder="Categoría" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <div class="space-y-1">
+                    <span class="block text-sm font-medium text-gray-500">Condición</span>
+                    <div class="cond-pick grid grid-cols-2 gap-2" data-target="prod-condition">
+                        <button type="button" data-c="sellado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-box"></i> Sellado</button>
+                        <button type="button" data-c="usado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-mobile-screen"></i> Usado</button>
+                    </div>
+                    <input type="hidden" id="prod-condition" value="sellado">
+                </div>
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-500">Color</label>
                     <div id="color-palette" class="flex flex-wrap gap-3"></div>
@@ -861,13 +874,21 @@
             <form id="form-resale" class="space-y-4">
                 <input type="hidden" id="resale-id">
                 <input type="hidden" id="resale-then-cart">
+                <div class="space-y-1">
+                    <span class="block text-sm font-medium text-gray-500">Condición</span>
+                    <div class="cond-pick grid grid-cols-2 gap-2" data-target="resale-condition">
+                        <button type="button" data-c="sellado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-box"></i> Sellado</button>
+                        <button type="button" data-c="usado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-mobile-screen"></i> Usado</button>
+                    </div>
+                    <input type="hidden" id="resale-condition" value="usado">
+                </div>
                 <div class="grid grid-cols-2 gap-3">
                     <input type="text" id="resale-brand" list="resale-brand-list" placeholder="Marca (ej: Apple)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
                     <input type="text" id="resale-name" required placeholder="Modelo (ej: iPhone 13 128GB)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <datalist id="resale-brand-list"></datalist>
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="resale-color" placeholder="Color / condición" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="resale-color" placeholder="Color (ej: Azul, Negro)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
                     <input type="text" id="resale-serial" placeholder="IMEI / Serial (opcional)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
                 <input type="text" id="resale-supplier" placeholder="¿A quién se le compró? (proveedor)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
@@ -877,6 +898,17 @@
                     <label class="space-y-1"><span class="block text-[10px] font-bold text-gray-400 uppercase">Cantidad</span><input type="number" step="1" min="0" id="resale-stock" value="1" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"></label>
                 </div>
                 <p id="resale-profit-hint" class="text-sm font-semibold text-emerald-600"></p>
+                <!-- Asistente de precios -->
+                <div id="price-assistant" class="admin-only rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-900/10 p-4 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="font-semibold text-sm"><i class="fas fa-wand-magic-sparkles text-emerald-600 mr-1"></i> Asistente de precios</p>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="suggestPrice()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-white/10 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100">Sugerir con mi historial</button>
+                            <button type="button" onclick="askPriceAI()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"><i class="fas fa-robot mr-1"></i>Consultar IA</button>
+                        </div>
+                    </div>
+                    <div id="price-assistant-body" class="text-sm text-gray-600 dark:text-gray-300">Escriba el modelo, la condición y el costo; el asistente le propone el precio de venta y el margen.</div>
+                </div>
                 <textarea id="resale-notes" rows="2" placeholder="Notas (opcional)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" onclick="closeModal('modal-resale')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>

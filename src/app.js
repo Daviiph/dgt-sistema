@@ -1,5 +1,5 @@
 import html2pdf from 'html2pdf.js'
-import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate, sendInvoiceEmail } from './data.js'
+import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate, sendInvoiceEmail, askPriceAssistant, onNetChange, flushOutbox, persistLocal, netState } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
 import { mountAreaChart, mountRankBars, gauge } from './charts.js'
 
@@ -176,6 +176,27 @@ function togglePassword(id, btn) {
     btn.innerHTML = inp.type === 'password' ? '<i class="far fa-eye"></i>' : '<i class="far fa-eye-slash"></i>';
 }
 
+// CONDICIÓN DEL EQUIPO: sellado / usado
+const COND_LABEL = { sellado: 'Sellado', usado: 'Usado' };
+const condOf = (x) => (x && (x.condition === 'sellado' || x.condition === 'usado')) ? x.condition : '';
+function condBadge(c) {
+    if (!c) return '';
+    return `<span class="cond-badge ${c}"><i class="fas ${c === 'sellado' ? 'fa-box' : 'fa-mobile-screen'}"></i>${COND_LABEL[c]}</span>`;
+}
+function setCondPick(target, value) {
+    const input = document.getElementById(target);
+    if (!input) return;
+    input.value = value;
+    document.querySelectorAll(`.cond-pick[data-target="${target}"] .cond-btn`).forEach(b => b.classList.toggle('on', b.dataset.c === value));
+}
+function pickCondition(btn) {
+    const target = btn.closest('.cond-pick').dataset.target;
+    setCondPick(target, btn.dataset.c);
+    if (target === 'resale-condition') clearPriceAssistant();
+}
+let invCond = 'todos', resaleCond = 'todos', posCond = 'todos';
+const condMatch = (filter, x) => filter === 'todos' || condOf(x) === filter;
+
 // NAVIGATION
 function showSection(sectionId) {
     const needMode = SECTION_MODE[sectionId];
@@ -217,6 +238,7 @@ function resetModal(modalId) {
     if(form) form.reset();
     if(modalId === 'modal-brand') document.getElementById('brand-id').value = '';
     if(modalId === 'modal-product') {
+        setCondPick('prod-condition', 'sellado');
         document.getElementById('prod-id').value = '';
         document.getElementById('prod-color').value = '#000000';
         document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
@@ -224,7 +246,7 @@ function resetModal(modalId) {
     if(modalId === 'modal-customer') document.getElementById('cust-id').value = '';
     if(modalId === 'modal-seller') document.getElementById('sell-id').value = '';
     if(modalId === 'modal-payment') document.getElementById('pay-id').value = '';
-    if(modalId === 'modal-resale') { document.getElementById('resale-id').value = ''; document.getElementById('resale-then-cart').value = ''; document.getElementById('resale-profit-hint').innerText = ''; }
+    if(modalId === 'modal-resale') { setCondPick('resale-condition', 'usado'); clearPriceAssistant(); document.getElementById('resale-id').value = ''; document.getElementById('resale-then-cart').value = ''; document.getElementById('resale-profit-hint').innerText = ''; }
 }
 
 // BRAND LOGIC
@@ -299,7 +321,8 @@ document.getElementById('form-product').onsubmit = (e) => {
         category: document.getElementById('prod-cat').value,
         color: document.getElementById('prod-color').value,
         price: parseFloat(document.getElementById('prod-price').value),
-        stock: parseInt(document.getElementById('prod-stock').value)
+        stock: parseInt(document.getElementById('prod-stock').value),
+        condition: document.getElementById('prod-condition').value || 'sellado'
     };
     if(id) {
         const idx = products.findIndex(p => p.id == id);
@@ -331,6 +354,7 @@ function editProduct(id) {
     document.getElementById('prod-stock').value = p.stock;
     
     openModal('modal-product');
+    setCondPick('prod-condition', condOf(p) || 'sellado');
     
     document.getElementById('prod-color').value = p.color;
     document.querySelectorAll('.color-dot').forEach(d => {
@@ -343,6 +367,7 @@ function editProduct(id) {
 function renderInventory() {
     const tbody = document.getElementById('inventory-table-body');
     bindSeg('inv-filter', 'f', invFilter, (f) => { invFilter = f; renderInventory(); });
+    bindSeg('inv-cond', 'c', invCond, (c) => { invCond = c; renderInventory(); });
     const brandSel = document.getElementById('inv-brand');
     const prevBrand = brandSel.value;
     brandSel.innerHTML = '<option value="">Todas las marcas</option>' + brands.map(b => `<option value="${b.id}">${escHtml(b.name)}</option>`).join('');
@@ -353,6 +378,7 @@ function renderInventory() {
     const list = products.filter(p => {
         const brand = brands.find(b => b.id == p.brandId);
         if (brandSel.value && String(p.brandId) !== brandSel.value) return false;
+        if (!condMatch(invCond, p)) return false;
         if (invFilter === 'bajo' && !(p.stock < 5)) return false;
         if (invFilter === 'agotado' && p.stock > 0) return false;
         return !q || `${brand ? brand.name : ''} ${p.name} ${p.category || ''}`.toLowerCase().includes(q);
@@ -372,7 +398,7 @@ function renderInventory() {
         return `
             <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition">
                 <td class="p-4 font-semibold text-brand">${escHtml(brand ? brand.name : 'Sin marca')}</td>
-                <td class="p-4"><p class="font-medium">${escHtml(p.name)}</p><p class="text-xs text-gray-400">${escHtml(p.category || '')}</p></td>
+                <td class="p-4"><p class="font-medium">${escHtml(p.name)} ${condBadge(condOf(p))}</p><p class="text-xs text-gray-400">${escHtml(p.category || '')}</p></td>
                 <td class="p-4"><span class="inline-flex items-center gap-2 text-sm"><span class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" style="background:${p.color}"></span>${escHtml(colorName)}</span></td>
                 <td class="p-4 font-semibold">${money(p.price)}</td>
                 <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${stockCls}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></td>
@@ -704,8 +730,9 @@ function findCartProduct(item) {
 
 function renderPOS() {
     const grid = document.getElementById('pos-products-grid');
+    bindSeg('pos-cond', 'c', posCond, (c) => { posCond = c; renderPOS(); });
     if (appMode === 'reventa') {
-        const items = resale.filter(r => r.stock > 0);
+        const items = resale.filter(r => r.stock > 0 && condMatch(posCond, r));
         const quick = `
             <div onclick="openResaleModal(null, true)" data-quick class="admin-only flex flex-col items-center justify-center gap-2 p-4 min-h-[128px] rounded-2xl border-2 border-dashed border-emerald-400/70 text-emerald-600 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition">
                 <i class="fas fa-plus text-xl"></i><p class="text-sm font-bold text-center">Equipo por encargo</p><p class="text-[11px] text-center text-gray-400">Registrar y vender</p>
@@ -715,7 +742,7 @@ function renderPOS() {
             : items.map(r => `
                 <div onclick="addToCart(${r.id})" class="bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border dark:border-gray-800 cursor-pointer hover:border-emerald-500 transition-all group hover:-translate-y-1 hover:shadow-xl">
                     <div class="flex justify-between items-start gap-2">
-                        <p class="text-xs font-bold text-emerald-600 uppercase truncate">${r.brand || 'Reventa'}</p>
+                        <p class="text-xs font-bold text-emerald-600 uppercase truncate">${r.brand || 'Reventa'}</p>${condBadge(condOf(r))}
                         <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold">${r.stock} u</span>
                     </div>
                     <p class="font-bold group-hover:text-emerald-600 transition-colors">${r.name}</p>
@@ -729,8 +756,8 @@ function renderPOS() {
         grid.innerHTML = '<div class="col-span-full text-center p-10 text-gray-500">No hay productos disponibles</div>';
     } else {
         const groups = {};
-        products.forEach(p => {
-            const key = `${p.brandId}_${p.name}_${p.category}`;
+        products.filter(p => condMatch(posCond, p)).forEach(p => {
+            const key = `${p.brandId}_${p.name}_${p.category}_${condOf(p)}`;
             if(!groups[key]) groups[key] = [];
             groups[key].push(p);
         });
@@ -746,7 +773,7 @@ function renderPOS() {
                             ${variants.map(v => `<div class="color-dot" style="background-color: ${v.color}; width:8px; height:8px"></div>`).join('')}
                         </div>
                     </div>
-                    <p class="font-bold group-hover:text-brand transition-colors">${p.name}</p>
+                    <p class="font-bold group-hover:text-brand transition-colors">${p.name}</p>${condBadge(condOf(p))}
                     <div class="flex justify-between items-center mt-3">
                         <span class="font-bold text-brand">${appCurrency}${Math.min(...variants.map(v => v.price)).toFixed(2)}</span>
                         <span class="text-xs ${variants.some(v => v.stock < 5) ? 'text-red-500' : 'text-gray-400'}">Ver Variantes</span>
@@ -773,7 +800,7 @@ function openVariantSelector(name, variants) {
             <div onclick="addToCart(${v.id})" class="flex items-center justify-between p-3 border dark:border-gray-800 rounded-xl cursor-pointer hover:bg-brand hover:text-white transition-all group">
                 <div class="flex items-center gap-3">
                     <div class="color-dot" style="background-color: ${v.color}; width:16px; height:16px"></div>
-                    <span class="font-medium">${colorName}</span>
+                    <span class="font-medium">${colorName}</span> ${condBadge(condOf(v))}
                 </div>
                 <div class="flex items-center gap-4">
                     <span class="text-sm font-bold">${appCurrency}${v.price.toFixed(2)}</span>
@@ -807,7 +834,7 @@ function addToCart(id) {
         if(item.qty < p.stock) item.qty++;
         else alert('Límite de stock alcanzado');
     } else if (source === 'reventa') {
-        cart.push({ id: p.id, name: [p.brand, p.name].filter(Boolean).join(' '), brand: p.brand || '', colorLabel: p.color || '', serial: p.serial || '', price: Number(p.price), cost: Number(p.cost), qty: 1, source: 'reventa' });
+        cart.push({ id: p.id, name: [p.brand, p.name].filter(Boolean).join(' '), brand: p.brand || '', colorLabel: p.color || '', serial: p.serial || '', condition: condOf(p), price: Number(p.price), cost: Number(p.cost), qty: 1, source: 'reventa' });
     } else {
         cart.push({...p, qty: 1, source: 'tienda'});
     }
@@ -831,7 +858,7 @@ function renderCart() {
             <div class="flex justify-between items-center gap-2 text-sm bg-gray-50 dark:bg-white/5 p-3 rounded-xl border dark:border-gray-700">
                 <div class="flex items-center gap-2 min-w-0">
                     ${dot}
-                    <div class="min-w-0"><p class="font-bold truncate">${item.name} (${label})</p><p class="text-xs text-gray-500">${appCurrency}${item.price} x ${item.qty}</p></div>
+                    <div class="min-w-0"><p class="font-bold truncate">${item.name} (${label})</p><p class="text-xs text-gray-500 flex items-center gap-1">${condBadge(condOf(item))} ${appCurrency}${item.price} x ${item.qty}</p></div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <button onclick="changeQty(${idx}, -1)" class="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg shadow-sm">-</button>
@@ -1011,15 +1038,27 @@ async function executeFinalSale() {
         total: total
     };
 
+    const costTotal = channel === 'reventa' ? cart.reduce((a, i) => a + (Number(i.cost) || 0) * i.qty, 0) : null;
+    let savedOffline = false;
     try {
         const saved = await createSale(sale);
-        sale.total = saved.total;
-        sale.costTotal = saved.costTotal;
+        savedOffline = !!saved.offline;
+        sale.total = saved.offline ? total : saved.total;
+        sale.costTotal = saved.offline ? costTotal : saved.costTotal;
     } catch (err) {
         return alert('No se pudo registrar la venta: ' + err.message);
     }
-    await syncChain;
-    await reloadData();
+    if (savedOffline) {
+        // Sin internet: se descuenta el stock aquí y la venta queda guardada para enviarse al volver la conexión
+        const list = channel === 'reventa' ? resale : products;
+        sale.items.forEach(i => { const p = list.find(x => x.id == i.id); if (p) p.stock = Math.max(0, (p.stock || 0) - i.qty); });
+        sales.push({ ...sale, status: 'activa', createdAt: new Date().toISOString(), pending: true });
+        persistLocal({ brands, products, customers, sellers, payments, resale, sales }, true);
+        toast('Venta guardada sin conexión. Se enviará sola cuando vuelva el internet.', 'info', 6000);
+    } else {
+        await syncChain;
+        await reloadData();
+    }
     
     fillInvoice(sale);
 
@@ -1030,7 +1069,9 @@ async function executeFinalSale() {
 
     // Envío automático de la factura al correo del cliente (si tiene correo y está activado)
     const savedSale = sales.find(x => x.id === sale.id) || sale;
-    if (autoEmail && customerEmailOf(savedSale)) {
+    if (autoEmail && customerEmailOf(savedSale) && (savedOffline || !navigator.onLine)) {
+        queueEmail(savedSale.id);
+    } else if (autoEmail && customerEmailOf(savedSale)) {
         try {
             const base64 = await blobToBase64(await invoicePdfBlob(savedSale));
             emailInvoice(savedSale.id, { auto: true, base64 });
@@ -1096,11 +1137,27 @@ function customerEmailOf(sale) {
     const c = customers.find(x => x.id == sale.customerId);
     return c && EMAIL_OK.test(String(c.email || '').trim()) ? c.email.trim() : '';
 }
+const EMAIL_QUEUE = 'ns_email_queue';
+function queueEmail(saleId) {
+    let q = [];
+    try { q = JSON.parse(localStorage.getItem(EMAIL_QUEUE) || '[]'); } catch { /* vacío */ }
+    if (!q.includes(saleId)) q.push(saleId);
+    try { localStorage.setItem(EMAIL_QUEUE, JSON.stringify(q)); } catch { /* sin almacenamiento */ }
+    toast('La factura se enviará por correo cuando vuelva el internet.', 'info');
+}
+async function sendQueuedEmails() {
+    let q = [];
+    try { q = JSON.parse(localStorage.getItem(EMAIL_QUEUE) || '[]'); } catch { return; }
+    try { localStorage.removeItem(EMAIL_QUEUE); } catch { /* sin almacenamiento */ }
+    for (const id of q) if (sales.find(x => x.id === id && !x.pending)) await emailInvoice(id, { auto: true });
+}
+
 async function emailInvoice(saleId, opts = {}) {
     const sale = sales.find(x => x.id === saleId);
     if (!sale) return;
     const to = customerEmailOf(sale);
     if (!to) { if (!opts.auto) toast('Este cliente no tiene un correo válido. Agréguelo en Clientes.', 'error'); return; }
+    if (!navigator.onLine || sale.pending) return queueEmail(saleId);
     const pending = toast(`Enviando ${sale.docType || 'factura'} a ${to}…`, 'info', 0);
     try {
         const base64 = opts.base64 || await blobToBase64(await invoicePdfBlob(sale));
@@ -1162,7 +1219,7 @@ function salesTableRows(list, withProfit) {
         const profit = s.total - (Number(s.costTotal) || 0);
         return `
         <tr class="border-b dark:border-gray-800 row-click hover:bg-gray-50 dark:hover:bg-white/5 transition ${cancelled ? 'opacity-70' : ''}" onclick="if(!event.target.closest('button'))openSaleDetail('${s.id}')" tabindex="0" onkeydown="if(event.key==='Enter')openSaleDetail('${s.id}')">
-            <td class="p-4"><p class="font-mono font-medium">${s.id}${s.emailedAt ? ' <i class="fas fa-envelope-circle-check text-emerald-500 text-xs" title="Enviada por correo"></i>' : ''}</p><p class="text-xs text-gray-400">${escHtml(s.docType || '')} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</p>
+            <td class="p-4"><p class="font-mono font-medium">${s.id}${s.pending ? ' <span class="cond-badge usado" title="Se enviará a la nube al volver la conexión"><i class="fas fa-cloud-arrow-up"></i>Sin enviar</span>' : ''}${s.emailedAt ? ' <i class="fas fa-envelope-circle-check text-emerald-500 text-xs" title="Enviada por correo"></i>' : ''}</p><p class="text-xs text-gray-400">${escHtml(s.docType || '')} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</p>
                 ${cancelled ? `<span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">Anulada</span>` : ''}</td>
             <td class="p-4">${escHtml(cust ? cust.name : 'Cliente general')}</td>
             ${withProfit ? `<td class="p-4 text-sm">${escHtml(names)}</td><td class="p-4 admin-only">${money(s.costTotal)}</td>` : `<td class="p-4 text-xs">${escHtml(paySummary)}</td>`}
@@ -1252,7 +1309,8 @@ function fillInvoice(sale) {
     document.getElementById('inv-items').innerHTML = sale.items.map((i, idx) => {
         const b = brands.find(br => br.id == i.brandId);
         const colorName = i.source === 'reventa' ? (i.colorLabel || '') : (AVAILABLE_COLORS.find(c => c.hex === i.color)?.name || '');
-        const desc = `${b ? b.name + ' ' : ''}${i.name}${colorName ? ' ' + colorName : ''}${i.serial ? ' · S/N ' + i.serial : ''}`.toUpperCase();
+        const cond = condOf(i) ? ' · ' + COND_LABEL[condOf(i)] : '';
+        const desc = `${b ? b.name + ' ' : ''}${i.name}${colorName ? ' ' + colorName : ''}${cond}${i.serial ? ' · S/N ' + i.serial : ''}`.toUpperCase();
         return `
             <tr style="border-bottom:1px solid #ECECF3;">
                 <td class="py-3 px-3" style="color:#8A8AA0;">${String(idx + 1).padStart(2, '0')}</td>
@@ -1344,8 +1402,12 @@ function refreshSalesViews() {
 
 // FECHAS DE VENTA (created_at de la nube; respaldo: texto de la fecha)
 function saleTime(s) {
-    if (s.createdAt) { const d = new Date(s.createdAt); if (!isNaN(d)) return d; }
-    return parseSaleDate(s.date);
+    const created = s.createdAt ? new Date(s.createdAt) : null;
+    const written = parseSaleDate(s.date);
+    // Venta hecha sin conexión: la nube la recibió después; vale la hora en que se hizo
+    if (created && !isNaN(created) && written && Math.abs(created - written) > 2 * 3600e3) return written;
+    if (created && !isNaN(created)) return created;
+    return written;
 }
 const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 const money = (v) => `${appCurrency}${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1571,7 +1633,7 @@ function openSaleDetail(id) {
     const t = saleTime(s);
     const items = (s.items || []).map(i => {
         const b = brands.find(x => x.id == i.brandId);
-        const label = i.source === 'reventa' ? (i.colorLabel || '') : (AVAILABLE_COLORS.find(cc => cc.hex === i.color)?.name || '');
+        const label = (i.source === 'reventa' ? (i.colorLabel || '') : (AVAILABLE_COLORS.find(cc => cc.hex === i.color)?.name || '')) + (condOf(i) ? ' · ' + COND_LABEL[condOf(i)] : '');
         return `<li class="flex items-center justify-between gap-3 py-2"><span class="min-w-0"><span class="block text-sm font-medium truncate">${escHtml((b ? b.name + ' ' : '') + i.name)}</span><span class="block text-xs text-gray-400">${escHtml(label)}${i.serial ? ' · S/N ' + escHtml(i.serial) : ''} · ${money(i.price)} × ${i.qty}</span></span><b class="tabular-nums text-sm">${money(i.price * i.qty)}</b></li>`;
     }).join('');
     const pays = (s.payments || []).map(p => {
@@ -1638,8 +1700,9 @@ function renderResaleItems() {
         b.className = 'px-4 py-1.5 rounded-full text-sm font-semibold border transition ' + (on ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-gray-900 text-gray-500 dark:border-gray-700');
     });
     const tbody = document.getElementById('resale-table-body');
+    bindSeg('resale-cond', 'c', resaleCond, (c) => { resaleCond = c; renderResaleItems(); });
     const rq = (document.getElementById('resale-search')?.value || '').toLowerCase().trim();
-    const list = resale.filter(r => (resaleFilter === 'todos' || (resaleFilter === 'disponible' ? r.stock > 0 : r.stock <= 0)) && (!rq || [r.brand, r.name, r.color, r.serial, r.supplier].join(' ').toLowerCase().includes(rq)));
+    const list = resale.filter(r => (resaleFilter === 'todos' || (resaleFilter === 'disponible' ? r.stock > 0 : r.stock <= 0)) && condMatch(resaleCond, r) && (!rq || [r.brand, r.name, r.color, r.serial, r.supplier].join(' ').toLowerCase().includes(rq)));
     if (!list.length) {
         tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">${resale.length ? 'No hay equipos en este filtro' : 'Aún no hay equipos de reventa. Use "Nuevo equipo" para registrar uno conseguido por fuera.'}</td></tr>`;
         return;
@@ -1649,7 +1712,7 @@ function renderResaleItems() {
         const margin = r.price > 0 ? (profit / r.price) * 100 : 0;
         return `
         <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-            <td class="p-4"><p class="font-bold">${[r.brand, r.name].filter(Boolean).join(' ')}</p><p class="text-xs text-gray-400">${[r.color, r.serial ? 'S/N ' + r.serial : '', r.acquiredAt].filter(Boolean).join(' · ')}</p></td>
+            <td class="p-4"><p class="font-bold">${[r.brand, r.name].filter(Boolean).join(' ')} ${condBadge(condOf(r))}</p><p class="text-xs text-gray-400">${[r.color, r.serial ? 'S/N ' + r.serial : '', r.acquiredAt].filter(Boolean).join(' · ')}</p></td>
             <td class="p-4 text-sm">${r.supplier || '—'}</td>
             <td class="p-4">${appCurrency}${Number(r.cost).toFixed(2)}</td>
             <td class="p-4 font-semibold">${appCurrency}${Number(r.price).toFixed(2)}</td>
@@ -1669,6 +1732,7 @@ function openResaleModal(id, thenCart) {
     document.getElementById('resale-modal-title').innerText = id ? 'Editar equipo de reventa' : (thenCart ? 'Equipo por encargo' : 'Nuevo equipo de reventa');
     document.getElementById('resale-then-cart').value = thenCart ? '1' : '';
     openModal('modal-resale');
+    if (!id) setCondPick('resale-condition', 'usado');
 }
 
 function editResale(id) {
@@ -1678,6 +1742,7 @@ function editResale(id) {
     const set = (k, v) => document.getElementById('resale-' + k).value = v ?? '';
     set('id', r.id); set('brand', r.brand); set('name', r.name); set('color', r.color); set('serial', r.serial);
     set('supplier', r.supplier); set('cost', r.cost); set('price', r.price); set('stock', r.stock); set('notes', r.notes);
+    setCondPick('resale-condition', condOf(r) || 'usado');
     updateResaleProfitHint();
 }
 
@@ -1700,6 +1765,7 @@ document.getElementById('form-resale').onsubmit = async (e) => {
         brand: v('brand'), name: v('name'), color: v('color'), serial: v('serial'), supplier: v('supplier'),
         cost: parseFloat(v('cost')) || 0, price: parseFloat(v('price')) || 0, stock: parseInt(v('stock')) || 0,
         notes: v('notes'), acquiredAt: prev ? prev.acquiredAt : new Date().toLocaleDateString('es-VE'),
+        condition: v('condition') || 'usado',
     };
     if (item.price < item.cost && !confirm('El precio de venta es menor que el costo (pérdida). ¿Guardar de todos modos?')) return;
     const thenCart = document.getElementById('resale-then-cart').value === '1';
@@ -1710,6 +1776,100 @@ document.getElementById('form-resale').onsubmit = async (e) => {
     if (thenCart) { setMode('reventa', { keepCart: true, section: 'pos' }); addToCart(item.id); }
     else if (currentSection === 'pos') renderPOS();
 };
+
+// ASISTENTE DE PRECIOS (reventa)
+// 1) Con el historial propio: margen de equipos parecidos y de la misma condición.
+// 2) Con IA (opcional): consulta precios de mercado en internet.
+const DEFAULT_MARKUP = { sellado: 0.12, usado: 0.20 };
+const normModel = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+function modelTokens(t) { return normModel(t).split(' ').filter(w => w.length > 1 && !['gb', 'de', 'con', 'usado', 'sellado', 'nuevo'].includes(w)); }
+function similarity(a, b) {
+    const A = new Set(modelTokens(a)), B = new Set(modelTokens(b));
+    if (!A.size || !B.size) return 0;
+    let inter = 0; A.forEach(w => { if (B.has(w)) inter++; });
+    return inter / Math.max(A.size, B.size);
+}
+const roundPrice = (v) => v >= 100 ? Math.ceil(v / 5) * 5 : Math.ceil(v);
+
+function readAssistantForm() {
+    const v = (k) => (document.getElementById('resale-' + k)?.value || '').trim();
+    return { id: v('id'), brand: v('brand'), name: v('name'), color: v('color'), condition: v('condition') || 'usado', cost: parseFloat(v('cost')) || 0 };
+}
+
+function clearPriceAssistant() {
+    const body = document.getElementById('price-assistant-body');
+    if (body) body.innerHTML = 'Escriba el modelo, la condición y el costo; el asistente le propone el precio de venta y el margen.';
+}
+
+function suggestPrice() {
+    const f = readAssistantForm();
+    const body = document.getElementById('price-assistant-body');
+    if (!f.name || !(f.cost > 0)) { body.innerHTML = '<span class="text-amber-600">Escriba el modelo y el costo primero.</span>'; return; }
+    const full = `${f.brand} ${f.name}`;
+    const pool = resale.filter(r => String(r.id) !== f.id && r.cost > 0 && r.price > 0);
+    const sameCond = pool.filter(r => (condOf(r) || 'usado') === f.condition);
+    const similar = sameCond.map(r => ({ r, sim: similarity(full, `${r.brand} ${r.name}`) })).filter(x => x.sim >= 0.6).sort((a, b) => b.sim - a.sim);
+    const markupOf = (r) => (r.price - r.cost) / r.cost;
+    const avg = (l) => l.reduce((a, b) => a + b, 0) / l.length;
+    let markup, basis;
+    if (similar.length) {
+        markup = avg(similar.slice(0, 5).map(x => markupOf(x.r)));
+        basis = `${similar.length} equipo(s) parecido(s) ${COND_LABEL[f.condition].toLowerCase()}(s) que ya registró`;
+    } else if (sameCond.length >= 3) {
+        markup = avg(sameCond.map(markupOf));
+        basis = `el margen promedio de sus ${sameCond.length} equipos ${COND_LABEL[f.condition].toLowerCase()}s`;
+    } else {
+        markup = DEFAULT_MARKUP[f.condition];
+        basis = `un margen de referencia para equipos ${COND_LABEL[f.condition].toLowerCase()}s (aún no hay historial suficiente)`;
+    }
+    markup = Math.min(Math.max(markup, 0.04), 0.6);
+    const opts = [
+        { name: 'Venta rápida', m: markup * 0.6, note: 'Para rotarlo pronto' },
+        { name: 'Recomendado', m: markup, note: 'Equilibrio entre precio y rapidez' },
+        { name: 'Máximo', m: markup * 1.4, note: 'Si el cliente no tiene apuro' },
+    ].map(o => { const price = roundPrice(f.cost * (1 + o.m)); return { ...o, price, gain: price - f.cost, margin: (price - f.cost) / price }; });
+    const ref = similar[0] ? `<p class="text-xs text-gray-500 mt-2">Referencia: ${escHtml([similar[0].r.brand, similar[0].r.name].filter(Boolean).join(' '))} costó ${money(similar[0].r.cost)} y se puso en ${money(similar[0].r.price)}.</p>` : '';
+    body.innerHTML = `<p class="text-xs text-gray-500 mb-2">Basado en ${basis}.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">${opts.map((o, i) => `
+            <button type="button" onclick="applySuggestedPrice(${o.price}, this)" class="sugg ${i === 1 ? 'on' : ''}">
+                <span class="block text-xs text-gray-500">${o.name}</span>
+                <span class="block text-lg font-bold tabular-nums">${money(o.price)}</span>
+                <span class="block text-xs font-semibold text-emerald-600">+${money(o.gain)} · ${(o.margin * 100).toFixed(0)}% margen</span>
+                <span class="block text-[11px] text-gray-400">${o.note}</span>
+            </button>`).join('')}</div>${ref}
+        <p class="text-[11px] text-gray-400 mt-2">Toque una opción para usar ese precio.</p>`;
+}
+
+function applySuggestedPrice(price, btn) {
+    document.getElementById('resale-price').value = price;
+    updateResaleProfitHint();
+    if (btn) { btn.parentElement.querySelectorAll('.sugg').forEach(b => b.classList.remove('on')); btn.classList.add('on'); }
+}
+
+async function askPriceAI() {
+    const f = readAssistantForm();
+    const body = document.getElementById('price-assistant-body');
+    if (!f.name || !(f.cost > 0)) { body.innerHTML = '<span class="text-amber-600">Escriba el modelo y el costo primero.</span>'; return; }
+    if (!navigator.onLine) { body.innerHTML = '<span class="text-amber-600">La consulta a la IA necesita internet. Use "Sugerir con mi historial".</span>'; return; }
+    body.innerHTML = '<p class="flex items-center gap-2"><i class="fas fa-circle-notch fa-spin text-emerald-600"></i> Buscando precios de mercado… puede tardar unos segundos.</p>';
+    const history = resale.filter(r => r.cost > 0 && r.price > 0).slice(-15).map(r => ({ modelo: [r.brand, r.name].filter(Boolean).join(' '), condicion: condOf(r) || 'usado', costo: r.cost, precio: r.price, vendido: r.stock <= 0 }));
+    try {
+        const r = await askPriceAssistant({ brand: f.brand, name: f.name, color: f.color, condition: f.condition, cost: f.cost, currency: appCurrency, history });
+        const gain = r.precio - f.cost;
+        const sources = (r.fuentes || []).slice(0, 3).map(x => `<a href="${escHtml(x.url)}" target="_blank" rel="noopener" class="underline hover:text-emerald-600">${escHtml(x.title || x.url)}</a>`).join(' · ');
+        body.innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button type="button" onclick="applySuggestedPrice(${roundPrice(r.minimo || r.precio)}, this)" class="sugg"><span class="block text-xs text-gray-500">Mínimo sugerido</span><span class="block text-lg font-bold tabular-nums">${money(roundPrice(r.minimo || r.precio))}</span></button>
+                <button type="button" onclick="applySuggestedPrice(${roundPrice(r.precio)}, this)" class="sugg on"><span class="block text-xs text-gray-500">Precio sugerido por IA</span><span class="block text-lg font-bold tabular-nums">${money(roundPrice(r.precio))}</span><span class="block text-xs font-semibold ${gain >= 0 ? 'text-emerald-600' : 'text-red-500'}">${gain >= 0 ? '+' : ''}${money(gain)} · ${r.precio > 0 ? ((gain / r.precio) * 100).toFixed(0) : 0}% margen</span></button>
+                <button type="button" onclick="applySuggestedPrice(${roundPrice(r.maximo || r.precio)}, this)" class="sugg"><span class="block text-xs text-gray-500">Máximo de mercado</span><span class="block text-lg font-bold tabular-nums">${money(roundPrice(r.maximo || r.precio))}</span></button>
+            </div>
+            <p class="mt-2">${escHtml(r.explicacion || '')}</p>
+            ${sources ? `<p class="text-[11px] text-gray-400 mt-1">Fuentes: ${sources}</p>` : ''}
+            <p class="text-[11px] text-gray-400 mt-1">Es una sugerencia: confirme el precio antes de publicarlo.</p>`;
+    } catch (err) {
+        body.innerHTML = `<p class="text-amber-700 dark:text-amber-300">${escHtml(err.message)}</p><p class="text-xs text-gray-500 mt-1">Mientras tanto puede usar "Sugerir con mi historial".</p>`;
+    }
+}
 
 function sellResale(id) {
     setMode('reventa', { section: 'pos' });
@@ -1902,7 +2062,8 @@ function deleteItem(arrayName, id, callback) {
 
 let syncChain = Promise.resolve();
 function save() {
-    const state = { brands, products, customers, sellers, payments, resale };
+    const state = { brands, products, customers, sellers, payments, resale, sales };
+    persistLocal(state);
     syncChain = syncChain.then(() => syncTables(state)).catch(async err => {
         alert('No se pudo guardar en la nube: ' + err.message + '\nSe recargarán los datos.');
         await reloadData();
@@ -2082,6 +2243,40 @@ async function offerLegacyRecovery() {
     } catch (err) { alert('No se pudieron recuperar: ' + err.message); }
 }
 
+// ESTADO DE CONEXIÓN
+function updateNetUI(st) {
+    document.body.classList.toggle('is-offline', st.offline);
+    const text = st.syncing ? 'Guardando cambios…'
+        : st.offline ? `Modo sin conexión${st.pending ? ` · ${st.pending} pendiente(s)` : ''}`
+        : st.pending ? `${st.pending} cambio(s) por guardar` : '';
+    const cls = st.syncing ? 'text-sky-500' : st.offline ? 'text-amber-500' : 'text-amber-500';
+    const icon = st.syncing ? 'fa-rotate fa-spin' : st.offline ? 'fa-wifi' : 'fa-cloud-arrow-up';
+    for (const id of ['net-status', 'net-pill']) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.classList.toggle('hidden', !text);
+        el.dataset.state = st.syncing ? 'syncing' : st.offline ? 'offline' : 'pending';
+        el.innerHTML = text ? `<i class="fas ${icon} ${st.offline && !st.syncing ? 'line-through' : ''}"></i> <span>${text}</span>` : '';
+        if (id === 'net-status') el.className = `${text ? '' : 'hidden '}text-[11px] font-semibold flex items-center gap-1.5 mt-0.5 ${cls}`;
+    }
+}
+
+let reconnecting = false;
+async function syncAfterReconnect() {
+    if (reconnecting || !navigator.onLine) return;
+    reconnecting = true;
+    try {
+        const hadPending = netState().pending;
+        const r = await flushOutbox();
+        if (r.done) toast(`Listo: se guardaron en la nube ${r.done} cambio(s) hechos sin conexión.`, 'ok', 6000);
+        if (r.conflicts.length) alert('Algunas ventas hechas sin conexión no se pudieron registrar:\n\n' + r.conflicts.map(c => `• ${c.op.sale ? c.op.sale.id : c.op.key}: ${c.error}`).join('\n') + '\n\nRevise el inventario y vuelva a registrarlas.');
+        if (hadPending || r.done) { await reloadData(); refreshAllViews(); }
+        await sendQueuedEmails();
+    } catch (err) {
+        console.error(err);
+    } finally { reconnecting = false; }
+}
+
 // INITIALIZATION
 async function startApp(profile) {
     currentProfile = profile;
@@ -2100,9 +2295,13 @@ async function startApp(profile) {
         if (!brandLogo && sessionStorage.getItem('ns_logo_later') !== '1') openLogoModal(true);
     }, 600);
     subscribeChanges(() => syncChain.then(reloadData).then(refreshAllViews).catch(console.error));
+    onNetChange(updateNetUI);
+    window.addEventListener('online', () => setTimeout(syncAfterReconnect, 800));
+    setInterval(() => { if (navigator.onLine && netState().pending) syncAfterReconnect(); }, 30000);
+    if (navigator.onLine) sendQueuedEmails();
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

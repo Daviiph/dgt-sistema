@@ -59,6 +59,7 @@ class Query {
   delete() { this.op = 'delete'; return this }
   then(res, rej) { return Promise.resolve(this.run()).then(res, rej) }
   run() {
+    if (!navigator.onLine) return { data: null, error: { message: 'TypeError: Failed to fetch' } }
     const all = db[this.t] = db[this.t] || []
     const key = this.t === 'settings' ? 'key' : 'id'
     const match = (r) => this.filters.every((f) => f(r))
@@ -80,6 +81,7 @@ class Query {
 }
 
 function rpc(name, args) {
+  if (!navigator.onLine) return { data: null, error: { message: 'TypeError: Failed to fetch' } }
   if (name === 'create_sale') {
     const p = args.p, ch = p.channel || 'tienda'
     const src = ch === 'reventa' ? db.resale_items : db.products
@@ -108,7 +110,7 @@ export const isConfigured = true
 export const supabase = {
   from: (t) => new Query(t),
   rpc: async (n, a) => rpc(n, a),
-  functions: { invoke: async (name, { body }) => { await new Promise(r => setTimeout(r, 400)); const s = pick(db.sales, body.saleId); const c = pick(db.customers, s.customer_id); s.extra = { ...(s.extra || {}), emailedAt: new Date().toISOString(), emailedTo: c.email }; window.__lastEmail = { name, saleId: body.saleId, bytes: body.pdfBase64.length, to: c.email }; return { data: { ok: true, to: c.email }, error: null } } },
+  functions: { invoke: async (name, { body }) => { if (!navigator.onLine) return { data: null, error: { message: 'Failed to send a request to the Edge Function' } }; if (name === 'asistente-precios') return { data: { precio: Math.round(body.cost * 1.18), minimo: Math.round(body.cost * 1.1), maximo: Math.round(body.cost * 1.3), margen_pct: 15, explicacion: 'En MercadoLibre Venezuela este equipo se publica entre esos precios (simulación de prueba).', fuentes: [{ title: 'MercadoLibre Venezuela', url: 'https://listado.mercadolibre.com.ve/' }] }, error: null }; await new Promise(r => setTimeout(r, 400)); const s = pick(db.sales, body.saleId); const c = pick(db.customers, s.customer_id); s.extra = { ...(s.extra || {}), emailedAt: new Date().toISOString(), emailedTo: c.email }; window.__lastEmail = { name, saleId: body.saleId, bytes: body.pdfBase64.length, to: c.email }; return { data: { ok: true, to: c.email }, error: null } } },
   channel: () => ({ on() { return this }, subscribe() { return this } }),
   auth: {
     getSession: async () => ({ data: { session } }),

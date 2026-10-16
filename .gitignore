@@ -28,4 +28,4 @@ dist-ssr
 supabase/.temp/
 
 # Credenciales del correo (sólo en Supabase, nunca en GitHub)
-supabase/functions/enviar-factura/credenciales.ts
+supabase/functions/*/credenciales.ts

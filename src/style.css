@@ -165,3 +165,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .dark .kpi, .dark .search-box > input, .dark .seg, .dark .field-sm, .dark .btn-ghost { background-color: rgb(13 17 38 / 0.72); backdrop-filter: blur(14px); }
 
 .toast { background: rgb(10 13 30 / .94); border: 1px solid rgb(255 255 255 / .1); backdrop-filter: blur(10px); animation: fadeUp .25s ease-out; }
+
+.cond-btn { display:flex; align-items:center; justify-content:center; gap:.4rem; padding:.6rem; border-radius:.75rem; font-size:.875rem; font-weight:600; border:1px solid rgb(229 231 235); color:rgb(107 114 128); background:white; transition:all .15s; }
+.dark .cond-btn { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .1); color: rgb(156 163 175); }
+.cond-btn.on[data-c="sellado"] { background: rgb(14 165 233); border-color: rgb(14 165 233); color: white; }
+.cond-btn.on[data-c="usado"] { background: rgb(245 158 11); border-color: rgb(245 158 11); color: white; }
+.cond-badge { display:inline-flex; align-items:center; gap:.25rem; padding:.1rem .45rem; border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.02em; white-space:nowrap; }
+.cond-badge.sellado { background: rgb(224 242 254); color: rgb(3 105 161); }
+.cond-badge.usado { background: rgb(254 243 199); color: rgb(146 64 14); }
+.dark .cond-badge.sellado { background: rgb(14 165 233 / .2); color: rgb(125 211 252); }
+.dark .cond-badge.usado { background: rgb(245 158 11 / .2); color: rgb(252 211 77); }
+.sugg { text-align:left; padding:.7rem .8rem; border-radius:.9rem; border:1px solid rgb(209 250 229); background:white; transition:all .15s; }
+.dark .sugg { background: rgb(255 255 255 / .04); border-color: rgb(16 185 129 / .3); }
+.sugg:hover, .sugg.on { border-color: rgb(16 185 129); box-shadow: 0 0 0 2px rgb(16 185 129 / .25); }

@@ -29,8 +29,18 @@ function busy(form, on) {
   form.querySelectorAll('button, input').forEach((el) => (el.disabled = on))
 }
 
+const PROFILE_KEY = 'ns_profile'
+const cachedProfile = () => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null') } catch { return null } }
+const offlineErr = (e) => !navigator.onLine || /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(String(e && e.message))
+
 async function enter(user) {
-  const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+  let { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+  // Sin internet: se usa el perfil guardado la última vez que entró en este equipo
+  if ((error && offlineErr(error)) || (!profile && !navigator.onLine)) {
+    const c = cachedProfile()
+    if (c && c.id === user.id) { profile = c; error = null }
+  }
+  if (profile && !error) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)) } catch { /* sin almacenamiento */ } }
   if (error || !profile) {
     showView('login')
     return setMessage('No se encontró el perfil del usuario. Contacte al administrador.')
@@ -72,7 +82,7 @@ export async function initAuth() {
   const recovering = new URLSearchParams(location.search).has('recovery')
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') showView('recovery')
-    if (event === 'SIGNED_OUT') location.replace(import.meta.env.BASE_URL)
+    if (event === 'SIGNED_OUT') { try { localStorage.removeItem(PROFILE_KEY) } catch { /* sin almacenamiento */ } location.replace(import.meta.env.BASE_URL) }
   })
 
   $('form-login').onsubmit = async (e) => {
@@ -83,7 +93,7 @@ export async function initAuth() {
       password: $('login-password').value,
     })
     busy(e.target, false)
-    if (error) return setMessage(tr(error.message))
+    if (error) return setMessage(!navigator.onLine ? 'No hay conexión a internet. Para entrar por primera vez en este equipo necesita internet.' : tr(error.message))
     await enter(data.user)
   }
 
@@ -135,8 +145,12 @@ export async function initAuth() {
     })
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  let session = null
+  try { ({ data: { session } } = await supabase.auth.getSession()) } catch { /* sin conexión */ }
   if (recovering && session) return showView('recovery')
   if (session) return enter(session.user)
+  // Sin internet y con una sesión anterior en este equipo: entra en modo sin conexión
+  const c = cachedProfile()
+  if (!navigator.onLine && c) return enter({ id: c.id, email: c.email })
   showView('login')
 }
