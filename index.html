@@ -779,17 +779,23 @@
 
             <div id="settle-payments-list" class="space-y-3 mb-6 max-h-60 overflow-y-auto"></div>
 
-            <button type="button" onclick="openTradeIn()" class="w-full py-2 mb-3 border-2 border-dashed border-sky-300 dark:border-sky-800 rounded-xl text-sky-600 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition"><i class="fab fa-apple mr-2"></i> Recibir equipo (parte de pago)</button>
+            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Parte de pago: el cliente entrega un equipo</p>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button type="button" onclick="openTradeIn('Apple')" class="py-2 border-2 border-dashed border-sky-300 dark:border-sky-800 rounded-xl text-sky-600 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition font-semibold text-sm"><i class="fab fa-apple mr-1"></i> Recibir iPhone</button>
+                <button type="button" onclick="openTradeIn('Samsung')" class="py-2 border-2 border-dashed border-indigo-300 dark:border-indigo-800 rounded-xl text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition font-semibold text-sm"><i class="fas fa-mobile-screen mr-1"></i> Recibir Samsung</button>
+            </div>
             <div id="tradein-form" class="hidden mb-4 p-4 rounded-2xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-900/10 space-y-3">
-                <p class="font-semibold text-sm"><i class="fab fa-apple mr-1"></i> Equipo que entrega el cliente</p>
+                <p class="font-semibold text-sm" id="ti-title">Equipo que entrega el cliente</p><input type="hidden" id="ti-brand" value="Apple">
                 <div class="grid grid-cols-2 gap-2">
-                    <input id="ti-model" list="ti-models" placeholder="Modelo (ej: iPhone 12 Pro)" oninput="tradeInSuggest()" class="field-sm col-span-2">
+                    <input id="ti-model" list="ti-models" placeholder="Modelo" oninput="tradeInSuggest()" class="field-sm col-span-2">
                     <datalist id="ti-models"><option value="iPhone 11"><option value="iPhone 11 Pro"><option value="iPhone 11 Pro Max"><option value="iPhone 12"><option value="iPhone 12 Mini"><option value="iPhone 12 Pro"><option value="iPhone 12 Pro Max"><option value="iPhone 13"><option value="iPhone 13 Mini"><option value="iPhone 13 Pro"><option value="iPhone 13 Pro Max"><option value="iPhone 14"><option value="iPhone 14 Plus"><option value="iPhone 14 Pro"><option value="iPhone 14 Pro Max"><option value="iPhone 15"><option value="iPhone 15 Plus"><option value="iPhone 15 Pro"><option value="iPhone 15 Pro Max"><option value="iPhone 16"><option value="iPhone 16 Plus"><option value="iPhone 16 Pro"><option value="iPhone 16 Pro Max"><option value="iPhone 16e"><option value="iPhone 17"><option value="iPhone 17 Air"><option value="iPhone 17 Pro"><option value="iPhone 17 Pro Max"></datalist>
+                    <datalist id="ti-models-samsung"><option value="Galaxy S22 Ultra"><option value="Galaxy S23"><option value="Galaxy S23+"><option value="Galaxy S23 Ultra"><option value="Galaxy S23 FE"><option value="Galaxy S24"><option value="Galaxy S24+"><option value="Galaxy S24 Ultra"><option value="Galaxy S24 FE"><option value="Galaxy S25"><option value="Galaxy S25+"><option value="Galaxy S25 Ultra"><option value="Galaxy S25 Edge"><option value="Galaxy S25 FE"><option value="Galaxy S26"><option value="Galaxy S26+"><option value="Galaxy S26 Ultra"><option value="Galaxy S26 FE"><option value="Galaxy Z Flip6"><option value="Galaxy Z Fold6"><option value="Galaxy Z Flip7"><option value="Galaxy Z Fold7"></datalist>
                     <select id="ti-capacity" onchange="tradeInSuggest()" class="field-sm"><option value="">Capacidad</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option><option>2TB</option></select>
                     <input id="ti-color" placeholder="Color" class="field-sm">
                     <input id="ti-imei" placeholder="IMEI / Serial" class="field-sm">
                     <input id="ti-battery" type="number" min="0" max="100" placeholder="Batería %" class="field-sm">
-                    <input id="ti-appleid" type="email" placeholder="Correo de Apple ID / iCloud" class="field-sm col-span-2">
+                    <select id="ti-sim" class="field-sm"><option value="">SIM</option><option value="SIM física">SIM física</option><option value="eSIM">Solo eSIM</option><option value="SIM física + eSIM">SIM física + eSIM</option></select>
+                    <input id="ti-appleid" type="email" placeholder="Correo de la cuenta (Apple ID / Samsung)" class="field-sm">
                     <select id="ti-state" class="field-sm"><option value="Excelente estado">Excelente estado</option><option value="Buen estado">Buen estado</option><option value="Detalles de uso">Detalles de uso</option><option value="Con fallas">Con fallas</option></select>
                     <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span><input id="ti-value" type="number" min="0" step="1" placeholder="Valor que se le da" oninput="tradeInSuggest()" class="field-sm w-full pl-7"></div>
                 </div>

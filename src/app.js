@@ -973,7 +973,8 @@ function renderCustomerCard() {
 
 // PARTE DE PAGO: equipo usado que entrega el cliente
 const payName = (p) => p && p.methodId === 'tradein' ? 'Equipo recibido (parte de pago)' : (payments.find(m => m.id == (p && p.methodId))?.name || 'Método');
-const tradeInDesc = (t) => t ? [[t.brand !== 'Apple' ? t.brand : '', t.name, t.color].filter(Boolean).join(' '), t.imei ? 'IMEI ' + t.imei : '', t.appleId ? 'Apple ID ' + t.appleId : '', t.battery ? 'Batería ' + t.battery + '%' : '', t.notes].filter(Boolean).join(' · ') : '';
+const tradeInTitle = (t) => t ? `${t.brand || 'Apple'} ${t.name}`.replace(/^Apple (iPhone)/, '$1') : '';
+const tradeInDesc = (t) => t ? [[tradeInTitle(t), t.color].filter(Boolean).join(' '), t.sim, t.imei ? 'IMEI ' + t.imei : '', t.appleId ? 'Cuenta ' + t.appleId : '', t.battery ? 'Batería ' + t.battery + '%' : '', t.notes].filter(Boolean).join(' · ') : '';
 
 function usedMarkup(full) {
     const pool = resale.filter(r => r.cost > 0 && r.price > 0 && (condOf(r) || 'usado') === 'usado');
@@ -987,11 +988,18 @@ function tradeInSuggest() {
     const value = parseFloat(document.getElementById('ti-value').value) || 0;
     const el = document.getElementById('ti-suggest');
     if (!model || !(value > 0)) { el.innerText = ''; return null; }
-    const price = roundPrice(value * (1 + usedMarkup(`Apple ${model} ${cap}`)));
+    const price = roundPrice(value * (1 + usedMarkup(`${document.getElementById('ti-brand').value} ${model} ${cap}`)));
     el.innerHTML = `Precio de reventa sugerido: <b class="text-sky-700 dark:text-sky-300">${money(price)}</b> (ganancia ${money(price - value)}). Podrá ajustarlo en Equipos de reventa.`;
     return price;
 }
-function openTradeIn() {
+function openTradeIn(brand = 'Apple') {
+    closeTradeIn();
+    document.getElementById('ti-brand').value = brand;
+    const apple = brand === 'Apple';
+    document.getElementById('ti-model').setAttribute('list', apple ? 'ti-models' : 'ti-models-samsung');
+    document.getElementById('ti-model').placeholder = apple ? 'Modelo (ej: iPhone 14 Pro)' : 'Modelo (ej: Galaxy S26 Ultra)';
+    document.getElementById('ti-title').innerHTML = `<i class="${apple ? 'fab fa-apple' : 'fas fa-mobile-screen'} mr-1"></i> Se recibe ${apple ? 'iPhone' : 'Samsung'}`;
+    document.getElementById('ti-sim').classList.toggle('hidden', !apple);
     document.getElementById('tradein-form').classList.remove('hidden');
     document.getElementById('ti-model').focus();
 }
@@ -1001,6 +1009,7 @@ function closeTradeIn() {
     f.querySelectorAll('input').forEach(i => i.value = '');
     f.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
     document.getElementById('ti-suggest').innerText = '';
+    document.getElementById('ti-sim')?.classList.remove('hidden');
 }
 function addTradeIn() {
     const g = (id) => document.getElementById(id).value.trim();
@@ -1011,7 +1020,7 @@ function addTradeIn() {
     document.querySelectorAll('#settle-payments-list .pay-amount').forEach(i => paidOthers += parseFloat(i.value) || 0);
     if (value > grandTotal()) return alert('El valor del equipo no puede ser mayor que el total de la venta');
     const t = {
-        id: Date.now(), brand: 'Apple', name: [model.replace(/^apple\s+/i, ''), g('ti-capacity')].filter(Boolean).join(' '),
+        id: Date.now(), brand: g('ti-brand') || 'Apple', name: [model.replace(/^(apple|samsung)\s+/i, ''), g('ti-capacity'), g('ti-brand') === 'Apple' && g('ti-sim') === 'eSIM' ? 'eSIM' : ''].filter(Boolean).join(' '), sim: g('ti-sim'),
         color: g('ti-color'), imei: g('ti-imei'), appleId: g('ti-appleid'), battery: g('ti-battery'), notes: g('ti-state'),
         suggestedPrice: tradeInSuggest() || roundPrice(value * 1.2),
     };
@@ -1021,8 +1030,8 @@ function addTradeIn() {
     row.dataset.tradein = JSON.stringify(t);
     row.innerHTML = `
         <input type="hidden" class="pay-method" value="tradein">
-        <i class="fab fa-apple text-sky-600 text-lg"></i>
-        <div class="flex-1 min-w-[140px] text-sm"><p class="font-semibold">Recibe ${escHtml(t.name)}</p><p class="text-xs text-gray-500 truncate">${escHtml(tradeInDesc(t).replace(t.name, '').replace(/^ · /, ''))}</p></div>
+        <i class="${t.brand === 'Apple' ? 'fab fa-apple' : 'fas fa-mobile-screen'} text-sky-600 text-lg"></i>
+        <div class="flex-1 min-w-[140px] text-sm"><p class="font-semibold">Se recibe ${escHtml(tradeInTitle(t))}</p><p class="text-xs text-gray-500 truncate">${escHtml(tradeInDesc(t).replace(t.name, '').replace(/^ · /, ''))}</p></div>
         <input type="number" class="pay-amount w-24 p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm font-bold" value="${value.toFixed(2)}" readonly title="Se descuenta del pago">
         <select class="pay-currency hidden"><option value="USD" selected>USD</option></select>
         <button onclick="removePaymentRow(${t.id})" class="text-red-500 hover:text-red-700" title="Quitar"><i class="fas fa-times"></i></button>
@@ -1498,7 +1507,7 @@ function fillInvoice(sale) {
 
     document.getElementById('inv-payment-details').innerHTML = (sale.payments || []).map(p => {
         const m = { name: payName(p) };
-        if (p.tradeIn) return `<div style="max-width:300px;"><div class="flex justify-between"><span>Se recibe ${escHtml(p.tradeIn.name)}</span><span class="font-semibold">${appCurrency} ${fmtMoney(p.amount)}</span></div><p style="font-size:10px;color:#8A8AA0;">Equipo como parte de pago · ${escHtml(tradeInDesc(p.tradeIn))}</p></div>`;
+        if (p.tradeIn) return `<div style="max-width:300px;"><div class="flex justify-between"><span>Se recibe ${escHtml(tradeInTitle(p.tradeIn))}</span><span class="font-semibold">${appCurrency} ${fmtMoney(p.amount)}</span></div><p style="font-size:10px;color:#8A8AA0;">Equipo como parte de pago · ${escHtml(tradeInDesc(p.tradeIn))}</p></div>`;
         if (p.currency === 'VES') {
             const bs = p.amountBs != null ? p.amountBs : p.amount * rate;
             return `<div style="max-width:300px;"><div class="flex justify-between"><span>${m ? m.name : 'Método'}</span><span class="font-semibold">Bs. ${fmtMoney(bs)}</span></div><p class="text-right" style="font-size:10px;color:#8A8AA0;">${appCurrency} ${fmtMoney(p.amount)} · Tasa ${p.rateType || sale.rateType || ''} ${fmtMoney(rate)}</p></div>`;
@@ -1833,7 +1842,7 @@ function openSaleDetail(id) {
         return `<li class="flex items-center justify-between gap-3 py-2"><span class="min-w-0"><span class="block text-sm font-medium truncate">${escHtml((b ? b.name + ' ' : '') + i.name)}</span><span class="block text-xs text-gray-400">${escHtml(label)}${i.serial ? ' · S/N ' + escHtml(i.serial) : ''} · ${money(i.price)} × ${i.qty}</span></span><b class="tabular-nums text-sm">${money(i.price * i.qty)}</b></li>`;
     }).join('');
     const pays = (s.payments || []).map(p => {
-        if (p.tradeIn) return `<li class="text-sm py-1"><p class="flex justify-between gap-3"><span><i class="fab fa-apple text-sky-600 mr-1"></i>Se recibe ${escHtml(p.tradeIn.name)}</span><span class="tabular-nums">${money(p.amount)}</span></p><p class="text-xs text-gray-400">${escHtml(tradeInDesc(p.tradeIn))}</p></li>`;
+        if (p.tradeIn) return `<li class="text-sm py-1"><p class="flex justify-between gap-3"><span><i class="fas fa-right-left text-sky-600 mr-1"></i>Se recibe ${escHtml(tradeInTitle(p.tradeIn))}</span><span class="tabular-nums">${money(p.amount)}</span></p><p class="text-xs text-gray-400">${escHtml(tradeInDesc(p.tradeIn))}</p></li>`;
         return `<li class="flex justify-between gap-3 text-sm py-1"><span>${escHtml(payName(p))}</span><span class="tabular-nums">${money(p.amount)}${p.currency === 'VES' && p.amountBs != null ? ` <span class="text-xs text-gray-400">(${fmtBs(p.amountBs)})</span>` : ''}</span></li>`;
     }).join('') || '<li class="text-sm text-gray-400">Sin detalle de pago</li>';
     const profit = resaleS ? s.total - (Number(s.costTotal) || 0) : null;
