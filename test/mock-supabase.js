@@ -108,6 +108,7 @@ export const isConfigured = true
 export const supabase = {
   from: (t) => new Query(t),
   rpc: async (n, a) => rpc(n, a),
+  functions: { invoke: async (name, { body }) => { await new Promise(r => setTimeout(r, 400)); const s = pick(db.sales, body.saleId); const c = pick(db.customers, s.customer_id); s.extra = { ...(s.extra || {}), emailedAt: new Date().toISOString(), emailedTo: c.email }; window.__lastEmail = { name, saleId: body.saleId, bytes: body.pdfBase64.length, to: c.email }; return { data: { ok: true, to: c.email }, error: null } } },
   channel: () => ({ on() { return this }, subscribe() { return this } }),
   auth: {
     getSession: async () => ({ data: { session } }),

@@ -1,5 +1,5 @@
 import html2pdf from 'html2pdf.js'
-import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate } from './data.js'
+import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate, sendInvoiceEmail } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
 import { mountAreaChart, mountRankBars, gauge } from './charts.js'
 
@@ -1027,6 +1027,16 @@ async function executeFinalSale() {
     renderCart();
     renderPOS();
     closeModal('modal-payment-settle');
+
+    // Envío automático de la factura al correo del cliente (si tiene correo y está activado)
+    const savedSale = sales.find(x => x.id === sale.id) || sale;
+    if (autoEmail && customerEmailOf(savedSale)) {
+        try {
+            const base64 = await blobToBase64(await invoicePdfBlob(savedSale));
+            emailInvoice(savedSale.id, { auto: true, base64 });
+        } catch (err) { toast('No se pudo preparar el PDF para el correo: ' + err.message, 'error'); }
+        fillInvoice(savedSale);
+    }
     
     if(confirm('¿Desea descargar la factura en PDF?')) {
         await downloadPDF(sale.id);
@@ -1037,24 +1047,109 @@ async function executeFinalSale() {
     showSection(channel === 'reventa' ? 'resale-sales' : 'sales');
 }
 
-async function downloadPDF(saleId) {
+// PDF de la factura (para descargar, compartir o enviar por correo)
+const pdfOptions = (saleId) => ({
+    margin: 0.5,
+    filename: `DgtTec_Factura_${saleId}.pdf`,
+    image: { type: 'jpeg', quality: 0.92 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+});
+async function withInvoiceVisible(fn) {
     const element = document.getElementById('printable-invoice');
     element.classList.remove('print-only');
     element.classList.add('block');
-
-    const opt = {
-        margin: 0.5,
-        filename: `DgtTec_Factura_${saleId}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-
-    await html2pdf().set(opt).from(element).save();
-    
-    element.classList.add('print-only');
-    element.classList.remove('block');
+    try { return await fn(element); }
+    finally { element.classList.add('print-only'); element.classList.remove('block'); }
 }
+async function downloadPDF(saleId) {
+    await withInvoiceVisible(el => html2pdf().set(pdfOptions(saleId)).from(el).save());
+}
+async function invoicePdfBlob(sale) {
+    fillInvoice(sale);
+    return withInvoiceVisible(el => html2pdf().set(pdfOptions(sale.id)).from(el).outputPdf('blob'));
+}
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(new Error('No se pudo preparar el PDF'));
+    r.readAsDataURL(blob);
+});
+
+// AVISOS EN PANTALLA
+function toast(message, kind = 'info', ms = 4500) {
+    let box = document.getElementById('toasts');
+    if (!box) { box = document.createElement('div'); box.id = 'toasts'; box.className = 'fixed z-[90] bottom-24 lg:bottom-6 right-4 left-4 sm:left-auto flex flex-col gap-2 items-end no-print'; box.setAttribute('aria-live', 'polite'); document.body.appendChild(box); }
+    const el = document.createElement('div');
+    const icon = { ok: 'fa-circle-check text-emerald-400', error: 'fa-circle-exclamation text-red-400', info: 'fa-paper-plane text-sky-300' }[kind];
+    el.className = 'toast flex items-start gap-3 max-w-sm w-full sm:w-auto rounded-2xl px-4 py-3 text-sm text-white shadow-2xl';
+    el.innerHTML = `<i class="fas ${icon} mt-0.5"></i><span></span>`;
+    el.querySelector('span').textContent = message;
+    box.appendChild(el);
+    if (ms) setTimeout(() => el.remove(), ms);
+    return el;
+}
+
+// ENVÍO POR CORREO
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function customerEmailOf(sale) {
+    const c = customers.find(x => x.id == sale.customerId);
+    return c && EMAIL_OK.test(String(c.email || '').trim()) ? c.email.trim() : '';
+}
+async function emailInvoice(saleId, opts = {}) {
+    const sale = sales.find(x => x.id === saleId);
+    if (!sale) return;
+    const to = customerEmailOf(sale);
+    if (!to) { if (!opts.auto) toast('Este cliente no tiene un correo válido. Agréguelo en Clientes.', 'error'); return; }
+    const pending = toast(`Enviando ${sale.docType || 'factura'} a ${to}…`, 'info', 0);
+    try {
+        const base64 = opts.base64 || await blobToBase64(await invoicePdfBlob(sale));
+        await sendInvoiceEmail(sale.id, base64);
+        pending.remove();
+        toast(`Factura enviada a ${to}`, 'ok');
+        sale.emailedAt = new Date().toISOString(); sale.emailedTo = to;
+        if (!document.getElementById('modal-sale').classList.contains('hidden')) openSaleDetail(sale.id);
+    } catch (err) {
+        pending.remove();
+        toast(`No se envió la factura a ${to}: ${err.message}`, 'error', 9000);
+    }
+}
+
+// COMPARTIR (WhatsApp, Gmail…) desde el teléfono
+async function shareInvoice(saleId) {
+    const sale = sales.find(x => x.id === saleId);
+    if (!sale) return;
+    const c = customers.find(x => x.id == sale.customerId);
+    const text = `${sale.docType || 'Factura'} ${sale.id} · DGT Technology · Total ${money(sale.total)}. ¡Gracias por su compra!`;
+    try {
+        const blob = await invoicePdfBlob(sale);
+        const file = new File([blob], `${sale.id}.pdf`, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `${sale.docType || 'Factura'} ${sale.id}`, text });
+            return;
+        }
+    } catch (err) { if (err && err.name === 'AbortError') return; }
+    // Sin compartir archivos (PC): abre WhatsApp con el mensaje y descarga el PDF para adjuntarlo
+    await downloadPDF(sale.id);
+    const phone = String(c?.phone || '').replace(/\D/g, '').replace(/^0/, '58');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text + ' (PDF adjunto)')}`, '_blank', 'noopener');
+}
+
+let autoEmail = true;
+async function setAutoEmail(on) {
+    try {
+        await saveSetting('invoice_email_auto', on ? '1' : '0');
+        autoEmail = on;
+        toast(on ? 'Las facturas se enviarán solas por correo al facturar' : 'Envío automático por correo desactivado', 'ok');
+    } catch (err) { toast('No se pudo guardar: ' + err.message, 'error'); }
+    syncAutoEmailToggle();
+}
+function syncAutoEmailToggle() {
+    const t = document.getElementById('auto-email-toggle');
+    if (t) { t.setAttribute('aria-checked', autoEmail); t.classList.toggle('bg-brand', autoEmail); t.classList.toggle('bg-gray-300', !autoEmail); t.firstElementChild.style.transform = autoEmail ? 'translateX(24px)' : ''; }
+}
+
+
 
 let salesPeriod = 'todo', salesStatus = 'todas';
 function salesTableRows(list, withProfit) {
@@ -1067,7 +1162,7 @@ function salesTableRows(list, withProfit) {
         const profit = s.total - (Number(s.costTotal) || 0);
         return `
         <tr class="border-b dark:border-gray-800 row-click hover:bg-gray-50 dark:hover:bg-white/5 transition ${cancelled ? 'opacity-70' : ''}" onclick="if(!event.target.closest('button'))openSaleDetail('${s.id}')" tabindex="0" onkeydown="if(event.key==='Enter')openSaleDetail('${s.id}')">
-            <td class="p-4"><p class="font-mono font-medium">${s.id}</p><p class="text-xs text-gray-400">${escHtml(s.docType || '')} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</p>
+            <td class="p-4"><p class="font-mono font-medium">${s.id}${s.emailedAt ? ' <i class="fas fa-envelope-circle-check text-emerald-500 text-xs" title="Enviada por correo"></i>' : ''}</p><p class="text-xs text-gray-400">${escHtml(s.docType || '')} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</p>
                 ${cancelled ? `<span class="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">Anulada</span>` : ''}</td>
             <td class="p-4">${escHtml(cust ? cust.name : 'Cliente general')}</td>
             ${withProfit ? `<td class="p-4 text-sm">${escHtml(names)}</td><td class="p-4 admin-only">${money(s.costTotal)}</td>` : `<td class="p-4 text-xs">${escHtml(paySummary)}</td>`}
@@ -1508,6 +1603,13 @@ function openSaleDetail(id) {
                 <p class="text-right text-xs opacity-80">${fmtBs(s.total * (s.rate || 0))}</p>
                 ${profit != null ? `<p class="admin-only flex justify-between text-sm mt-2 pt-2 border-t border-white/20"><span class="opacity-80">Costo ${money(s.costTotal)}</span><b>Ganancia ${money(profit)}</b></p>` : ''}
             </div>
+            <div class="rounded-xl border border-gray-100 dark:border-white/10 p-3 flex flex-wrap items-center gap-3">
+                <div class="min-w-0 flex-1 text-sm">${s.emailedAt
+                    ? `<p class="font-semibold text-emerald-600"><i class="fas fa-circle-check mr-1"></i>Enviada por correo</p><p class="text-xs text-gray-400 truncate">${escHtml(s.emailedTo || '')} · ${new Date(s.emailedAt).toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>`
+                    : customerEmailOf(s) ? `<p class="font-semibold">Aún no se ha enviado</p><p class="text-xs text-gray-400 truncate">${escHtml(customerEmailOf(s))}</p>` : '<p class="font-semibold">El cliente no tiene correo</p><p class="text-xs text-gray-400">Agréguelo en Clientes para poder enviarla</p>'}</div>
+                <button onclick="emailInvoice('${s.id}')" ${customerEmailOf(s) ? '' : 'disabled'} class="btn-ghost disabled:opacity-40"><i class="fas fa-envelope"></i> ${s.emailedAt ? 'Reenviar' : 'Enviar'}</button>
+                <button onclick="shareInvoice('${s.id}')" class="btn-ghost"><i class="fab fa-whatsapp"></i> Compartir</button>
+            </div>
             <div class="flex flex-wrap gap-2">
                 <button onclick="reprint('${s.id}', true)" class="btn-primary flex-1 justify-center"><i class="fas fa-file-pdf"></i> PDF</button>
                 <button onclick="reprint('${s.id}', false)" class="btn-ghost flex-1 justify-center"><i class="fas fa-print"></i> Imprimir</button>
@@ -1813,6 +1915,7 @@ async function reloadData() {
     const d = await fetchAll();
     products = d.products; brands = d.brands; customers = d.customers;
     sellers = d.sellers; payments = d.payments; sales = d.sales; resale = d.resale;
+    autoEmail = d.autoEmail; syncAutoEmailToggle();
     document.querySelectorAll('.resale-not-ready').forEach(el => el.classList.toggle('hidden', d.resaleReady));
     if (d.brandColor !== brandColor || d.brandLogo !== brandLogo) {
         brandColor = d.brandColor; brandLogo = d.brandLogo;
@@ -2000,6 +2103,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

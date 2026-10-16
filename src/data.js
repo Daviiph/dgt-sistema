@@ -92,6 +92,7 @@ export async function fetchAll() {
   out.rateDate = s.rate_date || ''
   out.brandColor = s.brand_color || ''
   out.brandLogo = s.brand_logo || ''
+  out.autoEmail = s.invoice_email_auto !== '0'
   resaleReady = out.resaleReady
   return out
 }
@@ -167,4 +168,17 @@ export function subscribeChanges(onChange) {
       timer = setTimeout(onChange, 600)
     })
     .subscribe()
+}
+
+// Envía la factura en PDF al correo del cliente (función "enviar-factura" en Supabase)
+export async function sendInvoiceEmail(saleId, pdfBase64) {
+  const { data, error } = await supabase.functions.invoke('enviar-factura', { body: { saleId, pdfBase64 } })
+  if (error) {
+    let msg = error.message
+    try { const b = await error.context.json(); if (b && b.error) msg = b.error } catch { /* sin detalle */ }
+    if (/Failed to send|not found|404/i.test(msg)) msg = 'el servicio de correo aún no está activado'
+    throw new Error(msg)
+  }
+  if (data && data.error) throw new Error(data.error)
+  return data
 }

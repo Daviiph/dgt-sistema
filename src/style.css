@@ -163,3 +163,5 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 .dark .kpi, .dark .search-box > input, .dark .seg, .dark .field-sm, .dark .btn-ghost { background-color: rgb(13 17 38 / 0.72); backdrop-filter: blur(14px); }
+
+.toast { background: rgb(10 13 30 / .94); border: 1px solid rgb(255 255 255 / .1); backdrop-filter: blur(10px); animation: fadeUp .25s ease-out; }
