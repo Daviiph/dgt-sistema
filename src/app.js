@@ -1373,6 +1373,7 @@ function updateDashboard() {
             labels: bk.map(b => b.label),
             series: [{ name: M.name, values, color: 'var(--brand-light)' }],
             format: M.fmt,
+            tipFormat: dashMetric === 'monto' ? money : M.fmt,
             ariaLabel: `${M.name} por ${dashPeriod === 'hoy' ? 'hora' : 'día'}. Use las flechas para recorrer y Enter para ver las ventas.`,
             detail: (i) => { const l = inP.filter(s => inRange(s, bk[i])); return dashMetric === 'monto' ? `${l.length} venta(s)` : money(sum(l)); },
             onSelect: (i) => openSalesList(bk[i].title, inP.filter(s => inRange(s, bk[i]))),
@@ -1429,7 +1430,7 @@ function updateDashboard() {
             <td class="py-2.5 pr-3"><div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border dark:border-gray-700 shrink-0" style="background:${t.color || '#ccc'}"></span><span class="font-medium truncate">${escHtml(t.name)}</span></div></td>
             <td class="py-2.5 pr-3 text-right font-semibold">${t.qty}</td>
             <td class="py-2.5 pr-3 text-right">${money(t.total)}</td>
-            <td class="py-2.5"><div class="flex items-center gap-2"><div class="progress-track flex-1"><div class="progress-bar" style="width:${(t.qty / maxQty) * 100}%"></div></div><span class="text-xs text-gray-400 w-9 text-right">${Math.round((t.qty / totalUnits) * 100)}%</span></div></td>
+            <td class="py-2.5 hidden sm:table-cell"><div class="flex items-center gap-2"><div class="progress-track flex-1"><div class="progress-bar" style="width:${(t.qty / maxQty) * 100}%"></div></div><span class="text-xs text-gray-400 w-9 text-right">${Math.round((t.qty / totalUnits) * 100)}%</span></div></td>
         </tr>`).join('') : '<tr><td colspan="4" class="py-8 text-center text-gray-400">No hay ventas en este período. <button onclick="showSection(\'pos\')" class="text-brand font-semibold hover:underline">Registrar una venta</button></td></tr>');
     productSalesScope = inP;
 
@@ -1444,7 +1445,7 @@ function saleRowHtml(s) {
     const t = saleTime(s);
     return `<li><button onclick="openSaleDetail('${s.id}')" class="w-full flex items-center gap-3 rounded-xl px-2 py-2 -mx-2 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition">
         <span class="w-9 h-9 rounded-xl ${isResaleSale(s) ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-brand/10 text-brand'} flex items-center justify-center shrink-0"><i class="fas ${isResaleSale(s) ? 'fa-recycle' : 'fa-receipt'} text-xs"></i></span>
-        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-gray-400">${s.id} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</span></span>
+        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-gray-400 truncate">${s.id} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</span></span>
         <span class="text-sm font-bold tabular-nums ${cancelled ? 'line-through text-gray-400' : ''}">${money(s.total)}</span></button></li>`;
 }
 
@@ -1652,11 +1653,21 @@ function renderResaleDashboard() {
     const sold = bk.map(b => active.filter(s => inRange(s, b)).reduce((a, s) => a + s.total, 0));
     const gain = bk.map(b => active.filter(s => inRange(s, b)).reduce((a, s) => a + resaleProfit(s), 0));
     set('rs-chart-sub', `${PERIOD_TEXT[rsPeriod]} · ganancia ${money(tot - cost)}`);
+    const recentEl = document.getElementById('rs-recent');
+    if (recentEl) recentEl.innerHTML = active.length ? [...active].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0)).slice(0, 6).map(saleRowHtml).join('') : '<li class="text-sm text-gray-400 text-center py-8">Sin ventas de reventa en este período</li>';
+    const availEl = document.getElementById('rs-avail-list');
+    if (availEl) availEl.innerHTML = avail.length ? [...avail].sort((a, b) => (b.price - b.cost) - (a.price - a.cost)).slice(0, 6).map(it => `
+        <li><button onclick="sellResale(${it.id})" class="w-full flex items-center gap-3 rounded-xl px-2 py-2 -mx-2 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition">
+            <span class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 flex items-center justify-center shrink-0"><i class="fas fa-mobile-screen text-xs"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml([it.brand, it.name].filter(Boolean).join(' '))}</span><span class="block text-[11px] text-gray-400 truncate">${escHtml(it.supplier || 'Sin proveedor')} · costo ${money(it.cost)}</span></span>
+            <span class="text-right shrink-0"><span class="block text-sm font-bold tabular-nums">${money(it.price)}</span><span class="block text-[11px] font-semibold text-emerald-600">+${money(it.price - it.cost)}</span></span>
+        </button></li>`).join('') : '<li class="text-sm text-gray-400 text-center py-8">No hay equipos disponibles. <button onclick="openResaleModal()" class="text-emerald-600 font-semibold hover:underline">Registrar uno</button></li>';
     const el = document.getElementById('rs-area');
     if (el && !el.closest('section').classList.contains('hidden')) mountAreaChart(el, {
         labels: bk.map(b => b.label),
         series: [{ name: 'Vendido', values: sold, color: '255 255 255' }, { name: 'Ganancia', values: gain, color: '52 211 153' }],
         format: shortMoney,
+        tipFormat: money,
         ariaLabel: 'Ventas y ganancia de reventa',
         onSelect: (i) => openSalesList(bk[i].title, active.filter(s => inRange(s, bk[i]))),
     });

@@ -56,7 +56,8 @@ function onResize(host, draw) {
  * opts: { labels[], series:[{name, values[], color:'r g b'}], format(v), height, onSelect(i), hint }
  */
 export function mountAreaChart(host, opts) {
-  const { labels, series, format = (v) => v, height = 240, onSelect } = opts
+  const { labels, series, format = (v) => v, onSelect } = opts
+  const tipFormat = opts.tipFormat || format
   host.classList.add('chart-host')
   host.tabIndex = 0
   host.setAttribute('role', 'img')
@@ -66,7 +67,7 @@ export function mountAreaChart(host, opts) {
 
   function draw(W) {
     const id = 'ac' + uid++
-    const H = height, L = 48, R = 14, T = 16, B = 28
+    const H = opts.height || (window.innerWidth >= 1280 ? 300 : 220), L = 48, R = 14, T = 16, B = 28
     const max = niceMax(Math.max(0, ...series.flatMap((s) => s.values)))
     const x = (i) => L + (n === 1 ? (W - L - R) / 2 : (i * (W - L - R)) / (n - 1))
     const y = (v) => T + (H - T - B) * (1 - v / max)
@@ -105,7 +106,7 @@ export function mountAreaChart(host, opts) {
       svg.querySelectorAll('.cx-dot').forEach((d) => { const s = series[d.dataset.s]; d.setAttribute('cx', cx); d.setAttribute('cy', y(s.values[i])); d.setAttribute('opacity', 1) })
       const extra = opts.detail ? opts.detail(i) : ''
       tip.innerHTML = `<p class="tip-label">${esc(labels[i])}</p>` + series.map((s) =>
-        `<p class="tip-row"><span class="tip-key" style="background:rgb(${s.color || 'var(--brand-light)'})"></span><b>${esc(format(s.values[i]))}</b><span>${esc(s.name || '')}</span></p>`).join('') +
+        `<p class="tip-row"><span class="tip-key" style="background:rgb(${s.color || 'var(--brand-light)'})"></span><b>${esc(tipFormat(s.values[i]))}</b><span>${esc(s.name || '')}</span></p>`).join('') +
         (extra ? `<p class="tip-extra">${esc(extra)}</p>` : '') + (onSelect ? '<p class="tip-hint">Toque para ver las ventas</p>' : '')
       tip.classList.add('on')
       placeTip(host, tip, cx, y(Math.max(...series.map((s) => s.values[i]))))
