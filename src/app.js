@@ -1838,6 +1838,7 @@ function suggestPrice() {
                 <span class="block text-[11px] text-gray-400">${o.note}</span>
             </button>`).join('')}</div>${ref}
         <p class="text-[11px] text-gray-400 mt-2">Toque una opción para usar ese precio.</p>`;
+    if (!document.getElementById('resale-price').value) applySuggestedPrice(opts[1].price);
 }
 
 function applySuggestedPrice(price, btn) {
@@ -1866,6 +1867,7 @@ async function askPriceAI() {
             <p class="mt-2">${escHtml(r.explicacion || '')}</p>
             ${sources ? `<p class="text-[11px] text-gray-400 mt-1">Fuentes: ${sources}</p>` : ''}
             <p class="text-[11px] text-gray-400 mt-1">Es una sugerencia: confirme el precio antes de publicarlo.</p>`;
+        if (!document.getElementById('resale-price').value) applySuggestedPrice(roundPrice(r.precio));
     } catch (err) {
         body.innerHTML = `<p class="text-amber-700 dark:text-amber-300">${escHtml(err.message)}</p><p class="text-xs text-gray-500 mt-1">Mientras tanto puede usar "Sugerir con mi historial".</p>`;
     }
