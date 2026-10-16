@@ -52,6 +52,8 @@ class Query {
   order(col, o = {}) { this.ord = [col, o.ascending !== false]; return this }
   limit(n) { this.lim = n; return this }
   eq(col, v) { this.filters.push((r) => String(r[col]) === String(v)); return this }
+  neq(col, v) { this.filters.push((r) => String(r[col]) !== String(v)); return this }
+  maybeSingle() { this.one = true; return this }
   in(col, vs) { this.filters.push((r) => vs.map(String).includes(String(r[col]))); return this }
   single() { this.one = true; return this }
   upsert(rows) { this.op = 'upsert'; this.payload = [].concat(rows); return this }

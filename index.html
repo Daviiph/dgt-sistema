@@ -28,11 +28,12 @@
     <div id="auth-screen" class="hidden bg-white dark:bg-gray-950">
       <div class="min-h-screen lg:grid lg:grid-cols-2">
         <!-- Panel de marca con curva -->
-        <div class="relative overflow-hidden bg-[#07080f] text-white h-[38vh] min-h-[250px] lg:h-auto lg:min-h-screen">
-            <div class="absolute inset-0" style="background:radial-gradient(700px 500px at 20% 10%, rgb(var(--brand) / .55), transparent 65%), radial-gradient(500px 400px at 90% 90%, rgb(var(--brand-dark) / .5), transparent 70%)"></div>
+        <div class="auth-hero relative overflow-hidden bg-[#07080f] text-white h-[38vh] min-h-[250px] lg:h-auto lg:min-h-screen">
+            <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+            <div class="absolute inset-0 auth-grid"></div>
             <svg class="absolute -bottom-px left-0 w-full h-24 lg:hidden text-white dark:text-gray-950" viewBox="0 0 400 100" preserveAspectRatio="none"><path d="M0 100 L0 60 C 120 110, 260 -10, 400 10 L400 100 Z" fill="currentColor"/></svg>
             <svg class="hidden lg:block absolute top-0 -right-px h-full w-32 text-white dark:text-gray-950" viewBox="0 0 100 400" preserveAspectRatio="none"><path d="M100 0 L60 0 C 110 120, -10 260, 30 400 L100 400 Z" fill="currentColor"/></svg>
-            <div class="relative h-full flex flex-col justify-start lg:justify-center p-8 lg:p-16 pt-10">
+            <div class="relative h-full flex flex-col justify-start lg:justify-center p-8 lg:p-16 pt-10 auth-stagger">
                 <div class="flex items-center gap-4">
                     <img data-brand-logo src="/logo.png" alt="Logo de la tienda" class="h-14 lg:h-20 w-auto max-w-[220px] object-contain rounded-2xl bg-white/95 p-1.5 shadow-xl">
                 </div>
@@ -57,7 +58,7 @@
                         <div class="relative"><input id="login-password" type="password" required autocomplete="current-password" placeholder="••••••••" class="w-full p-3.5 pr-11 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-gray-900 dark:focus:border-white transition">
                         <button type="button" onclick="togglePassword('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label="Mostrar contraseña"><i class="far fa-eye"></i></button></div></div>
                         <div class="text-right -mt-2"><a href="#" data-auth-view="forgot" class="text-sm text-gray-500 hover:text-brand">¿Olvidó su contraseña?</a></div>
-                        <button class="w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand dark:hover:bg-brand dark:hover:text-white text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Entrar</button>
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand dark:hover:bg-brand dark:hover:text-white text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Entrar</button>
                         <p class="text-center text-sm text-gray-500">¿No tiene cuenta? <a href="#" data-auth-view="signup" class="font-semibold text-gray-900 dark:text-white hover:text-brand">Crear cuenta</a></p>
                     </form></div>
                     <div id="auth-signup" class="hidden"><form id="form-signup" class="space-y-4">
@@ -65,8 +66,9 @@
                         <input id="signup-name" required placeholder="Nombre completo" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
                         <input id="signup-email" type="email" required autocomplete="username" placeholder="Correo electrónico" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
                         <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Contraseña (mín. 8 caracteres)" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <div class="pw-meter -mt-2" aria-hidden="true"><span></span><span></span><span></span><span></span></div><p id="pw-hint" class="text-xs text-gray-400 -mt-2"></p>
                         <input id="signup-password2" type="password" required minlength="8" autocomplete="new-password" placeholder="Repetir contraseña" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
-                        <button class="w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Crear cuenta</button>
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Crear cuenta</button>
                         <p class="text-xs text-gray-500 text-center">El administrador debe aprobar la cuenta antes de usarla.</p>
                         <a href="#" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</a>
                     </form></div>
@@ -74,13 +76,13 @@
                         <h2 class="text-3xl font-bold">Recuperar acceso</h2>
                         <p class="text-sm text-gray-500">Escriba su correo y le enviaremos un enlace para crear una nueva contraseña.</p>
                         <input id="forgot-email" type="email" required placeholder="Correo electrónico" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
-                        <button class="w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Enviar enlace</button>
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Enviar enlace</button>
                         <a href="#" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</a>
                     </form></div>
                     <div id="auth-recovery" class="hidden"><form id="form-recovery" class="space-y-4">
                         <h2 class="text-3xl font-bold">Nueva contraseña</h2>
                         <input id="recovery-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Nueva contraseña" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
-                        <button class="w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Guardar contraseña</button>
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Guardar contraseña</button>
                     </form></div>
                     <div id="auth-pending" class="hidden text-center space-y-4">
                         <i class="fas fa-hourglass-half text-4xl text-amber-500"></i>
@@ -93,7 +95,7 @@
                         <p class="font-semibold">Falta conectar la base de datos</p>
                         <p class="text-sm text-gray-500">Configure VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY y vuelva a publicar la aplicación.</p>
                     </div>
-                    <p id="auth-message" class="text-sm text-center mt-4"></p>
+                    <p id="auth-message" class="text-sm text-center mt-4" role="alert"></p>
                 </div>
             </div>
             <div class="flex items-center justify-center gap-2 pb-6 text-[11px] text-gray-400">

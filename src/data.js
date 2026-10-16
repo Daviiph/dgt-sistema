@@ -209,9 +209,17 @@ if (typeof window !== 'undefined') {
 }
 
 
+let logoCache = { at: null, value: '' }
+async function getLogo(at) {
+  if (logoCache.at === at && logoCache.at !== null) return logoCache.value
+  const { data } = await supabase.from('settings').select('value').eq('key', 'brand_logo').maybeSingle()
+  logoCache = { at, value: (data && data.value) || '' }
+  return logoCache.value
+}
+
 async function fetchRemote() {
   const [settings, ...rest] = await Promise.all([
-    supabase.from('settings').select('*'),
+    supabase.from('settings').select('key,value').neq('key', 'brand_logo'),
     ...Object.values(TABLES).map((t) => supabase.from(t.table).select('*').order('id')),
     supabase.from('sales').select('*').order('created_at'),
   ])
@@ -235,7 +243,7 @@ async function fetchRemote() {
   out.binanceRate = s.rate_binance || out.globalRate
   out.rateDate = s.rate_date || ''
   out.brandColor = s.brand_color || ''
-  out.brandLogo = s.brand_logo || ''
+  out.brandLogo = await getLogo(s.brand_logo_at || '')
   out.autoEmail = s.invoice_email_auto !== '0'
   resaleReady = out.resaleReady
   return out
@@ -313,7 +321,7 @@ export function subscribeChanges(onChange) {
     .channel('db-changes')
     .on('postgres_changes', { event: '*', schema: 'public' }, () => {
       clearTimeout(timer)
-      timer = setTimeout(onChange, 600)
+      timer = setTimeout(onChange, 1500)
     })
     .subscribe()
 }

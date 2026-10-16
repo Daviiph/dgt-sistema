@@ -13,21 +13,43 @@ const ERRORS = {
 const tr = (msg) => ERRORS[msg] || msg
 
 function showView(view) {
-  $('auth-screen').classList.remove('hidden')
+  $('auth-screen').classList.remove('hidden', 'leaving')
   $('app-shell').classList.add('hidden')
-  VIEWS.forEach((v) => $('auth-' + v).classList.toggle('hidden', v !== view))
+  VIEWS.forEach((v) => {
+    const el = $('auth-' + v)
+    el.classList.toggle('hidden', v !== view)
+    if (v === view) { el.classList.remove('auth-view-in'); void el.offsetWidth; el.classList.add('auth-view-in') }
+  })
   setMessage('')
+  const first = $('auth-' + view).querySelector('input')
+  if (first && window.innerWidth >= 1024) setTimeout(() => first.focus(), 50)
 }
 
 function setMessage(text, ok = false) {
   const el = $('auth-message')
   el.textContent = text
   el.className = 'text-sm text-center mt-4 ' + (ok ? 'text-green-600' : 'text-red-500')
+  if (text && !ok) {
+    const form = document.querySelector('#auth-screen form:not(.hidden), #auth-screen [id^="auth-"]:not(.hidden) form')
+    if (form) { form.classList.remove('auth-shake'); void form.offsetWidth; form.classList.add('auth-shake') }
+  }
 }
 
 function busy(form, on) {
   form.querySelectorAll('button, input').forEach((el) => (el.disabled = on))
+  form.querySelectorAll('.auth-btn').forEach((b) => b.classList.toggle('loading', on))
 }
+
+// Medidor de seguridad de la contraseña (registro)
+function passwordStrength(pw) {
+  let n = 0
+  if (pw.length >= 8) n++
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) n++
+  if (/\d/.test(pw)) n++
+  if (/[^A-Za-z0-9]/.test(pw) || pw.length >= 12) n++
+  return pw ? Math.max(1, n) : 0
+}
+const PW_TEXT = ['', 'Muy débil', 'Débil', 'Buena', 'Fuerte']
 
 const PROFILE_KEY = 'ns_profile'
 const cachedProfile = () => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null') } catch { return null } }
@@ -50,8 +72,16 @@ async function enter(user) {
     $('pending-email').textContent = user.email
     return
   }
-  $('auth-screen').classList.add('hidden')
+  const auth = $('auth-screen')
+  if (!auth.classList.contains('hidden')) {
+    auth.classList.add('leaving')
+    await new Promise((r) => setTimeout(r, 380))
+  }
+  auth.classList.add('hidden')
+  auth.classList.remove('leaving')
   $('app-shell').classList.remove('hidden')
+  $('app-shell').classList.add('entering')
+  setTimeout(() => $('app-shell').classList.remove('entering'), 700)
   $('user-email').textContent = profile.full_name || user.email
   $('user-role').textContent = profile.role === 'admin' ? 'Administrador' : 'Vendedor'
   try {
@@ -96,6 +126,12 @@ export async function initAuth() {
     if (error) return setMessage(!navigator.onLine ? 'No hay conexión a internet. Para entrar por primera vez en este equipo necesita internet.' : tr(error.message))
     await enter(data.user)
   }
+
+  $('signup-password').addEventListener('input', (e) => {
+    const n = passwordStrength(e.target.value)
+    document.querySelector('.pw-meter').dataset.s = n
+    $('pw-hint').textContent = n ? `Seguridad: ${PW_TEXT[n]}` : ''
+  })
 
   $('form-signup').onsubmit = async (e) => {
     e.preventDefault()

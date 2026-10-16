@@ -1,4 +1,6 @@
-import html2pdf from 'html2pdf.js'
+let html2pdfLib = null;
+const html2pdf = (...a) => html2pdfLib(...a);
+async function loadPdfLib() { if (!html2pdfLib) html2pdfLib = (await import('html2pdf.js')).default; }
 import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate, sendInvoiceEmail, askPriceAssistant, onNetChange, flushOutbox, persistLocal, netState } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
 import { mountAreaChart, mountRankBars, gauge } from './charts.js'
@@ -1097,6 +1099,7 @@ const pdfOptions = (saleId) => ({
     jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
 });
 async function withInvoiceVisible(fn) {
+    await loadPdfLib();
     const element = document.getElementById('printable-invoice');
     element.classList.remove('print-only');
     element.classList.add('block');
@@ -1482,6 +1485,24 @@ function deltaText(cur, prev) {
     return `<span class="${up ? 'text-emerald-600' : 'text-red-500'}"><i class="fas fa-arrow-${up ? 'up' : 'down'} text-[10px]"></i> ${Math.abs(d).toFixed(0)}%</span> <span class="text-gray-400">vs. período anterior</span>`;
 }
 
+// Las cifras cuentan hasta su valor (respeta "reducir movimiento")
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countTo(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const target = parseFloat(String(text).replace(/[^0-9.-]/g, ''));
+    const from = parseFloat(el.dataset.v || '0');
+    el.dataset.v = isNaN(target) ? '0' : String(target);
+    if (reduceMotion || isNaN(target) || target === from || el.closest('section')?.classList.contains('hidden')) { el.innerText = text; return; }
+    const isMoney = /\$|Bs/.test(text), t0 = performance.now(), dur = 650;
+    const step = (now) => {
+        const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3), v = from + (target - from) * e;
+        el.innerText = k < 1 ? (isMoney ? money(v) : String(Math.round(v))) : text;
+        if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
 function updateDashboard() {
     const storeSales = sales.filter(s => !isResaleSale(s));
     const active = storeSales.filter(s => s.status !== 'cancelada');
@@ -1499,12 +1520,12 @@ function updateDashboard() {
     set('dash-hello', currentProfile ? ((currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] || '—') : '—');
 
     const total = sum(inP);
-    set('dash-total-sales', money(total));
+    countTo('dash-total-sales', money(total));
     html('dash-total-delta', deltaText(total, prev ? sum(prev) : null));
-    set('dash-count-sales', inP.length);
+    countTo('dash-count-sales', inP.length);
     set('dash-ticket', inP.length ? `Ticket promedio ${money(total / inP.length)}` : 'Sin ventas en el período');
     const comm = inP.reduce((a, s) => { const sl = sellers.find(x => x.id == s.sellerId); return a + (sl ? s.total * sl.comm : 0); }, 0);
-    set('dash-total-commissions', money(comm));
+    countTo('dash-total-commissions', money(comm));
     set('dash-units', `${inP.reduce((a, s) => a + unitsOf(s), 0)} equipos vendidos`);
     const low = products.filter(p => p.stock < 5);
     set('dash-low-stock', low.length);
@@ -1513,7 +1534,7 @@ function updateDashboard() {
     // Hoy
     const todayK = dayKey(new Date());
     const today = active.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; });
-    set('dash-today-sales', money(sum(today)));
+    countTo('dash-today-sales', money(sum(today)));
     set('dash-today-count', today.length ? `${today.length} venta(s) · ${today.reduce((a, s) => a + unitsOf(s), 0)} equipo(s)` : 'Aún no hay ventas hoy');
     set('dash-today-label', new Date().toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short' }));
     const bcv = getRate('BCV'), bin = getRate('Binance P2P');
@@ -2019,6 +2040,7 @@ async function saveLogoModal() {
     btn.disabled = true;
     try {
         await saveSetting('brand_logo', logoDraft.logo);
+        await saveSetting('brand_logo_at', String(Date.now()));
         await saveSetting('brand_color', logoDraft.color);
         brandLogo = logoDraft.logo; brandColor = logoDraft.color;
         cacheBrand(brandColor, brandLogo);
@@ -2046,6 +2068,7 @@ async function resetBrand() {
     if (!confirm('¿Volver al logo y colores originales del sistema?')) return;
     try {
         await saveSetting('brand_logo', '');
+        await saveSetting('brand_logo_at', String(Date.now()));
         await saveSetting('brand_color', '');
         brandLogo = ''; brandColor = '';
         applyPalette(DEFAULT_COLOR); applyLogo('');
@@ -2100,9 +2123,20 @@ async function reloadData() {
     document.getElementById('config-rate').value = globalRate;
 }
 
+// Sólo se redibuja la pantalla visible; las demás se dibujan al abrirlas (showSection)
+const SECTION_RENDER = {
+    dashboard: () => updateDashboard(), brands: () => renderBrands(), inventory: () => renderInventory(), pos: () => renderPOS(),
+    customers: () => renderCustomers(), sellers: () => renderSellers(), payments: () => renderPayments(), sales: () => renderSales(),
+    'resale-items': () => renderResaleItems(), 'resale-sales': () => renderResaleSales(), 'resale-dashboard': () => renderResaleDashboard(),
+};
+let refreshQueued = false;
 function refreshAllViews() {
-    [updateDashboard, renderBrands, renderInventory, renderPOS, renderCart, renderCustomers, renderSellers, renderPayments, renderSales, renderResaleItems, renderResaleSales, renderResaleDashboard]
-        .forEach(f => { try { f(); } catch (e) { console.error(e); } });
+    if (refreshQueued) return;
+    refreshQueued = true;
+    requestAnimationFrame(() => {
+        refreshQueued = false;
+        for (const f of [SECTION_RENDER[currentSection], renderCart]) { try { f && f(); } catch (e) { console.error(e); } }
+    });
 }
 
 // USUARIOS Y AUDITORÍA (sólo admin)
