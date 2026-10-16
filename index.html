@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#7C3AED">
+    <meta name="description" content="Sistema de ventas e inventario de DGT Technology">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>DgtTecnologyVzla | Vendra</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <script>if (localStorage.getItem('ns_theme') === 'dark') document.documentElement.classList.add('dark');</script>
+  <script type="module" crossorigin src="/assets/index-DWt22L_I.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-D3pe4osA.css">
+</head>
+<body class="bg-slate-50 text-gray-800 dark:bg-gray-950 dark:text-gray-100 mode-tienda">
+    <!-- BIENVENIDA DEL PROGRAMA -->
+    <div id="splash" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#05060f] text-white">
+        <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(600px 400px at 50% 40%, rgba(56,189,248,.14), transparent 70%)"></div>
+        <div class="splash-logo relative" data-program-logo="112"></div>
+        <div class="splash-name relative mt-8 text-center">
+            <p class="text-4xl md:text-5xl" data-program-name></p>
+            <div class="splash-bar mx-auto mt-4 h-[3px] w-24 rounded-full bg-white/10 overflow-hidden"></div>
+            <p class="mt-5 text-sm text-white/55" data-program-tagline></p>
+        </div>
+        <p class="absolute bottom-8 text-[11px] tracking-widest uppercase text-white/35" data-program-credit></p>
+    </div>
+
+    <!-- INICIO DE SESIÓN -->
+    <div id="auth-screen" class="hidden bg-white dark:bg-gray-950">
+      <div class="min-h-screen lg:grid lg:grid-cols-2">
+        <!-- Panel de marca con curva -->
+        <div class="auth-hero relative overflow-hidden bg-[#07080f] text-white h-[38vh] min-h-[250px] lg:h-auto lg:min-h-screen">
+            <div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+            <div class="absolute inset-0 auth-grid"></div>
+            <svg class="absolute -bottom-px left-0 w-full h-24 lg:hidden text-white dark:text-gray-950" viewBox="0 0 400 100" preserveAspectRatio="none"><path d="M0 100 L0 60 C 120 110, 260 -10, 400 10 L400 100 Z" fill="currentColor"/></svg>
+            <svg class="hidden lg:block absolute top-0 -right-px h-full w-32 text-white dark:text-gray-950" viewBox="0 0 100 400" preserveAspectRatio="none"><path d="M100 0 L60 0 C 110 120, -10 260, 30 400 L100 400 Z" fill="currentColor"/></svg>
+            <div class="relative h-full flex flex-col justify-start lg:justify-center p-8 lg:p-16 pt-10 auth-stagger">
+                <div class="flex items-center gap-4">
+                    <img data-brand-logo src="/logo.png" alt="Logo de la tienda" class="h-14 lg:h-20 w-auto max-w-[220px] object-contain rounded-2xl bg-white/95 p-1.5 shadow-xl">
+                </div>
+                <h1 class="mt-5 lg:mt-10 text-2xl sm:text-3xl xl:text-4xl font-semibold tracking-[0.12em] uppercase break-words">DgtTecnology<span class="text-brand-light">Vzla</span></h1>
+                <p class="mt-2 lg:mt-4 text-sm lg:text-lg text-white/60">¡Bienvenido de nuevo! Inicia sesión para continuar.</p>
+                <div class="hidden lg:flex mt-12 gap-3 text-xs text-white/50">
+                    <span class="px-3 py-1 rounded-full border border-white/15"><i class="fas fa-store mr-1"></i>Tienda</span>
+                    <span class="px-3 py-1 rounded-full border border-white/15"><i class="fas fa-recycle mr-1"></i>Reventa</span>
+                    <span class="px-3 py-1 rounded-full border border-white/15"><i class="fas fa-coins mr-1"></i>Tasa BCV / Binance</span>
+                </div>
+            </div>
+        </div>
+        <!-- Formulario -->
+        <div class="flex flex-col min-h-[62vh] lg:min-h-screen">
+            <div class="flex-1 flex items-center justify-center px-6 py-8 lg:px-16">
+                <div class="w-full max-w-sm animate-fade-up">
+                    <div id="auth-login" class="hidden"><form id="form-login" class="space-y-5">
+                        <h2 class="text-3xl font-bold">Iniciar sesión</h2>
+                        <div><label for="login-email" class="block text-sm font-medium text-gray-500 mb-1">Correo</label>
+                        <input id="login-email" type="email" required autocomplete="username" placeholder="tucorreo@gmail.com" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-gray-900 dark:focus:border-white transition"></div>
+                        <div><label for="login-password" class="block text-sm font-medium text-gray-500 mb-1">Contraseña</label>
+                        <div class="relative"><input id="login-password" type="password" required autocomplete="current-password" placeholder="••••••••" class="w-full p-3.5 pr-11 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-gray-900 dark:focus:border-white transition">
+                        <button type="button" onclick="togglePassword('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label="Mostrar contraseña"><i class="far fa-eye"></i></button></div></div>
+                        <div class="text-right -mt-2"><a href="#" data-auth-view="forgot" class="text-sm text-gray-500 hover:text-brand">¿Olvidó su contraseña?</a></div>
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand dark:hover:bg-brand dark:hover:text-white text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Entrar</button>
+                        <p class="text-center text-sm text-gray-500">¿No tiene cuenta? <a href="#" data-auth-view="signup" class="font-semibold text-gray-900 dark:text-white hover:text-brand">Crear cuenta</a></p>
+                    </form></div>
+                    <div id="auth-signup" class="hidden"><form id="form-signup" class="space-y-4">
+                        <h2 class="text-3xl font-bold">Crear cuenta</h2>
+                        <input id="signup-name" required placeholder="Nombre completo" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <input id="signup-email" type="email" required autocomplete="username" placeholder="Correo electrónico" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Contraseña (mín. 8 caracteres)" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <div class="pw-meter -mt-2" aria-hidden="true"><span></span><span></span><span></span><span></span></div><p id="pw-hint" class="text-xs text-gray-400 -mt-2"></p>
+                        <input id="signup-password2" type="password" required minlength="8" autocomplete="new-password" placeholder="Repetir contraseña" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Crear cuenta</button>
+                        <p class="text-xs text-gray-500 text-center">El administrador debe aprobar la cuenta antes de usarla.</p>
+                        <a href="#" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</a>
+                    </form></div>
+                    <div id="auth-forgot" class="hidden"><form id="form-forgot" class="space-y-4">
+                        <h2 class="text-3xl font-bold">Recuperar acceso</h2>
+                        <p class="text-sm text-gray-500">Escriba su correo y le enviaremos un enlace para crear una nueva contraseña.</p>
+                        <input id="forgot-email" type="email" required placeholder="Correo electrónico" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Enviar enlace</button>
+                        <a href="#" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</a>
+                    </form></div>
+                    <div id="auth-recovery" class="hidden"><form id="form-recovery" class="space-y-4">
+                        <h2 class="text-3xl font-bold">Nueva contraseña</h2>
+                        <input id="recovery-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Nueva contraseña" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
+                        <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Guardar contraseña</button>
+                    </form></div>
+                    <div id="auth-pending" class="hidden text-center space-y-4">
+                        <i class="fas fa-hourglass-half text-4xl text-amber-500"></i>
+                        <p class="font-semibold">Cuenta pendiente de aprobación</p>
+                        <p class="text-sm text-gray-500">La cuenta <b id="pending-email"></b> fue creada. Un administrador debe activarla antes de que pueda usar el sistema.</p>
+                        <button onclick="logout()" class="w-full bg-gray-950 dark:bg-white dark:text-gray-950 text-white font-semibold py-3.5 rounded-full transition">Cerrar sesión</button>
+                    </div>
+                    <div id="auth-config" class="hidden text-center space-y-3">
+                        <i class="fas fa-plug-circle-exclamation text-4xl text-red-500"></i>
+                        <p class="font-semibold">Falta conectar la base de datos</p>
+                        <p class="text-sm text-gray-500">Configure VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY y vuelva a publicar la aplicación.</p>
+                    </div>
+                    <p id="auth-message" class="text-sm text-center mt-4" role="alert"></p>
+                </div>
+            </div>
+            <div class="flex items-center justify-center gap-2 pb-6 text-[11px] text-gray-400">
+                <span data-program-logo="18"></span><span data-program-credit></span>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="app-shell" class="hidden">
+    <div class="flex h-[100dvh] overflow-hidden">
+        <div id="nav-overlay" onclick="toggleNav(false)" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm lg:hidden no-print"></div>
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-72 lg:w-64 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col no-print transition-colors duration-300">
+            <div class="p-6 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden">
+                        <img data-brand-logo alt="" class="hidden w-full h-full object-contain">
+                        <div data-brand-logo-fallback class="w-full h-full bg-brand rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/30"><i class="fas fa-mobile-alt text-xl"></i></div>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-base font-bold leading-tight text-gray-900 dark:text-white truncate">DgtTecnology<span class="text-brand">Vzla</span></h1>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-widest"><span data-mode="tienda">Tienda</span><span data-mode="reventa" class="text-emerald-500 font-bold">Modo reventa</span></p>
+                    </div>
+                    <button onclick="toggleNav(false)" class="ml-auto lg:hidden w-9 h-9 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Cerrar menú"><i class="fas fa-xmark"></i></button>
+                </div>
+            </div>
+            <nav class="flex-1 px-4 space-y-1 overflow-y-auto">
+                <a href="#" onclick="showSection('dashboard')" id="link-dashboard" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all active-link"><i class="fas fa-chart-pie w-6"></i> Inicio</a>
+                <a href="#" onclick="showSection('resale-dashboard')" id="link-resale-dashboard" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-chart-line w-6"></i> Panel Reventa</a>
+                <a href="#" onclick="showSection('brands')" id="link-brands" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-tags w-6"></i> Marcas</a>
+                <a href="#" onclick="showSection('inventory')" id="link-inventory" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-boxes-stacked w-6"></i> Inventario</a>
+                <a href="#" onclick="showSection('resale-items')" id="link-resale-items" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-mobile-screen w-6"></i> Equipos de Reventa</a>
+                <a href="#" onclick="showSection('pos')" id="link-pos" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cash-register w-6"></i> Punto de Venta</a>
+                <a href="#" onclick="showSection('customers')" id="link-customers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-users w-6"></i> Clientes</a>
+                <a href="#" onclick="showSection('sellers')" id="link-sellers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-user-tie w-6"></i> Vendedores</a>
+                <a href="#" onclick="showSection('payments')" id="link-payments" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-credit-card w-6"></i> Métodos de Pago</a>
+                <a href="#" onclick="showSection('sales')" id="link-sales" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-file-invoice-dollar w-6"></i> Ventas Tienda</a>
+                <a href="#" onclick="showSection('resale-sales')" id="link-resale-sales" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-file-invoice w-6"></i> Ventas Reventa</a>
+                <div class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+                    <a href="#" onclick="showSection('config')" id="link-config" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cog w-6"></i> Configuración</a>
+                </div>
+            </nav>
+            <div class="p-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center"><i class="fas fa-user"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <p id="user-email" class="text-sm font-semibold truncate"></p>
+                        <p id="user-role" class="text-[10px] uppercase tracking-widest text-brand font-bold"></p>
+                        <p id="net-status" class="hidden"></p>
+                    </div>
+                    <button onclick="logout()" title="Cerrar sesión" class="w-9 h-9 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-gray-800 transition"><i class="fas fa-right-from-bracket"></i></button>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-gray-400"><span data-program-logo="16"></span><span data-program-credit></span></div>
+            </div>
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0">
+        <!-- BARRA SUPERIOR: TIENDA / REVENTA -->
+        <header class="no-print sticky top-0 z-40 flex items-center gap-3 px-4 md:px-8 py-3 bg-slate-50/80 dark:bg-[#060816]/70 backdrop-blur-xl border-b border-gray-200/70 dark:border-white/5">
+            <button onclick="toggleNav(true)" class="lg:hidden w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border dark:border-gray-800 text-gray-600 dark:text-gray-300" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
+            <div class="mode-switch flex p-1 rounded-full bg-white dark:bg-gray-900 border dark:border-gray-800 shadow-sm mx-auto lg:mx-0">
+                <button id="mode-btn-tienda" onclick="setMode('tienda')" class="on px-4 md:px-6 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-store mr-1.5"></i>Tienda</button>
+                <button id="mode-btn-reventa" onclick="setMode('reventa')" class="px-4 md:px-6 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-recycle mr-1.5"></i>Reventa</button>
+            </div>
+            <span id="net-pill" class="hidden ml-auto lg:ml-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 flex items-center gap-1.5"></span>
+            <div class="hidden md:block text-sm text-gray-500 ml-auto capitalize" id="current-date"></div>
+            <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border dark:border-gray-800 text-gray-500 dark:text-yellow-300 md:ml-0" title="Modo oscuro" aria-label="Cambiar modo oscuro"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:inline"></i></button>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-28 lg:pb-8 no-print transition-colors duration-300">
+
+<div class="resale-not-ready hidden" data-mode="reventa"><div class="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm"><i class="fas fa-triangle-exclamation mr-2"></i><b>Reventa aún no está activada en la base de datos.</b> Falta aplicar la actualización <code>20261015000000_reventa.sql</code> en Supabase. Mientras tanto, el modo Tienda funciona normal.</div></div>
+            <!-- INICIO (TIENDA) -->
+            <section id="section-dashboard" class="section-transition space-y-6">
+                <div class="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Hola, <span id="dash-hello">—</span></h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Así va tu tienda. Toca cualquier tarjeta o gráfica para ver el detalle.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="showSection('pos')" class="btn-primary"><i class="fas fa-cash-register"></i> Nueva venta</button>
+                        <button onclick="openModal('modal-product')" class="btn-ghost admin-only"><i class="fas fa-plus"></i> Producto</button>
+                        <button onclick="openModal('modal-customer')" class="btn-ghost"><i class="fas fa-user-plus"></i> Cliente</button>
+                    </div>
+                </div>
+
+                <!-- Período: afecta todo lo de abajo -->
+                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Período">
+                    <span class="text-sm text-gray-500 mr-1">Ver:</span>
+                    <div id="dash-period" class="seg">
+                        <button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button>
+                    </div>
+                    <span id="dash-period-label" class="text-xs text-gray-400 ml-1"></span>
+                </div>
+
+                <!-- Indicadores -->
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
+                    <button onclick="showSection('sales')" class="kpi">
+                        <span class="kpi-top"><span>Ventas</span><span class="icon-tile kpi-icon"><i class="fas fa-wallet"></i></span></span>
+                        <span id="dash-total-sales" class="kpi-value">$0.00</span>
+                        <span id="dash-total-delta" class="kpi-delta"></span>
+                    </button>
+                    <button onclick="showSection('sales')" class="kpi">
+                        <span class="kpi-top"><span>Documentos emitidos</span><span class="icon-tile kpi-icon"><i class="fas fa-receipt"></i></span></span>
+                        <span id="dash-count-sales" class="kpi-value">0</span>
+                        <span id="dash-ticket" class="kpi-delta text-gray-500"></span>
+                    </button>
+                    <button onclick="showSection('sellers')" class="kpi">
+                        <span class="kpi-top"><span>Comisiones</span><span class="icon-tile kpi-icon"><i class="fas fa-percentage"></i></span></span>
+                        <span id="dash-total-commissions" class="kpi-value">$0.00</span>
+                        <span id="dash-units" class="kpi-delta text-gray-500"></span>
+                    </button>
+                    <button onclick="showLowStock()" class="kpi">
+                        <span class="kpi-top"><span>Stock bajo</span><span class="icon-tile kpi-icon" style="background:linear-gradient(135deg,#F87171,#DC2626)"><i class="fas fa-triangle-exclamation"></i></span></span>
+                        <span class="kpi-value"><span id="dash-low-stock">0</span> <span class="text-base font-medium text-gray-400">de <span id="dash-total-products">0</span></span></span>
+                        <span class="kpi-delta text-gray-500">productos con menos de 5 u</span>
+                    </button>
+                </div>
+
+                <!-- Gráfica principal + hoy -->
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                    <div class="vision-card p-5 md:p-6 xl:col-span-2">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div><p class="font-semibold text-lg">Resumen de ventas</p><p class="muted text-xs" id="dash-chart-sub"></p></div>
+                            <div id="dash-metric" class="seg seg-dark">
+                                <button data-m="monto">Monto</button><button data-m="ventas">Ventas</button><button data-m="equipos">Equipos</button>
+                            </div>
+                        </div>
+                        <div id="dash-area" class="mt-4 text-white" aria-label="Ventas en el período"></div>
+                    </div>
+                    <div class="vision-card p-5 md:p-6 flex flex-col gap-5">
+                        <div class="balance-card p-5 text-white">
+                            <div class="flex justify-between items-start">
+                                <img data-brand-logo alt="" class="hidden h-8 w-auto max-w-[120px] object-contain">
+                                <span data-brand-logo-fallback class="text-sm font-bold tracking-widest">DGT</span>
+                                <span class="text-xs opacity-80" id="dash-today-label">Hoy</span>
+                            </div>
+                            <p class="text-sm opacity-80 mt-5">Vendido hoy</p>
+                            <p id="dash-today-sales" class="text-3xl font-bold tracking-tight tabular-nums">$0.00</p>
+                            <p class="text-xs opacity-80 mt-1" id="dash-today-count"></p>
+                        </div>
+                        <div class="rate-widget space-y-2">
+                            <div class="flex items-center justify-between"><p class="font-semibold">Tasa del día</p><span class="rate-date text-[10px]"></span></div>
+                            <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2"><span class="font-semibold text-sky-300 text-sm">BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)" class="w-28 p-1.5 rounded-lg bg-white/10 border border-white/10 text-white font-bold text-right tabular-nums outline-none focus:ring-2 focus:ring-brand-light"></label>
+                            <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2"><span class="font-semibold text-amber-300 text-sm">Binance P2P</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)" class="w-28 p-1.5 rounded-lg bg-white/10 border border-white/10 text-white font-bold text-right tabular-nums outline-none focus:ring-2 focus:ring-brand-light"></label>
+                            <div class="flex items-center justify-between pt-1">
+                                <p class="muted text-xs">Brecha <b id="dash-rate-gap" class="text-white tabular-nums">—</b></p>
+                                <button type="button" onclick="fetchLiveRates(true)" class="rate-live-btn text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-400/60 text-emerald-300 hover:bg-emerald-400/10 transition"><i class="fas fa-rotate"></i> Actualizar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desgloses -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    <div class="vision-card p-5 md:p-6">
+                        <p class="font-semibold">Ventas por vendedor</p>
+                        <p class="muted text-xs mb-3">Toca un vendedor para ver su tarjeta</p>
+                        <div id="dash-by-seller"></div>
+                    </div>
+                    <div class="vision-card p-5 md:p-6">
+                        <p class="font-semibold">Cómo te pagan</p>
+                        <p class="muted text-xs mb-3">Monto cobrado por método de pago</p>
+                        <div id="dash-by-method"></div>
+                    </div>
+                    <div class="vision-card p-5 md:p-6 md:col-span-2 xl:col-span-1">
+                        <div class="flex items-start justify-between gap-3">
+                            <div><p class="font-semibold">Inventario</p><p class="muted text-xs">Productos con 5 u o más</p></div>
+                            <button onclick="showLowStock()" class="text-xs font-semibold text-brand-light hover:underline">Ver stock bajo</button>
+                        </div>
+                        <div class="flex items-center gap-4 mt-2">
+                            <button onclick="showLowStock()" class="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-brand-light" id="dash-gauge" aria-label="Ver productos con stock bajo"></button>
+                            <div class="space-y-2 text-sm min-w-0 flex-1">
+                                <p class="flex justify-between gap-2"><span class="muted">Unidades</span><b id="dash-units-stock" class="tabular-nums">0</b></p>
+                                <p class="flex justify-between gap-2"><span class="muted">Valor</span><b id="dash-stock-value" class="tabular-nums">$0</b></p>
+                            </div>
+                        </div>
+                        <ul id="dash-low-list" class="mt-3 space-y-1"></ul>
+                    </div>
+                </div>
+
+                <!-- Listas -->
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6 xl:col-span-2">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div><p class="font-semibold">Productos más vendidos</p><p class="text-xs text-gray-400">Por unidades en el período</p></div>
+                            <button onclick="showSection('inventory')" class="text-xs font-semibold text-brand hover:underline admin-only">Ir al inventario</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-400"><th class="py-2 pr-3 font-medium">Producto</th><th class="py-2 pr-3 font-medium text-right">Unidades</th><th class="py-2 pr-3 font-medium text-right">Total</th><th class="py-2 w-1/3 font-medium hidden sm:table-cell">Participación</th></tr></thead><tbody id="dash-top-products"></tbody></table></div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div><p class="font-semibold">Últimas ventas</p><p class="text-xs text-gray-400">Toca una para ver el detalle</p></div>
+                            <button onclick="showSection('sales')" class="text-xs font-semibold text-brand hover:underline">Ver todas</button>
+                        </div>
+                        <ol id="dash-recent" class="space-y-1"></ol>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL REVENTA -->
+            <section id="section-resale-dashboard" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Panel de reventa</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Equipos conseguidos por fuera: cuánto invertiste y cuánto ganaste.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="setMode('reventa',{section:'pos'})" class="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !shadow-emerald-600/30"><i class="fas fa-cash-register"></i> Vender equipo</button>
+                        <button onclick="openResaleModal()" class="btn-ghost"><i class="fas fa-plus"></i> Registrar equipo</button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2"><span class="text-sm text-gray-500 mr-1">Ver:</span>
+                    <div id="rs-period" class="seg"><button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button></div>
+                </div>
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
+                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Vendido en reventa</p><h3 id="rs-total" class="kpi-value">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-sack-dollar"></i></span></div>
+                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Costo de equipos</p><h3 id="rs-cost" class="kpi-value">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-hand-holding-dollar"></i></span></div>
+                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Ganancia</p><h3 id="rs-profit" class="kpi-value text-emerald-500">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0" style="background:linear-gradient(135deg,#34D399,#059669)"><i class="fas fa-arrow-trend-up"></i></span></div>
+                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Margen promedio</p><h3 id="rs-margin" class="kpi-value">0%</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-percent"></i></span></div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="vision-card p-6 xl:col-span-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2"><div><p class="font-semibold text-lg">Ganancia de reventa</p><p class="muted text-xs" id="rs-chart-sub"></p></div><div class="flex gap-4 text-xs"><span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-white"></span>Vendido</span><span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-emerald-400"></span>Ganancia</span></div></div>
+                        <div id="rs-area" class="mt-4 text-white"></div>
+                    </div>
+                    <div class="vision-card p-6 flex flex-col gap-4">
+                        <p class="font-semibold">Equipos por vender</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="rounded-xl bg-white/5 p-4"><p class="muted text-[11px]">Disponibles</p><p id="rs-available" class="text-2xl font-bold">0</p></div>
+                            <div class="rounded-xl bg-white/5 p-4"><p class="muted text-[11px]">Capital invertido</p><p id="rs-capital" class="text-2xl font-bold">$0</p></div>
+                            <div class="rounded-xl bg-white/5 p-4 col-span-2"><p class="muted text-[11px]">Ganancia esperada si se venden</p><p id="rs-expected" class="text-2xl font-bold text-emerald-300">$0</p></div>
+                        </div>
+                        <button onclick="showSection('resale-items')" class="mt-auto w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 font-semibold transition"><i class="fas fa-mobile-screen mr-2"></i>Ver equipos</button>
+                    </div>
+                </div>
+                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6">
+                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="font-semibold">Equipos listos para vender</p><p class="text-xs text-gray-400">Los de mayor ganancia primero · toca uno para venderlo</p></div><button onclick="showSection('resale-items')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todos</button></div>
+                        <ul id="rs-avail-list" class="space-y-1"></ul>
+                    </div>
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6">
+                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="font-semibold">Últimas ventas de reventa</p><p class="text-xs text-gray-400">Toca una para ver el detalle</p></div><button onclick="showSection('resale-sales')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todas</button></div>
+                        <ol id="rs-recent" class="space-y-1"></ol>
+                    </div>
+                </div>
+            </section>
+
+            <!-- EQUIPOS DE REVENTA -->
+            <section id="section-resale-items" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Equipos de reventa</h2>
+                        <p class="text-sm text-gray-500">Equipos que se consiguen por fuera, no forman parte del inventario de tienda.</p>
+                    </div>
+                    <button onclick="openResaleModal()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30"><i class="fas fa-plus"></i> Nuevo equipo</button>
+                </div>
+                <div id="resale-pending-banner"></div>
+                <div class="flex flex-wrap items-center gap-2">
+                <div class="search-box"><i class="fas fa-search"></i><input id="resale-search" type="search" oninput="renderResaleItems()" placeholder="Buscar modelo, IMEI o proveedor"></div>
+                <div id="resale-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
+                <div class="flex flex-wrap gap-2" id="resale-filter">
+                    <button onclick="setResaleFilter('disponible')" data-f="disponible" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Disponibles</button>
+                    <button onclick="setResaleFilter('vendido')" data-f="vendido" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Vendidos</button>
+                    <button onclick="setResaleFilter('todos')" data-f="todos" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Todos</button>
+                </div></div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left min-w-[760px]">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500">
+                                <th class="p-4 font-semibold">Equipo</th>
+                                <th class="p-4 font-semibold">Proveedor</th>
+                                <th class="p-4 font-semibold">Costo</th>
+                                <th class="p-4 font-semibold">Precio venta</th>
+                                <th class="p-4 font-semibold">Ganancia</th>
+                                <th class="p-4 font-semibold">Estado</th>
+                                <th class="p-4 font-semibold text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resale-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- BRANDS -->
+            <section id="section-brands" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Marcas</h2>
+                    <button onclick="openModal('modal-brand')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nueva Marca</button>
+                </div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Nombre de la Marca</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="brands-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- INVENTORY -->
+            <section id="section-inventory" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Inventario</h2><p id="inv-summary" class="text-sm text-gray-500 dark:text-gray-400"></p></div>
+                    <button onclick="openModal('modal-product')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Producto</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="search-box"><i class="fas fa-search"></i><input id="inv-search" type="search" oninput="renderInventory()" placeholder="Buscar producto o marca"></div>
+                    <div id="inv-filter" class="seg"><button data-f="todos">Todos</button><button data-f="bajo">Stock bajo</button><button data-f="agotado">Agotados</button></div>
+                    <div id="inv-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
+                    <select id="inv-brand" onchange="renderInventory()" class="field-sm"><option value="">Todas las marcas</option></select>
+                </div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left min-w-[640px]">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500">
+                                <th class="p-4 font-semibold">Marca</th><th class="p-4 font-semibold">Producto</th><th class="p-4 font-semibold">Color</th><th class="p-4 font-semibold">Precio</th><th class="p-4 font-semibold">Stock</th><th class="p-4 font-semibold text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- POS -->
+            <section id="section-pos" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Punto de venta</h2>
+                        <p class="text-sm"><span data-mode="tienda" class="text-gray-500">Vendiendo productos del <b>inventario de tienda</b></span><span data-mode="reventa" class="text-emerald-600 font-semibold"><i class="fas fa-recycle mr-1"></i>Vendiendo <b>equipos de reventa</b></span></p>
+                    </div>
+                    <div class="rate-widget flex flex-wrap items-center gap-3 bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-2xl px-4 py-2 shadow-sm">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400"><i class="fas fa-coins text-brand mr-1"></i>Tasa del día</span>
+                        <label class="flex items-center gap-2 text-sm"><span class="font-bold text-blue-600">BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)" class="w-24 p-1 border rounded-lg dark:bg-gray-800 dark:border-gray-700 font-bold text-right outline-none focus:ring-2 focus:ring-brand"></label>
+                        <label class="flex items-center gap-2 text-sm"><span class="font-bold text-amber-500">Binance</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)" class="w-24 p-1 border rounded-lg dark:bg-gray-800 dark:border-gray-700 font-bold text-right outline-none focus:ring-2 focus:ring-brand"></label>
+                        <button type="button" onclick="fetchLiveRates(true)" title="Actualizar tasas en vivo (BCV y Binance P2P)" class="rate-live-btn text-xs font-bold px-2 py-1 rounded-lg border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition"><i class="fas fa-rotate"></i> En vivo</button>
+                        <span class="rate-date text-[10px]"></span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="relative group">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand transition-colors"></i>
+                            <input type="text" id="pos-search" onkeyup="filterPOS()" placeholder="Buscar producto o marca..." class="w-full pl-12 p-3 border rounded-2xl outline-none focus:ring-2 focus:ring-brand bg-white dark:bg-gray-900 dark:border-gray-800 transition-all">
+                        </div>
+                        <div id="pos-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
+                        <div id="pos-products-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4"></div>
+                    </div>
+                    <div id="pos-cart-panel" class="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-2xl shadow-xl border dark:border-gray-800 h-fit space-y-4 lg:sticky lg:top-4">
+                        <div class="flex items-center justify-between border-b pb-2 dark:border-gray-800">
+                            <h3 class="text-xl font-bold">Detalle Venta</h3>
+                            <span data-mode="tienda" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand/10 text-brand">TIENDA</span>
+                            <span data-mode="reventa" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">REVENTA</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <label class="block text-xs font-bold text-gray-400 uppercase">Cliente</label>
+                                <button onclick="openModal('modal-customer')" class="text-brand hover:text-brand-dark text-xs font-bold transition-colors"><i class="fas fa-plus"></i> Nuevo</button>
+                            </div>
+                            <select id="pos-customer" class="w-full p-2 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                            <div id="pos-customer-card"></div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-gray-400 uppercase">Vendedor</label>
+                            <select id="pos-seller" class="w-full p-2 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-gray-400 uppercase">Entrega</label>
+                            <label class="deliv-row"><span><i class="fas fa-motorcycle text-brand mr-2"></i>Delivery en Caracas <b class="tabular-nums">$5</b></span>
+                                <input type="checkbox" id="deliv-ccs" class="switch" onchange="setDelivery('caracas', this.checked)"></label>
+                            <label class="deliv-row"><span><i class="fas fa-truck-fast text-brand mr-2"></i>Delivery fuera de Caracas</span>
+                                <input type="checkbox" id="deliv-out" class="switch" onchange="setDelivery('fuera', this.checked)"></label>
+                            <div id="deliv-out-fields" class="hidden grid grid-cols-2 gap-2 pl-1">
+                                <input id="deliv-zone" type="text" placeholder="Zona (ej: La Guaira)" oninput="updateDeliveryFromInputs()" class="field-sm">
+                                <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span><input id="deliv-fee" type="number" min="0" step="0.5" placeholder="Monto" oninput="updateDeliveryFromInputs()" class="field-sm w-full pl-7"></div>
+                            </div>
+                        </div>
+                        <div id="cart-items" class="space-y-3 mb-6 max-h-64 overflow-y-auto py-2"></div>
+                        <div class="border-t dark:border-gray-800 pt-4 space-y-2">
+                            <div class="flex justify-between text-gray-600 dark:text-gray-400"><span class="text-sm">Subtotal:</span> <span id="cart-subtotal" class="font-medium">$0.00</span></div>
+                            <div id="cart-delivery-row" class="hidden justify-between text-gray-600 dark:text-gray-400"><span class="text-sm" id="cart-delivery-label">Delivery:</span> <span id="cart-delivery" class="font-medium"></span></div>
+                            <div class="flex justify-between text-xl font-bold text-gray-900 dark:text-white"><span>Total:</span> <span id="cart-total">$0.00</span></div>
+                            <div id="cart-profit" class="admin-only hidden justify-between text-sm text-emerald-600 font-semibold"><span>Ganancia estimada:</span> <span></span></div>
+                        </div>
+                        <button onclick="openPaymentModal()" class="w-full mt-6 bg-brand text-white py-3 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand/30 transform active:scale-95">Liquidar Pago</button>
+                    </div>
+                </div>
+                <button id="pos-cart-fab" onclick="document.getElementById('pos-cart-panel').scrollIntoView({behavior:'smooth'})" class="lg:hidden hidden fixed right-4 bottom-24 z-30 bg-brand text-white rounded-full px-5 py-3 font-bold shadow-xl shadow-brand/40"><i class="fas fa-cart-shopping mr-2"></i><span></span></button>
+            </section>
+
+            <!-- CUSTOMERS -->
+            <section id="section-customers" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Clientes</h2><p class="text-sm text-gray-500 dark:text-gray-400">Ordenados por lo que han comprado.</p></div>
+                    <button onclick="openModal('modal-customer')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Cliente</button>
+                </div>
+                <div class="search-box max-w-md"><i class="fas fa-search"></i><input id="cust-search" type="search" oninput="renderCustomers()" placeholder="Buscar por nombre, cédula o teléfono"></div>
+                <div id="customers-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+            </section>
+
+            <!-- SELLERS -->
+            <section id="section-sellers" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Vendedores</h2>
+                    <button onclick="openModal('modal-seller')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Vendedor</button>
+                </div>
+                <div id="sellers-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+            </section>
+
+            <!-- PAYMENT METHODS -->
+            <section id="section-payments" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Métodos de pago</h2>
+                    <button onclick="openModal('modal-payment')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Método</button>
+                </div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Nombre del Método</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="payments-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VENTAS TIENDA -->
+            <section id="section-sales" class="hidden section-transition space-y-6">
+                <div class="flex flex-wrap items-end justify-between gap-3">
+                    <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ventas de tienda</h2><p class="text-sm text-gray-500 dark:text-gray-400">Facturas y notas de entrega de productos del inventario. Toca una fila para ver el detalle.</p></div>
+                    <button onclick="showSection('pos')" class="btn-primary"><i class="fas fa-cash-register"></i> Nueva venta</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="search-box"><i class="fas fa-search"></i><input id="sales-search" type="search" oninput="renderSales()" placeholder="Buscar factura o cliente"></div>
+                    <div id="sales-period" class="seg"><button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button></div>
+                    <div id="sales-status" class="seg"><button data-s="todas">Todas</button><button data-s="activa">Activas</button><button data-s="cancelada">Anuladas</button></div>
+                </div>
+                <div id="sales-summary" class="grid grid-cols-3 gap-3"></div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left min-w-[680px]">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Factura</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Pago</th><th class="p-4 font-semibold">Total</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="sales-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VENTAS REVENTA -->
+            <section id="section-resale-sales" class="hidden section-transition space-y-6">
+                <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ventas de reventa</h2><p class="text-sm text-gray-500 dark:text-gray-400">Notas de entrega de equipos conseguidos por fuera. Toca una fila para ver el detalle.</p></div>
+                <div class="search-box max-w-md"><i class="fas fa-search"></i><input id="rsales-search" type="search" oninput="renderResaleSales()" placeholder="Buscar documento, cliente o equipo"></div>
+                <div id="resale-sales-summary" class="admin-only grid grid-cols-3 gap-3"></div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left min-w-[760px]">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Documento</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Equipos</th><th class="p-4 font-semibold admin-only">Costo</th><th class="p-4 font-semibold">Total</th><th class="p-4 font-semibold admin-only">Ganancia</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="resale-sales-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- CONFIG -->
+            <section id="section-config" class="hidden section-transition space-y-6">
+                <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Configuración</h2>
+                <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-2xl shadow-sm border dark:border-gray-800 max-w-4xl space-y-5">
+                    <h3 class="text-xl font-bold"><i class="fas fa-palette text-brand mr-2"></i>Identidad de la tienda</h3>
+                    <div class="flex flex-col sm:flex-row gap-6 items-start">
+                        <div class="checker w-32 h-32 rounded-2xl border dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0">
+                            <img data-brand-logo src="/logo.png" alt="Logo actual" class="max-w-full max-h-full object-contain">
+                        </div>
+                        <div class="space-y-3 flex-1">
+                            <p class="text-sm text-gray-500">Suba el logo de la tienda en <b>PNG con fondo transparente</b>. El sistema toma sus colores y ajusta la paleta (botones, menú, panel y factura) sin cambiar el diseño.</p>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="openLogoModal()" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-image mr-1"></i> Cambiar logo y colores</button>
+                                <label class="flex items-center gap-2 px-3 py-2 rounded-xl border dark:border-gray-700 text-sm cursor-pointer">Color manual <input type="color" id="config-brand-color" onchange="saveBrandColor(this.value)" class="w-8 h-8 rounded cursor-pointer bg-transparent"></label>
+                                <button onclick="resetBrand()" class="px-3 py-2 rounded-xl border dark:border-gray-700 text-sm text-gray-500 hover:text-red-500"><i class="fas fa-rotate-left mr-1"></i>Restaurar original</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-2xl shadow-sm border dark:border-gray-800 max-w-4xl space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl space-y-3 border dark:border-gray-700">
+                            <label class="block font-bold text-sm">Símbolo de Moneda</label>
+                            <input type="text" id="config-currency" onchange="updateCurrency()" placeholder="Ej: $, €, Bs." class="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                            <p class="text-xs text-gray-500">Moneda base para precios e inventario</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl space-y-3 border dark:border-gray-700">
+                            <label class="block font-bold text-sm">Tasa del día (Divisas → Bs.)</label>
+                            <div class="flex items-center gap-2"><span class="w-24 text-sm font-bold text-blue-600">BCV</span><input type="number" step="0.01" min="0" id="config-rate" data-rate="BCV" onchange="setDailyRate('BCV', this.value)" placeholder="Ej: 36.50" class="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition"></div>
+                            <div class="flex items-center gap-2"><span class="w-24 text-sm font-bold text-amber-500">Binance P2P</span><input type="number" step="0.01" min="0" id="config-rate-binance" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)" placeholder="Ej: 40.20" class="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition"></div>
+                            <p class="text-xs text-gray-500">Al cobrar en Bs. se elige BCV o Binance P2P y el monto se calcula solo. <span class="rate-date"></span></p>
+                            <button type="button" onclick="fetchLiveRates(true)" class="rate-live-btn text-xs font-bold px-3 py-2 rounded-xl border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition"><i class="fas fa-rotate"></i> Actualizar en vivo (BCV y Binance P2P)</button>
+                            <p class="text-[11px] text-gray-400">En vivo: el sistema consulta la tasa oficial del BCV y el precio de Binance P2P (USDT/VES, mediana de los primeros anuncios) al abrir y cada 10 minutos. Si escribe una tasa a mano, queda en modo manual hasta que pulse "En vivo".</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border dark:border-gray-700">
+                        <div class="text-left">
+                            <p class="font-bold text-sm"><i class="fas fa-envelope text-brand mr-1"></i> Enviar la factura por correo al facturar</p>
+                            <p class="text-xs text-gray-500">Se envía sola al correo del cliente desde dgttecnologiavzla@gmail.com. También puede reenviarla desde el detalle de cada venta.</p>
+                        </div>
+                        <button id="auto-email-toggle" role="switch" aria-checked="true" aria-label="Enviar la factura por correo al facturar" onclick="setAutoEmail(this.getAttribute('aria-checked') !== 'true')" class="w-12 h-6 shrink-0 bg-brand rounded-full relative transition-colors">
+                            <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all shadow-sm"></div>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border dark:border-gray-700">
+                        <div class="text-left">
+                            <p class="font-bold text-sm">Modo Oscuro</p>
+                            <p class="text-xs text-gray-500">Estética Nocturna Tech</p>
+                        </div>
+                        <button onclick="toggleDarkMode()" class="w-12 h-6 bg-gray-300 dark:bg-brand rounded-full relative transition-colors">
+                            <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all dark:translate-x-6 shadow-sm"></div>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="exportData()" class="bg-brand text-white p-3 rounded-xl hover:bg-brand-dark transition flex items-center justify-center gap-2 shadow-lg shadow-brand/20"><i class="fas fa-download"></i> Exportar Backup</button>
+                        <label class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition flex items-center justify-center gap-2 border dark:border-gray-700">
+                            <i class="fas fa-upload"></i> Importar Datos
+                            <input type="file" class="hidden" onchange="importData(event)">
+                        </label>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-2xl shadow-sm border dark:border-gray-800 max-w-4xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-bold"><i class="fas fa-user-shield text-brand mr-2"></i>Usuarios y roles</h3>
+                        <button onclick="renderUsersAdmin()" class="text-sm text-brand hover:underline"><i class="fas fa-rotate"></i> Actualizar</button>
+                    </div>
+                    <p class="text-sm text-gray-500">Las cuentas nuevas quedan <b>pendientes</b> hasta que usted las active. El Vendedor sólo puede vender, registrar clientes y ver sus propias ventas.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm min-w-[560px]">
+                            <thead><tr class="text-left text-gray-400 text-xs uppercase"><th class="p-2">Usuario</th><th class="p-2">Rol</th><th class="p-2">Vendedor asociado</th><th class="p-2">Estado</th></tr></thead>
+                            <tbody id="users-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-2xl shadow-sm border dark:border-gray-800 max-w-4xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-bold"><i class="fas fa-clipboard-list text-brand mr-2"></i>Registro de auditoría</h3>
+                        <button onclick="renderAudit()" class="text-sm text-brand hover:underline"><i class="fas fa-rotate"></i> Actualizar</button>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-xs min-w-[520px]">
+                            <thead><tr class="text-left text-gray-400 uppercase"><th class="p-2">Fecha</th><th class="p-2">Usuario</th><th class="p-2">Acción</th><th class="p-2">Registro</th></tr></thead>
+                            <tbody id="audit-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="max-w-4xl flex items-center gap-3 text-xs text-gray-400 pt-2"><span data-program-logo="28"></span><div><p class="font-semibold text-gray-500" data-program-name="text-base"></p><p data-program-credit></p></div></div>
+            </section>
+        </main>
+        </div>
+    </div>
+
+    <!-- BARRA INFERIOR (CELULAR) -->
+    <nav class="bottom-nav lg:hidden no-print fixed bottom-0 inset-x-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
+        <div class="mx-auto max-w-md flex justify-around items-center rounded-2xl bg-white/90 dark:bg-[#0d1126]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 shadow-xl text-gray-400 py-2">
+            <a href="#" data-section="dashboard" data-mode="tienda" onclick="showSection('dashboard')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-house text-lg"></i>Inicio</a>
+            <a href="#" data-section="resale-dashboard" data-mode="reventa" onclick="showSection(isAdmin() ? 'resale-dashboard' : 'resale-sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-chart-line text-lg"></i>Panel</a>
+            <a href="#" data-section="pos" onclick="showSection('pos')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-cash-register text-lg"></i>Vender</a>
+            <a href="#" data-section="sales" data-mode="tienda" onclick="showSection('sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-receipt text-lg"></i>Ventas</a>
+            <a href="#" data-section="resale-sales" data-mode="reventa" onclick="showSection('resale-sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-receipt text-lg"></i>Ventas</a>
+            <a href="#" data-section="customers" onclick="showSection('customers')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-users text-lg"></i>Clientes</a>
+            <a href="#" onclick="toggleNav(true)" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-bars text-lg"></i>Menú</a>
+        </div>
+    </nav>
+
+    <!-- MODALS -->
+    <!-- Modal Marcas -->
+    <div id="modal-brand" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print transition-opacity duration-300 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="brand-modal-title" class="text-2xl font-bold mb-6">Nueva Marca</h3>
+            <form id="form-brand" class="space-y-4">
+                <input type="hidden" id="brand-id">
+                <input type="text" id="brand-name" placeholder="Nombre de la Marca" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-brand')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Producto -->
+    <div id="modal-product" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print transition-opacity duration-300 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="prod-modal-title" class="text-2xl font-bold mb-6">Producto</h3>
+            <form id="form-product" class="space-y-4">
+                <input type="hidden" id="prod-id">
+                <div class="space-y-1">
+                    <label class="block text-sm font-medium text-gray-500">Marca</label>
+                    <select id="prod-brand" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                </div>
+                <input type="text" id="prod-name" placeholder="Nombre del Producto" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <input type="text" id="prod-cat" placeholder="Categoría" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <div class="space-y-1">
+                    <span class="block text-sm font-medium text-gray-500">Condición</span>
+                    <div class="cond-pick grid grid-cols-2 gap-2" data-target="prod-condition">
+                        <button type="button" data-c="sellado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-box"></i> Sellado</button>
+                        <button type="button" data-c="usado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-mobile-screen"></i> Usado</button>
+                    </div>
+                    <input type="hidden" id="prod-condition" value="sellado">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-500">Color</label>
+                    <div id="color-palette" class="flex flex-wrap gap-3"></div>
+                    <input type="hidden" id="prod-color" value="#000000">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" step="0.01" id="prod-price" placeholder="Precio" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                    <input type="number" id="prod-stock" placeholder="Stock" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-product')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Selector Variantes (POS) -->
+    <div id="modal-variants" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="variant-title" class="text-2xl font-bold mb-2">Seleccionar Variante</h3>
+            <p class="text-gray-500 mb-6 text-sm">Elige la variante de color y precio</p>
+            <div id="variant-list" class="space-y-3 max-h-80 overflow-y-auto"></div>
+            <div class="flex justify-end mt-6">
+                <button onclick="closeModal('modal-variants')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Liquidación de Pago (SPLIT PAYMENT) -->
+    <div id="modal-payment-settle" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-lg border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold mb-2">Liquidar Pago</h3>
+            <p class="text-gray-500 mb-4 text-sm">Distribuye el monto total entre los métodos de pago</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border dark:border-gray-700 space-y-2">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase">Tasa de Cambio</label>
+                    <div class="flex gap-1">
+                        <button type="button" id="rate-btn-bcv" onclick="selectRateType('BCV')" class="flex-1 py-1 rounded-lg text-xs font-bold border transition">BCV</button>
+                        <button type="button" id="rate-btn-binance" onclick="selectRateType('Binance P2P')" class="flex-1 py-1 rounded-lg text-xs font-bold border transition">Binance P2P</button>
+                    </div>
+                    <input type="number" id="sale-rate" step="0.01" min="0" class="w-full bg-transparent font-bold text-lg outline-none" oninput="onSaleRateInput(this.value)">
+                </div>
+                <div class="p-3 bg-brand/10 rounded-xl border border-brand/30 space-y-2">
+                    <label class="block text-[10px] font-bold text-brand uppercase">Total a Pagar</label>
+                    <p id="settle-total" class="text-lg font-bold text-brand">$0.00</p>
+                    <p id="settle-total-bs" class="text-xs font-semibold text-gray-500"></p>
+                </div>
+            </div>
+
+            <div class="mb-4 space-y-1">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase">Canal de venta</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="channel-btn-tienda" onclick="selectSaleChannel('tienda')" class="py-2 rounded-xl text-sm font-bold border transition"><i class="fas fa-store mr-1"></i>Tienda</button>
+                    <button type="button" id="channel-btn-reventa" onclick="selectSaleChannel('reventa')" class="py-2 rounded-xl text-sm font-bold border transition"><i class="fas fa-recycle mr-1"></i>Reventa</button>
+                </div>
+                <p id="channel-hint" class="text-[11px] text-gray-400"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase">Tipo de Documento</label>
+                    <select id="settle-doc-type" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 text-sm outline-none">
+                        <option value="Factura No Fiscal">Factura No Fiscal</option>
+                        <option value="Nota de Entrega">Nota de Entrega</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase">Moneda Principal</label>
+                    <select id="settle-currency" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 text-sm outline-none">
+                        <option value="USD">Divisas ($)</option>
+                        <option value="VES">Bolívares (BS)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="settle-payments-list" class="space-y-3 mb-6 max-h-60 overflow-y-auto"></div>
+
+            <div id="tradein-form" class="hidden mb-3 p-4 rounded-2xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-900/10 space-y-3">
+                <p class="font-semibold text-sm" id="ti-title">Recepción de equipo</p><input type="hidden" id="ti-brand" value="Apple">
+                <div class="grid grid-cols-2 gap-2">
+                    <input id="ti-model" placeholder="Modelo" oninput="tradeInSuggest()" class="field-sm">
+                    <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span><input id="ti-value" type="number" min="0" step="1" placeholder="Precio de recepción" oninput="tradeInSuggest()" class="field-sm w-full pl-7"></div>
+                </div>
+                <p id="ti-suggest" class="text-xs text-gray-500"></p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeTradeIn()" class="px-3 py-1.5 text-sm text-gray-500">Cancelar</button>
+                    <button type="button" onclick="addTradeIn()" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-sky-600 text-white hover:bg-sky-700">Descontar del pago</button>
+                </div>
+            </div>
+            <div class="flex gap-2 mb-6">
+                <button type="button" onclick="openTradeIn('Apple')" title="Recibir iPhone (parte de pago)" aria-label="Recibir iPhone" class="w-14 shrink-0 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 hover:border-gray-900 dark:hover:border-white transition flex items-center justify-center"><i class="fab fa-apple text-2xl"></i></button>
+                <button type="button" onclick="openTradeIn('Samsung')" title="Recibir Samsung (parte de pago)" aria-label="Recibir Samsung" class="w-24 shrink-0 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-[#1428A0] dark:text-blue-300 hover:border-[#1428A0] transition flex items-center justify-center font-extrabold tracking-[0.12em] text-[11px]">SAMSUNG</button>
+            <button onclick="addPaymentRow()" class="flex-1 py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 hover:text-brand hover:border-brand transition-all">
+                <i class="fas fa-plus mr-2"></i> Agregar otro método de pago
+            </button>
+            </div>
+
+            <div class="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-2xl">
+                <span class="font-bold">Restante:</span>
+                <div class="text-right"><span id="settle-remaining" class="text-xl font-bold text-red-500">$0.00</span><p id="settle-remaining-bs" class="text-xs text-gray-500"></p></div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="closeModal('modal-payment-settle')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                <button id="btn-finalize-sale" onclick="executeFinalSale()" class="px-6 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30 opacity-50 cursor-not-allowed" disabled>
+                    Confirmar y Facturar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Anular Venta -->
+    <div id="modal-cancel-sale" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold mb-1 text-red-600"><i class="fas fa-ban mr-2"></i>Anular Venta</h3>
+            <p id="cancel-sale-info" class="text-sm text-gray-500 mb-6"></p>
+            <form id="form-cancel-sale" class="space-y-4">
+                <label class="block text-xs font-bold text-gray-400 uppercase">Motivo de la cancelación</label>
+                <textarea id="cancel-sale-reason" rows="4" required placeholder="Ej: El cliente no desea el producto" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"></textarea>
+                <p class="text-xs text-gray-400"><i class="fas fa-info-circle mr-1"></i>Los productos regresan al inventario y la venta deja de contar en totales y comisiones.</p>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal('modal-cancel-sale')" class="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">Volver</button>
+                    <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-600/30">Anular Venta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Cliente -->
+    <div id="modal-customer" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="cust-modal-title" class="text-2xl font-bold mb-6">Cliente / Empresa</h3>
+            <form id="form-customer" class="space-y-4">
+                <input type="hidden" id="cust-id">
+                <input type="text" id="cust-name" placeholder="Nombre Completo o Razón Social" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="cust-cedula" placeholder="Cédula / ID" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                    <input type="text" id="cust-rif" placeholder="RIF (Empresas)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                </div>
+                <input type="email" id="cust-email" placeholder="Correo Electrónico" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <input type="text" id="cust-phone" placeholder="Teléfono" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-customer')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Vendedor -->
+    <div id="modal-seller" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="sell-modal-title" class="text-2xl font-bold mb-6">Vendedor</h3>
+            <form id="form-seller" class="space-y-4">
+                <input type="hidden" id="sell-id">
+                <input type="text" id="sell-name" placeholder="Nombre Vendedor" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <select id="sell-comm" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                    <option value="0.006">0.6%</option>
+                    <option value="0.008">0.8%</option>
+                    <option value="0.01">1.0%</option>
+                </select>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-seller')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Métodos de Pago -->
+    <div id="modal-payment" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print transition-opacity duration-300 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="pay-modal-title" class="text-2xl font-bold mb-6">Nuevo Método de Pago</h3>
+            <form id="form-payment" class="space-y-4">
+                <input type="hidden" id="pay-id">
+                <input type="text" id="pay-name" placeholder="Ej: Zelle, Efectivo, PayPal" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-payment')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detalle de venta -->
+    <div id="modal-sale" class="fixed inset-0 bg-black/50 hidden flex items-end sm:items-center justify-center z-[65] no-print backdrop-blur-sm sm:p-4" onclick="if(event.target===this)closeModal('modal-sale')">
+        <div class="bg-white dark:bg-[#0e1228] w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border dark:border-gray-800 max-h-[92vh] overflow-y-auto" id="sale-detail"></div>
+    </div>
+    <!-- Modal Ventas de un día / segmento -->
+    <div id="modal-day" class="fixed inset-0 bg-black/50 hidden flex items-end sm:items-center justify-center z-[60] no-print backdrop-blur-sm sm:p-4" onclick="if(event.target===this)closeModal('modal-day')">
+        <div class="bg-white dark:bg-[#0e1228] w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border dark:border-gray-800 max-h-[88vh] overflow-y-auto p-6">
+            <div class="flex items-start justify-between gap-3"><div><h3 id="day-title" class="text-xl font-bold"></h3><p id="day-sub" class="text-sm text-gray-500"></p></div><button onclick="closeModal('modal-day')" class="w-9 h-9 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10" aria-label="Cerrar"><i class="fas fa-xmark"></i></button></div>
+            <ul id="day-list" class="mt-4 divide-y dark:divide-gray-800"></ul>
+        </div>
+    </div>
+
+    <!-- Modal Equipo de Reventa -->
+    <div id="modal-resale" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[70] no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-lg border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <h3 id="resale-modal-title" class="text-2xl font-bold mb-1">Nuevo equipo de reventa</h3>
+            <p class="text-sm text-gray-500 mb-6">Equipo conseguido por fuera. Se usa sólo para controlar la ganancia.</p>
+            <form id="form-resale" class="space-y-4">
+                <input type="hidden" id="resale-id">
+                <input type="hidden" id="resale-then-cart">
+                <div class="space-y-1">
+                    <span class="block text-sm font-medium text-gray-500">Condición</span>
+                    <div class="cond-pick grid grid-cols-2 gap-2" data-target="resale-condition">
+                        <button type="button" data-c="sellado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-box"></i> Sellado</button>
+                        <button type="button" data-c="usado" onclick="pickCondition(this)" class="cond-btn"><i class="fas fa-mobile-screen"></i> Usado</button>
+                    </div>
+                    <input type="hidden" id="resale-condition" value="usado">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="resale-brand" list="resale-brand-list" placeholder="Marca (ej: Apple)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="resale-name" required placeholder="Modelo (ej: iPhone 13 128GB)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <datalist id="resale-brand-list"></datalist>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="resale-color" placeholder="Color (ej: Azul, Negro)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="resale-serial" placeholder="IMEI / Serial (opcional)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <input type="text" id="resale-supplier" placeholder="¿A quién se le compró? (proveedor)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                <div class="grid grid-cols-3 gap-3">
+                    <label class="space-y-1"><span class="block text-[10px] font-bold text-gray-400 uppercase">Costo ($)</span><input type="number" step="0.01" min="0" id="resale-cost" required oninput="updateResaleProfitHint()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"></label>
+                    <label class="space-y-1"><span class="block text-[10px] font-bold text-gray-400 uppercase">Precio venta ($)</span><input type="number" step="0.01" min="0" id="resale-price" required oninput="updateResaleProfitHint()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"></label>
+                    <label class="space-y-1"><span class="block text-[10px] font-bold text-gray-400 uppercase">Cantidad</span><input type="number" step="1" min="0" id="resale-stock" value="1" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"></label>
+                </div>
+                <p id="resale-profit-hint" class="text-sm font-semibold text-emerald-600"></p>
+                <!-- Asistente de precios -->
+                <div id="price-assistant" class="admin-only rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-900/10 p-4 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="font-semibold text-sm"><i class="fas fa-wand-magic-sparkles text-emerald-600 mr-1"></i> Asistente de precios</p>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="suggestPrice()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-white/10 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100">Sugerir con mi historial</button>
+                            <button type="button" onclick="askPriceAI()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"><i class="fas fa-robot mr-1"></i>Consultar IA</button>
+                        </div>
+                    </div>
+                    <div id="price-assistant-body" class="text-sm text-gray-600 dark:text-gray-300">Escriba el modelo, la condición y el costo; el asistente le propone el precio de venta y el margen.</div>
+                </div>
+                <textarea id="resale-notes" rows="2" placeholder="Notas (opcional)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal('modal-resale')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Logo y colores de la tienda -->
+    <div id="modal-logo" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[80] no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-xl border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <div class="vision-card !rounded-none !rounded-t-3xl p-6 md:p-7">
+                <p class="text-xs uppercase tracking-widest muted">Personaliza tu sistema</p>
+                <h3 class="text-2xl font-bold mt-1">Logo y colores de la tienda</h3>
+                <p class="muted text-sm mt-1">Suba el logo en <b class="text-white">PNG con fondo transparente</b>. Tomaremos sus colores para la paleta del sistema.</p>
+            </div>
+            <div class="p-6 md:p-7 space-y-5">
+                <label id="logo-drop" class="checker flex flex-col items-center justify-center gap-2 h-44 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:border-brand transition text-gray-500 overflow-hidden">
+                    <img id="logo-preview" alt="" class="hidden max-h-36 max-w-[90%] object-contain">
+                    <span id="logo-drop-hint" class="flex flex-col items-center gap-2 bg-white/80 px-4 py-3 rounded-xl"><i class="fas fa-cloud-arrow-up text-3xl text-brand"></i><span class="text-sm font-semibold text-gray-700">Toque para elegir el PNG</span></span>
+                    <input id="logo-file" type="file" accept="image/png" class="hidden" onchange="onLogoFile(event)">
+                </label>
+                <p id="logo-warning" class="hidden text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl"></p>
+                <div id="logo-colors-wrap" class="hidden space-y-2">
+                    <p class="text-xs font-bold uppercase text-gray-400">Colores detectados · elija el principal</p>
+                    <div id="logo-colors" class="flex flex-wrap gap-3"></div>
+                </div>
+                <div class="rounded-2xl border dark:border-gray-800 p-4 space-y-3">
+                    <p class="text-xs font-bold uppercase text-gray-400">Vista previa</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold shadow-lg shadow-brand/30">Liquidar Pago</span>
+                        <span class="icon-tile"><i class="fas fa-wallet"></i></span>
+                        <span class="px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold">TIENDA</span>
+                        <span class="balance-card px-4 py-2 text-white text-sm font-bold">$1,250.00</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap justify-end gap-3">
+                    <button type="button" onclick="closeLogoModal(false)" class="px-4 py-2 text-gray-500 hover:text-gray-700">Ahora no</button>
+                    <button id="logo-save" type="button" onclick="saveLogoModal()" disabled class="px-5 py-2 bg-brand text-white rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30 disabled:opacity-50">Guardar y aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FACTURA REDISEÑADA (Estilo Cotización Profesional) -->
+    <div id="printable-invoice" class="print-only bg-white text-gray-800" style="font-family:'Inter',sans-serif;">
+        <div style="height:6px;background:linear-gradient(90deg,rgb(var(--brand-deep)),rgb(var(--brand)),rgb(var(--brand-light)));"></div>
+        <div class="relative px-12 pt-8 pb-8">
+            <div id="inv-watermark" class="hidden absolute inset-0 flex items-center justify-center" style="z-index:0;pointer-events:none;">
+                <span style="transform:rotate(-30deg);font-size:120px;font-weight:800;color:rgba(220,38,38,0.13);letter-spacing:10px;">ANULADA</span>
+            </div>
+            <div class="relative" style="z-index:1;">
+                <div class="flex justify-between items-start pb-6" style="border-bottom:1px solid #ECECF3;">
+                    <img id="inv-logo" data-brand-logo src="data:image/jpeg;base64,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" alt="DGT Technology" style="height:90px;max-width:260px;object-fit:contain;">
+                    <div class="text-right">
+                        <h1 id="inv-title" style="font-size:34px;font-weight:800;color:#16162E;line-height:1.1;">Nota de Entrega</h1>
+                        <span id="inv-number" class="inline-block mt-3 px-5 py-1 rounded-full text-sm font-semibold" style="background:rgb(var(--brand-soft));color:rgb(var(--brand-deep));"></span>
+                        <p><span id="inv-channel" class="inline-block mt-2 px-3 py-0.5 rounded-full text-[10px] font-bold tracking-widest" style="border:1px solid rgb(var(--brand-line));color:rgb(var(--brand-deep));">TIENDA</span></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-6 py-6 text-sm" style="border-bottom:1px solid #ECECF3;">
+                    <div>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Emitida por</p>
+                        <p class="font-semibold" style="color:#16162E;">DGT Technology</p>
+                        <p>C.I. V-30.300.266</p>
+                        <p>C.C. City Market, Nivel Plaza, Local 167</p>
+                        <p>Tel. +58 422 624 3505</p>
+                    </div>
+                    <div>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Fecha de emisión</p>
+                        <p id="inv-date"></p>
+                    </div>
+                    <div>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Estado</p>
+                        <p id="inv-status" class="font-bold"></p>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mt-3 mb-1">Vendedor</p>
+                        <p id="inv-seller"></p>
+                    </div>
+                </div>
+
+                <h3 class="flex items-center gap-2 font-bold text-sm mt-6 mb-3" style="color:#16162E;"><span style="width:4px;height:16px;background:rgb(var(--brand));border-radius:2px;display:inline-block;"></span>Datos del cliente</h3>
+                <div class="grid grid-cols-2 gap-x-10 gap-y-4 p-5 rounded-2xl text-sm" style="background:rgb(var(--brand-softer));border:1px solid rgb(var(--brand-line));">
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Nombre y apellido</p><p id="inv-customer"></p></div>
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Cédula / RIF</p><p id="inv-customer-id"></p></div>
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Correo electrónico</p><p id="inv-customer-email"></p></div>
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Celular</p><p id="inv-customer-phone"></p></div>
+                </div>
+
+                <h3 class="flex items-center gap-2 font-bold text-sm mt-6 mb-3" style="color:#16162E;"><span style="width:4px;height:16px;background:rgb(var(--brand));border-radius:2px;display:inline-block;"></span>Detalle de productos</h3>
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr style="background:rgb(var(--brand-soft));color:rgb(var(--brand-deep));font-size:10px;letter-spacing:1.5px;" class="uppercase">
+                            <th class="py-3 px-3 font-semibold">#</th>
+                            <th class="py-3 px-3 font-semibold">Producto</th>
+                            <th class="py-3 px-3 font-semibold text-right">Precio Unit.</th>
+                            <th class="py-3 px-3 font-semibold text-center">Cant.</th>
+                            <th class="py-3 px-3 font-semibold text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inv-items"></tbody>
+                </table>
+
+                <div class="flex justify-between items-start gap-8 mt-6">
+                    <div class="flex-1 text-sm">
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Detalle de pagos</p>
+                        <div id="inv-payment-details" class="space-y-1"></div>
+                        <div id="inv-cancel-box" class="hidden mt-4 p-3 rounded-xl text-xs" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
+                            <p class="font-bold uppercase mb-1">Documento anulado</p>
+                            <p id="inv-cancel-reason"></p>
+                        </div>
+                    </div>
+                    <div style="width:290px;" class="text-sm">
+                        <div class="flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;">Artículos</span><span id="inv-count"></span></div>
+                        <div class="flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;">Subtotal</span><span id="inv-subtotal"></span></div>
+                        <div id="inv-delivery-row" class="hidden flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;" id="inv-delivery-label">Delivery</span><span id="inv-delivery"></span></div>
+                        <div class="flex justify-between items-center mt-3 px-5 py-4 rounded-2xl text-white" style="background:linear-gradient(90deg,rgb(var(--brand-deep)),rgb(var(--brand)),rgb(var(--brand-light)));">
+                            <span style="font-size:11px;letter-spacing:2px;font-weight:700;">TOTAL</span>
+                            <span id="inv-total-main" style="font-size:24px;font-weight:700;"></span>
+                        </div>
+                        <p class="text-right mt-2 text-xs" style="color:#8A8AA0;">Equivalente: <span id="inv-total-sec"></span></p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end gap-10 mt-10">
+                    <div class="flex-1">
+                        <p class="font-bold text-base" style="color:#16162E;">¡Gracias por su preferencia!</p>
+                        <p class="text-xs mt-1" style="color:#8A8AA0;">Documento sin valor fiscal. Montos expresados sin IVA.</p>
+                    </div>
+                    <div class="text-center" style="width:190px;">
+                        <div style="border-top:1px solid #16162E;" class="mb-2"></div>
+                        <p class="text-xs" style="color:#8A8AA0;">Firma autorizada</p>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-4" style="border-top:1px solid #ECECF3;">
+                    <p style="font-size:9px;letter-spacing:1.5px;color:#8A8AA0;font-weight:700;" class="uppercase mb-1">Términos y condiciones de garantía</p>
+                    <p class="text-justify" style="font-size:8.5px;line-height:1.5;color:#8A8AA0;">
+                        La presente garantía tiene una validez total de 360 días naturales (1 año) a partir de la fecha de emisión de este documento.
+                        La cobertura se limita exclusivamente a <strong style="color:#16162E;">defectos de fabricación</strong> comprobables. DgtTecnologyVzla, en calidad de distribuidor,
+                        asume la gestión logística y los costos de envío del equipo hacia el centro de servicio autorizado del fabricante original para asegurar
+                        la vigencia de la garantía de marca. Queda estrictamente excluida la garantía en casos de daños provocados por manipulación incorrecta,
+                        sobrecargas eléctricas, humedad, golpes o intervención de personal técnico no autorizado por la marca.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+</body>
+</html>
