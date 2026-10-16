@@ -9,7 +9,7 @@ const TABLES = {
   payments: { table: 'payment_methods', cols: ['id', 'name'] },
   resale: { table: 'resale_items', cols: ['id', 'brand', 'name', 'color', 'serial', 'supplier', 'cost', 'price', 'stock', 'notes', 'acquired_at'] },
 }
-const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'rate_type', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date', 'channel', 'cost_total']
+const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'rate_type', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date', 'channel', 'cost_total', 'delivery']
 const TEXT_COLS = new Set(['brand_id', 'customer_id', 'seller_id', 'date', 'cancel_date', 'acquired_at'])
 const META_COLS = new Set(['extra', 'updated_at', 'created_at', 'created_by', 'cancelled_by'])
 

@@ -640,7 +640,7 @@ function renderSellers() {
     }
     container.innerHTML = sellers.map(s => {
         const sellerSales = sales.filter(sl => sl.sellerId == s.id && sl.status !== 'cancelada');
-        const totalSold = sellerSales.reduce((acc, cur) => acc + cur.total, 0);
+        const totalSold = sellerSales.reduce((acc, cur) => acc + cur.total - feeOf(cur), 0);
         const commissionEarned = totalSold * s.comm;
         const units = sellerSales.reduce((acc, sl) => acc + (sl.items || []).reduce((a, i) => a + i.qty, 0), 0);
         return `
@@ -790,6 +790,8 @@ function renderPOS() {
     sellSel.innerHTML = sellers.map(s => `<option value="${s.id}">${s.name}</option>`).join('') || '<option value="">Sin Vendedor</option>';
     if (prevCust && customers.some(c => c.id == prevCust)) custSel.value = prevCust;
     if (prevSell && sellers.some(s => s.id == prevSell)) sellSel.value = prevSell;
+    custSel.onchange = renderCustomerCard;
+    renderCustomerCard();
     filterPOS();
 }
 
@@ -870,8 +872,12 @@ function renderCart() {
             </div>
         `;
     }).join('') : '<p class="text-sm text-gray-400 text-center py-4">Toque un producto para agregarlo</p>';
+    const fee = delivery ? delivery.fee : 0;
     document.getElementById('cart-subtotal').innerText = `${appCurrency}${total.toFixed(2)}`;
-    document.getElementById('cart-total').innerText = `${appCurrency}${total.toFixed(2)}`;
+    const dRow = document.getElementById('cart-delivery-row');
+    dRow.classList.toggle('hidden', !delivery); dRow.classList.toggle('flex', !!delivery);
+    if (delivery) { document.getElementById('cart-delivery-label').innerText = delivery.label + ':'; document.getElementById('cart-delivery').innerText = `${appCurrency}${fee.toFixed(2)}`; }
+    document.getElementById('cart-total').innerText = `${appCurrency}${(total + fee).toFixed(2)}`;
     const profit = document.getElementById('cart-profit');
     const showProfit = cart.length > 0 && cartSource() === 'reventa';
     profit.classList.toggle('hidden', !showProfit);
@@ -880,7 +886,7 @@ function renderCart() {
     const fab = document.getElementById('pos-cart-fab');
     const units = cart.reduce((a, i) => a + i.qty, 0);
     fab.classList.toggle('hidden', units === 0);
-    fab.querySelector('span').innerText = `${units} · ${appCurrency}${total.toFixed(2)}`;
+    fab.querySelector('span').innerText = `${units} · ${appCurrency}${(total + fee).toFixed(2)}`;
 }
 
 function changeQty(idx, delta) {
@@ -890,6 +896,76 @@ function changeQty(idx, delta) {
     item.qty += delta;
     if(item.qty <= 0) cart.splice(idx, 1);
     renderCart();
+}
+
+// DELIVERY (se suma al total de la factura)
+const DELIVERY_CARACAS = 5;
+let delivery = null; // { type: 'caracas'|'fuera', label, fee, zone }
+const feeOf = (s) => Number(s && s.delivery && s.delivery.fee) || 0;
+const productsTotal = () => cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
+const grandTotal = () => productsTotal() + (delivery ? delivery.fee : 0);
+
+function setDelivery(type, on) {
+    const ccs = document.getElementById('deliv-ccs'), out = document.getElementById('deliv-out');
+    if (type === 'caracas') { if (on) out.checked = false; }
+    else if (on) ccs.checked = false;
+    const outOn = out.checked;
+    document.getElementById('deliv-out-fields').classList.toggle('hidden', !outOn);
+    if (outOn) {
+        const feeIn = document.getElementById('deliv-fee');
+        if (!feeIn.value) { try { feeIn.value = localStorage.getItem('ns_deliv_out_fee') || ''; } catch { /* sin almacenamiento */ } }
+        if (!feeIn.value) setTimeout(() => feeIn.focus(), 50);
+    }
+    updateDeliveryFromInputs();
+}
+function updateDeliveryFromInputs() {
+    const ccs = document.getElementById('deliv-ccs').checked, out = document.getElementById('deliv-out').checked;
+    if (ccs) delivery = { type: 'caracas', label: 'Delivery Caracas', fee: DELIVERY_CARACAS, zone: 'Caracas' };
+    else if (out) {
+        const zone = document.getElementById('deliv-zone').value.trim();
+        const fee = Math.max(0, parseFloat(document.getElementById('deliv-fee').value) || 0);
+        delivery = { type: 'fuera', label: `Delivery ${zone || 'fuera de Caracas'}`, fee, zone: zone || 'Fuera de Caracas' };
+        if (fee > 0) { try { localStorage.setItem('ns_deliv_out_fee', String(fee)); } catch { /* sin almacenamiento */ } }
+    } else delivery = null;
+    renderCart();
+}
+function resetDelivery() {
+    delivery = null;
+    ['deliv-ccs', 'deliv-out'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+    const z = document.getElementById('deliv-zone'); if (z) z.value = '';
+    document.getElementById('deliv-out-fields')?.classList.add('hidden');
+}
+
+// FICHA DEL CLIENTE EN EL PUNTO DE VENTA
+function renderCustomerCard() {
+    const box = document.getElementById('pos-customer-card');
+    if (!box) return;
+    const c = customers.find(x => x.id == document.getElementById('pos-customer').value);
+    if (!c) { box.innerHTML = ''; return; }
+    const list = sales.filter(s => s.customerId == c.id).sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0));
+    const act = list.filter(s => s.status !== 'cancelada');
+    const spent = act.reduce((a, s) => a + s.total, 0);
+    const parts = String(c.name || '').trim().split(/\s+/);
+    const row = (icon, label, value) => value ? `<p class="flex items-center gap-2 min-w-0"><i class="fas ${icon} w-4 text-gray-400"></i><span class="text-gray-400 shrink-0">${label}</span><span class="truncate font-medium">${escHtml(value)}</span></p>` : '';
+    box.innerHTML = `
+        <div class="mt-2 rounded-2xl border border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-3 text-sm space-y-1.5">
+            <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-bold shrink-0">${escHtml(getInitials(c.name))}</span>
+                <div class="min-w-0 flex-1"><p class="font-semibold truncate">${escHtml(c.name)}</p><p class="text-xs text-gray-400">${act.length} compra(s) · ${money(spent)}</p></div>
+                <button type="button" onclick="editCustomer(${c.id})" class="w-8 h-8 rounded-lg text-gray-400 hover:text-brand hover:bg-white dark:hover:bg-white/10" title="Editar cliente"><i class="fas fa-pen text-xs"></i></button>
+            </div>
+            ${row('fa-user', 'Nombre', parts[0])}
+            ${row('fa-user', 'Apellido', parts.slice(1).join(' '))}
+            ${row('fa-id-card', 'Cédula', c.cedula)}
+            ${row('fa-building', 'RIF', c.rif)}
+            ${row('fa-envelope', 'Correo', c.email)}
+            ${row('fa-phone', 'Teléfono', c.phone)}
+            ${list.length ? `<div class="pt-1.5 mt-1.5 border-t border-gray-200 dark:border-white/10">
+                <p class="text-xs text-gray-400 mb-1">Facturas anteriores</p>
+                ${list.slice(0, 4).map(s => `<button type="button" onclick="openSaleDetail('${s.id}')" class="w-full flex justify-between gap-2 text-xs py-1 hover:text-brand"><span class="font-mono truncate">${s.id} · ${(saleTime(s) || new Date()).toLocaleDateString('es-VE')}</span><span class="tabular-nums ${s.status === 'cancelada' ? 'line-through text-gray-400' : 'font-semibold'}">${money(s.total)}</span></button>`).join('')}
+                ${list.length > 4 ? `<p class="text-[11px] text-gray-400">y ${list.length - 4} más en Clientes</p>` : ''}
+            </div>` : '<p class="text-xs text-gray-400 pt-1">Primera compra de este cliente</p>'}
+        </div>`;
 }
 
 // PAYMENT SETTLEMENT LOGIC
@@ -918,8 +994,9 @@ function selectSaleChannel(channel) {
 
 function openPaymentModal() {
     if(cart.length === 0) return alert('El carrito está vacío');
+    if (delivery && delivery.type === 'fuera' && !(delivery.fee > 0)) return alert('Indique el monto del delivery fuera de Caracas');
     
-    const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
+    const total = grandTotal();
     document.getElementById('settle-total').innerText = `${appCurrency}${total.toFixed(2)}`;
     currentSettlePayments = [];
     document.getElementById('settle-payments-list').innerHTML = '';
@@ -941,7 +1018,7 @@ function addPaymentRow() {
     
     row.className = 'flex flex-wrap gap-2 items-center animate-slide-in bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border dark:border-gray-700';
     const methodsOptions = payments.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
+    const total = grandTotal();
     let paid = 0;
     document.querySelectorAll('#settle-payments-list .pay-amount').forEach(i => paid += parseFloat(i.value) || 0);
     const remaining = Math.max(0, total - paid);
@@ -968,7 +1045,7 @@ function removePaymentRow(id) {
 }
 
 function updateSettleBalance() {
-    const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
+    const total = grandTotal();
     let paid = 0;
     
     const rate = parseFloat(document.getElementById('sale-rate').value) || 0;
@@ -1004,7 +1081,7 @@ function updateSettleBalance() {
 }
 
 async function executeFinalSale() {
-    const total = cart.reduce((acc, cur) => acc + (cur.price * cur.qty), 0);
+    const total = grandTotal();
     const custId = document.getElementById('pos-customer').value;
     const sellId = document.getElementById('pos-seller').value;
     const rate = parseFloat(document.getElementById('sale-rate').value) || 1;
@@ -1037,6 +1114,7 @@ async function executeFinalSale() {
         mainCurrency: mainCurrency,
         payments: paymentsMade,
         items: cart.map(({ cost, ...i }) => i),
+        delivery: delivery ? { ...delivery } : null,
         total: total
     };
 
@@ -1065,6 +1143,7 @@ async function executeFinalSale() {
     fillInvoice(sale);
 
     cart = [];
+    resetDelivery();
     renderCart();
     renderPOS();
     closeModal('modal-payment-settle');
@@ -1336,9 +1415,13 @@ function fillInvoice(sale) {
 
     const units = sale.items.reduce((a, i) => a + i.qty, 0);
     const totalUsd = sale.total;
+    const dFee = feeOf(sale);
+    const dRow = document.getElementById('inv-delivery-row');
+    dRow.classList.toggle('hidden', !dFee);
+    if (dFee) { set('inv-delivery-label', sale.delivery.label || 'Delivery'); set('inv-delivery', `${appCurrency} ${fmtMoney(dFee)}`); }
     const totalBs = sale.total * rate;
     set('inv-count', units);
-    set('inv-subtotal', `${appCurrency} ${fmtMoney(totalUsd)}`);
+    set('inv-subtotal', `${appCurrency} ${fmtMoney(totalUsd - dFee)}`);
     const main = document.getElementById('inv-total-main');
     if(sale.mainCurrency === 'BS' || sale.mainCurrency === 'Bs' || sale.mainCurrency === 'VES') {
         main.innerHTML = `<span style="font-size:12px;opacity:.8;">Bs.</span> ${fmtMoney(totalBs)}`;
@@ -1524,7 +1607,7 @@ function updateDashboard() {
     html('dash-total-delta', deltaText(total, prev ? sum(prev) : null));
     countTo('dash-count-sales', inP.length);
     set('dash-ticket', inP.length ? `Ticket promedio ${money(total / inP.length)}` : 'Sin ventas en el período');
-    const comm = inP.reduce((a, s) => { const sl = sellers.find(x => x.id == s.sellerId); return a + (sl ? s.total * sl.comm : 0); }, 0);
+    const comm = inP.reduce((a, s) => { const sl = sellers.find(x => x.id == s.sellerId); return a + (sl ? (s.total - feeOf(s)) * sl.comm : 0); }, 0);
     countTo('dash-total-commissions', money(comm));
     set('dash-units', `${inP.reduce((a, s) => a + unitsOf(s), 0)} equipos vendidos`);
     const low = products.filter(p => p.stock < 5);
@@ -1681,6 +1764,7 @@ function openSaleDetail(id) {
             </div>
             <div><p class="text-sm font-semibold mb-1">Productos</p><ul class="divide-y dark:divide-gray-800">${items}</ul></div>
             <div><p class="text-sm font-semibold mb-1">Pagos</p><ul>${pays}</ul></div>
+            ${feeOf(s) ? `<p class="flex justify-between text-sm"><span><i class="fas fa-motorcycle text-brand mr-1"></i>${escHtml(s.delivery.label || 'Delivery')}</span><b class="tabular-nums">${money(feeOf(s))}</b></p>` : ''}
             <div class="rounded-2xl p-4 text-white" style="background:linear-gradient(90deg, rgb(var(--brand-dark)), rgb(var(--brand)))">
                 <div class="flex justify-between items-center"><span class="text-sm opacity-80">Total</span><span class="text-2xl font-bold tabular-nums ${cancelled ? 'line-through opacity-70' : ''}">${money(s.total)}</span></div>
                 <p class="text-right text-xs opacity-80">${fmtBs(s.total * (s.rate || 0))}</p>
@@ -1905,7 +1989,7 @@ function sellResale(id) {
 }
 
 // REVENTA: VENTAS
-function resaleProfit(s) { return s.total - (Number(s.costTotal) || 0); }
+function resaleProfit(s) { return s.total - feeOf(s) - (Number(s.costTotal) || 0); }
 
 function renderResaleSales() {
     const tbody = document.getElementById('resale-sales-table-body');
@@ -2343,6 +2427,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

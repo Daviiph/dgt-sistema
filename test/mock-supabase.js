@@ -93,7 +93,9 @@ function rpc(name, args) {
       if (!r || r.stock < it.qty) return { data: null, error: { message: 'Stock insuficiente para ' + it.name } }
       r.stock -= it.qty; total += r.price * it.qty; cost += (r.cost || 0) * it.qty
     }
-    const row = { id: p.id, date: p.date, customer_id: p.customerId, seller_id: p.sellerId, rate: p.rate, rate_type: p.rateType, doc_type: p.docType, main_currency: p.mainCurrency, payments: p.payments, items: p.items, total, status: 'activa', channel: ch, cost_total: ch === 'reventa' ? cost : null, extra: {}, created_at: new Date().toISOString() }
+    const fee = Number(p.delivery && p.delivery.fee) || 0
+    total += fee
+    const row = { id: p.id, date: p.date, customer_id: p.customerId, seller_id: p.sellerId, rate: p.rate, rate_type: p.rateType, doc_type: p.docType, main_currency: p.mainCurrency, payments: p.payments, items: p.items, total, status: 'activa', channel: ch, cost_total: ch === 'reventa' ? cost : null, delivery: fee > 0 ? p.delivery : null, extra: {}, created_at: new Date().toISOString() }
     db.sales.push(row)
     return { data: row, error: null }
   }

@@ -457,14 +457,27 @@
                                 <button onclick="openModal('modal-customer')" class="text-brand hover:text-brand-dark text-xs font-bold transition-colors"><i class="fas fa-plus"></i> Nuevo</button>
                             </div>
                             <select id="pos-customer" class="w-full p-2 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                            <div id="pos-customer-card"></div>
                         </div>
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-gray-400 uppercase">Vendedor</label>
                             <select id="pos-seller" class="w-full p-2 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
                         </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-gray-400 uppercase">Entrega</label>
+                            <label class="deliv-row"><span><i class="fas fa-motorcycle text-brand mr-2"></i>Delivery en Caracas <b class="tabular-nums">$5</b></span>
+                                <input type="checkbox" id="deliv-ccs" class="switch" onchange="setDelivery('caracas', this.checked)"></label>
+                            <label class="deliv-row"><span><i class="fas fa-truck-fast text-brand mr-2"></i>Delivery fuera de Caracas</span>
+                                <input type="checkbox" id="deliv-out" class="switch" onchange="setDelivery('fuera', this.checked)"></label>
+                            <div id="deliv-out-fields" class="hidden grid grid-cols-2 gap-2 pl-1">
+                                <input id="deliv-zone" type="text" placeholder="Zona (ej: La Guaira)" oninput="updateDeliveryFromInputs()" class="field-sm">
+                                <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span><input id="deliv-fee" type="number" min="0" step="0.5" placeholder="Monto" oninput="updateDeliveryFromInputs()" class="field-sm w-full pl-7"></div>
+                            </div>
+                        </div>
                         <div id="cart-items" class="space-y-3 mb-6 max-h-64 overflow-y-auto py-2"></div>
                         <div class="border-t dark:border-gray-800 pt-4 space-y-2">
                             <div class="flex justify-between text-gray-600 dark:text-gray-400"><span class="text-sm">Subtotal:</span> <span id="cart-subtotal" class="font-medium">$0.00</span></div>
+                            <div id="cart-delivery-row" class="hidden justify-between text-gray-600 dark:text-gray-400"><span class="text-sm" id="cart-delivery-label">Delivery:</span> <span id="cart-delivery" class="font-medium"></span></div>
                             <div class="flex justify-between text-xl font-bold text-gray-900 dark:text-white"><span>Total:</span> <span id="cart-total">$0.00</span></div>
                             <div id="cart-profit" class="admin-only hidden justify-between text-sm text-emerald-600 font-semibold"><span>Ganancia estimada:</span> <span></span></div>
                         </div>
@@ -1027,6 +1040,7 @@
                     <div style="width:290px;" class="text-sm">
                         <div class="flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;">Artículos</span><span id="inv-count"></span></div>
                         <div class="flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;">Subtotal</span><span id="inv-subtotal"></span></div>
+                        <div id="inv-delivery-row" class="hidden flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;" id="inv-delivery-label">Delivery</span><span id="inv-delivery"></span></div>
                         <div class="flex justify-between items-center mt-3 px-5 py-4 rounded-2xl text-white" style="background:linear-gradient(90deg,rgb(var(--brand-deep)),rgb(var(--brand)),rgb(var(--brand-light)));">
                             <span style="font-size:11px;letter-spacing:2px;font-weight:700;">TOTAL</span>
                             <span id="inv-total-main" style="font-size:24px;font-weight:700;"></span>
