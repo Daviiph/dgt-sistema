@@ -22,8 +22,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405)
 
-  const user = Deno.env.get('GMAIL_USER')
-  const pass = Deno.env.get('GMAIL_APP_PASSWORD')
+  // Secretos de Supabase primero; si no existen, los del archivo local credenciales.ts (no se sube a GitHub)
+  let local: { GMAIL_USER?: string; GMAIL_APP_PASSWORD?: string } = {}
+  try { local = (await import('./credenciales.ts')).default } catch { /* sin archivo local */ }
+  const user = Deno.env.get('GMAIL_USER') || local.GMAIL_USER
+  const pass = (Deno.env.get('GMAIL_APP_PASSWORD') || local.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '')
   if (!user || !pass) return json({ error: 'Falta configurar el correo de envío (GMAIL_USER y GMAIL_APP_PASSWORD).' }, 500)
 
   // Cliente con la sesión de quien llama: respeta los permisos (RLS)
