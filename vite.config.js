@@ -8,10 +8,11 @@ const mock = process.env.VITE_MOCK === '1'
 export default defineConfig({
   base: process.env.BASE_PATH || '/',
   build: { chunkSizeWarningLimit: 2000 },
-  resolve: mock ? { alias: [{ find: /^\.\/supabase\.js$/, replacement: fileURLToPath(new URL('./test/mock-supabase.js', import.meta.url)) }] } : {},
+  resolve: mock ? { alias: [{ find: 'virtual:pwa-register', replacement: fileURLToPath(new URL('./test/pwa-stub.js', import.meta.url)) }, { find: /^\.\/supabase\.js$/, replacement: fileURLToPath(new URL('./test/mock-supabase.js', import.meta.url)) }] } : {},
   plugins: [
     !mock && VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.png', 'apple-touch-icon.png', 'logo.png'],
       manifest: {
         name: 'DgtTecnologyVzla – Vendra',

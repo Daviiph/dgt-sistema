@@ -437,6 +437,9 @@ document.getElementById('form-customer').onsubmit = (e) => {
     closeModal('modal-customer');
     renderCustomers();
     renderPOS();
+    // Si se creó desde el punto de venta, queda seleccionado y se muestra su ficha
+    const custSel = document.getElementById('pos-customer');
+    if (custSel && custSel.querySelector(`option[value="${custData.id}"]`)) { custSel.value = String(custData.id); renderCustomerCard(); }
 };
 
 function editCustomer(id) {

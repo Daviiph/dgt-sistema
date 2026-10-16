@@ -7,6 +7,7 @@ import './style.css'
 import { initThemeFromCache } from './theme.js'
 import { mountProgramBrand } from './brand.js'
 import { initAuth } from './auth.js'
+import { registerSW } from 'virtual:pwa-register'
 
 // Colores y logo de la tienda guardados: la pantalla de inicio ya sale con la marca
 initThemeFromCache()
@@ -21,3 +22,11 @@ function hideSplash() {
 
 initAuth().finally(hideSplash)
 setTimeout(hideSplash, 6000)
+
+// Actualización automática: cuando se publica una versión nueva, la app la descarga y se recarga sola
+try {
+  registerSW({
+    immediate: true,
+    onRegisteredSW(_url, reg) { if (reg) setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000) },
+  })
+} catch { /* sin service worker */ }
