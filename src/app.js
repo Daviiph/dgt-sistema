@@ -968,6 +968,91 @@ function renderCustomerCard() {
         </div>`;
 }
 
+// PARTE DE PAGO: equipo usado que entrega el cliente
+const payName = (p) => p && p.methodId === 'tradein' ? 'Equipo recibido (parte de pago)' : (payments.find(m => m.id == (p && p.methodId))?.name || 'Método');
+const tradeInDesc = (t) => t ? [[t.brand !== 'Apple' ? t.brand : '', t.name, t.color].filter(Boolean).join(' '), t.imei ? 'IMEI ' + t.imei : '', t.appleId ? 'Apple ID ' + t.appleId : '', t.battery ? 'Batería ' + t.battery + '%' : '', t.notes].filter(Boolean).join(' · ') : '';
+
+function usedMarkup(full) {
+    const pool = resale.filter(r => r.cost > 0 && r.price > 0 && (condOf(r) || 'usado') === 'usado');
+    const sim = pool.filter(r => similarity(full, `${r.brand} ${r.name}`) >= 0.6);
+    const l = sim.length ? sim : pool.length >= 3 ? pool : [];
+    const m = l.length ? l.reduce((a, r) => a + (r.price - r.cost) / r.cost, 0) / l.length : DEFAULT_MARKUP.usado;
+    return Math.min(Math.max(m, 0.05), 0.6);
+}
+function tradeInSuggest() {
+    const model = document.getElementById('ti-model').value.trim(), cap = document.getElementById('ti-capacity').value;
+    const value = parseFloat(document.getElementById('ti-value').value) || 0;
+    const el = document.getElementById('ti-suggest');
+    if (!model || !(value > 0)) { el.innerText = ''; return null; }
+    const price = roundPrice(value * (1 + usedMarkup(`Apple ${model} ${cap}`)));
+    el.innerHTML = `Precio de reventa sugerido: <b class="text-sky-700 dark:text-sky-300">${money(price)}</b> (ganancia ${money(price - value)}). Podrá ajustarlo en Equipos de reventa.`;
+    return price;
+}
+function openTradeIn() {
+    document.getElementById('tradein-form').classList.remove('hidden');
+    document.getElementById('ti-model').focus();
+}
+function closeTradeIn() {
+    const f = document.getElementById('tradein-form');
+    f.classList.add('hidden');
+    f.querySelectorAll('input').forEach(i => i.value = '');
+    f.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.getElementById('ti-suggest').innerText = '';
+}
+function addTradeIn() {
+    const g = (id) => document.getElementById(id).value.trim();
+    const model = g('ti-model'), value = parseFloat(g('ti-value')) || 0;
+    if (!model) return alert('Escriba el modelo del equipo recibido');
+    if (!(value > 0)) return alert('Indique el valor que se le reconoce al equipo');
+    let paidOthers = 0;
+    document.querySelectorAll('#settle-payments-list .pay-amount').forEach(i => paidOthers += parseFloat(i.value) || 0);
+    if (value > grandTotal()) return alert('El valor del equipo no puede ser mayor que el total de la venta');
+    const t = {
+        id: Date.now(), brand: 'Apple', name: [model.replace(/^apple\s+/i, ''), g('ti-capacity')].filter(Boolean).join(' '),
+        color: g('ti-color'), imei: g('ti-imei'), appleId: g('ti-appleid'), battery: g('ti-battery'), notes: g('ti-state'),
+        suggestedPrice: tradeInSuggest() || roundPrice(value * 1.2),
+    };
+    const row = document.createElement('div');
+    row.id = `pay-row-${t.id}`;
+    row.className = 'tradein-row flex flex-wrap gap-2 items-center bg-sky-50 dark:bg-sky-900/20 p-3 rounded-xl border border-sky-200 dark:border-sky-800';
+    row.dataset.tradein = JSON.stringify(t);
+    row.innerHTML = `
+        <input type="hidden" class="pay-method" value="tradein">
+        <i class="fab fa-apple text-sky-600 text-lg"></i>
+        <div class="flex-1 min-w-[140px] text-sm"><p class="font-semibold">Recibe ${escHtml(t.name)}</p><p class="text-xs text-gray-500 truncate">${escHtml(tradeInDesc(t).replace(t.name, '').replace(/^ · /, ''))}</p></div>
+        <input type="number" class="pay-amount w-24 p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm font-bold" value="${value.toFixed(2)}" readonly title="Se descuenta del pago">
+        <select class="pay-currency hidden"><option value="USD" selected>USD</option></select>
+        <button onclick="removePaymentRow(${t.id})" class="text-red-500 hover:text-red-700" title="Quitar"><i class="fas fa-times"></i></button>
+        <p class="pay-bs hidden"></p>`;
+    const list = document.getElementById('settle-payments-list');
+    list.insertBefore(row, list.firstChild);
+    // Ajusta el primer pago normal a lo que falta
+    const normal = [...list.querySelectorAll(':scope > div:not(.tradein-row) .pay-amount')];
+    if (normal.length === 1) { let used = 0; list.querySelectorAll('.tradein-row .pay-amount').forEach(i => used += parseFloat(i.value) || 0); normal[0].value = Math.max(0, grandTotal() - used).toFixed(2); }
+    closeTradeIn();
+    updateSettleBalance();
+}
+
+// Si la nube aún no registró el equipo recibido (ajuste de base de datos pendiente), lo agrega el administrador
+async function ensureTradeInsInInventory(sale) {
+    const list = (sale.payments || []).filter(p => p.tradeIn);
+    if (!list.length || !isAdmin()) return;
+    let added = 0;
+    for (const p of list) {
+        const t = p.tradeIn;
+        if (resale.some(r => String(r.id) === String(t.id))) continue;
+        const cust = customers.find(c => c.id == sale.customerId);
+        resale.push({
+            id: t.id, brand: t.brand || 'Apple', name: t.name, color: t.color, serial: t.imei,
+            supplier: `${cust ? cust.name : 'Cliente'} (parte de pago)`, cost: p.amount, price: Math.max(t.suggestedPrice || 0, p.amount), stock: 1,
+            notes: ['Recibido como parte de pago en ' + sale.id, t.appleId ? 'Apple ID: ' + t.appleId : '', t.battery ? 'Batería: ' + t.battery + '%' : '', t.notes].filter(Boolean).join(' · '),
+            acquiredAt: new Date().toLocaleDateString('es-VE'), condition: 'usado', pendingPrice: true, tradeInSale: sale.id, appleId: t.appleId, battery: t.battery,
+        });
+        added++;
+    }
+    if (added) await save();
+}
+
 // PAYMENT SETTLEMENT LOGIC
 let currentSettlePayments = [];
 let saleChannel = 'tienda';
@@ -1000,6 +1085,7 @@ function openPaymentModal() {
     document.getElementById('settle-total').innerText = `${appCurrency}${total.toFixed(2)}`;
     currentSettlePayments = [];
     document.getElementById('settle-payments-list').innerHTML = '';
+    closeTradeIn();
     selectSaleChannel(cartSource());
     if (saleChannel === 'reventa') document.getElementById('settle-doc-type').value = 'Nota de Entrega';
     selectRateType(rateType);
@@ -1097,7 +1183,8 @@ async function executeFinalSale() {
             amount: amount,
             currency: currency,
             amountBs: currency === 'VES' ? Math.round(amount * rate * 100) / 100 : null,
-            rateType: rateType
+            rateType: rateType,
+            ...(row.dataset.tradein ? { tradeIn: JSON.parse(row.dataset.tradein) } : {})
         });
     });
 
@@ -1138,6 +1225,8 @@ async function executeFinalSale() {
     } else {
         await syncChain;
         await reloadData();
+        await ensureTradeInsInInventory(sale);
+        if ((sale.payments || []).some(p => p.tradeIn)) toast('El equipo recibido se agregó a Equipos de reventa. Confirme su precio de venta.', 'ok', 7000);
     }
     
     fillInvoice(sale);
@@ -1296,7 +1385,7 @@ function salesTableRows(list, withProfit) {
         const cust = customers.find(c => c.id == s.customerId);
         const cancelled = s.status === 'cancelada';
         const t = saleTime(s);
-        const paySummary = (s.payments || []).map(p => payments.find(m => m.id == p.methodId)?.name || 'N/A').join(', ');
+        const paySummary = (s.payments || []).map(payName).join(', ');
         const names = (s.items || []).map(i => `${i.name}${i.qty > 1 ? ' ×' + i.qty : ''}`).join(', ');
         const profit = s.total - (Number(s.costTotal) || 0);
         return `
@@ -1405,7 +1494,8 @@ function fillInvoice(sale) {
     }).join('');
 
     document.getElementById('inv-payment-details').innerHTML = (sale.payments || []).map(p => {
-        const m = payments.find(meth => meth.id == p.methodId);
+        const m = { name: payName(p) };
+        if (p.tradeIn) return `<div style="max-width:300px;"><div class="flex justify-between"><span>Se recibe ${escHtml(p.tradeIn.name)}</span><span class="font-semibold">${appCurrency} ${fmtMoney(p.amount)}</span></div><p style="font-size:10px;color:#8A8AA0;">Equipo como parte de pago · ${escHtml(tradeInDesc(p.tradeIn))}</p></div>`;
         if (p.currency === 'VES') {
             const bs = p.amountBs != null ? p.amountBs : p.amount * rate;
             return `<div style="max-width:300px;"><div class="flex justify-between"><span>${m ? m.name : 'Método'}</span><span class="font-semibold">Bs. ${fmtMoney(bs)}</span></div><p class="text-right" style="font-size:10px;color:#8A8AA0;">${appCurrency} ${fmtMoney(p.amount)} · Tasa ${p.rateType || sale.rateType || ''} ${fmtMoney(rate)}</p></div>`;
@@ -1656,8 +1746,7 @@ function updateDashboard() {
     // Por método de pago
     const byMethod = {};
     inP.forEach(s => (s.payments || []).forEach(p => {
-        const m = payments.find(x => x.id == p.methodId);
-        const k = m ? m.name : 'Otro';
+        const k = payName(p);
         (byMethod[k] = byMethod[k] || { value: 0, list: new Set(), bs: 0 });
         byMethod[k].value += Number(p.amount) || 0;
         if (p.currency === 'VES') byMethod[k].bs += Number(p.amountBs) || 0;
@@ -1741,8 +1830,8 @@ function openSaleDetail(id) {
         return `<li class="flex items-center justify-between gap-3 py-2"><span class="min-w-0"><span class="block text-sm font-medium truncate">${escHtml((b ? b.name + ' ' : '') + i.name)}</span><span class="block text-xs text-gray-400">${escHtml(label)}${i.serial ? ' · S/N ' + escHtml(i.serial) : ''} · ${money(i.price)} × ${i.qty}</span></span><b class="tabular-nums text-sm">${money(i.price * i.qty)}</b></li>`;
     }).join('');
     const pays = (s.payments || []).map(p => {
-        const m = payments.find(x => x.id == p.methodId);
-        return `<li class="flex justify-between gap-3 text-sm py-1"><span>${escHtml(m ? m.name : 'Método')}</span><span class="tabular-nums">${money(p.amount)}${p.currency === 'VES' && p.amountBs != null ? ` <span class="text-xs text-gray-400">(${fmtBs(p.amountBs)})</span>` : ''}</span></li>`;
+        if (p.tradeIn) return `<li class="text-sm py-1"><p class="flex justify-between gap-3"><span><i class="fab fa-apple text-sky-600 mr-1"></i>Se recibe ${escHtml(p.tradeIn.name)}</span><span class="tabular-nums">${money(p.amount)}</span></p><p class="text-xs text-gray-400">${escHtml(tradeInDesc(p.tradeIn))}</p></li>`;
+        return `<li class="flex justify-between gap-3 text-sm py-1"><span>${escHtml(payName(p))}</span><span class="tabular-nums">${money(p.amount)}${p.currency === 'VES' && p.amountBs != null ? ` <span class="text-xs text-gray-400">(${fmtBs(p.amountBs)})</span>` : ''}</span></li>`;
     }).join('') || '<li class="text-sm text-gray-400">Sin detalle de pago</li>';
     const profit = resaleS ? s.total - (Number(s.costTotal) || 0) : null;
     document.getElementById('sale-detail').innerHTML = `
@@ -1806,6 +1895,10 @@ function renderResaleItems() {
     });
     const tbody = document.getElementById('resale-table-body');
     bindSeg('resale-cond', 'c', resaleCond, (c) => { resaleCond = c; renderResaleItems(); });
+    const pend = resale.filter(r => r.pendingPrice && r.stock > 0);
+    document.getElementById('resale-pending-banner').innerHTML = pend.length ? `<div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 text-sm">
+        <p><i class="fab fa-apple text-sky-600 mr-1"></i><b>${pend.length} equipo(s) recibido(s) como parte de pago</b> esperan que confirme el precio de venta.</p>
+        <button onclick="editResale(${pend[0].id})" class="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-semibold">Definir precio</button></div>` : '';
     const rq = (document.getElementById('resale-search')?.value || '').toLowerCase().trim();
     const list = resale.filter(r => (resaleFilter === 'todos' || (resaleFilter === 'disponible' ? r.stock > 0 : r.stock <= 0)) && condMatch(resaleCond, r) && (!rq || [r.brand, r.name, r.color, r.serial, r.supplier].join(' ').toLowerCase().includes(rq)));
     if (!list.length) {
@@ -1817,7 +1910,7 @@ function renderResaleItems() {
         const margin = r.price > 0 ? (profit / r.price) * 100 : 0;
         return `
         <tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-            <td class="p-4"><p class="font-bold">${[r.brand, r.name].filter(Boolean).join(' ')} ${condBadge(condOf(r))}</p><p class="text-xs text-gray-400">${[r.color, r.serial ? 'S/N ' + r.serial : '', r.acquiredAt].filter(Boolean).join(' · ')}</p></td>
+            <td class="p-4"><p class="font-bold">${[r.brand, r.name].filter(Boolean).join(' ')} ${condBadge(condOf(r))}${r.pendingPrice ? ' <span class="cond-badge sellado"><i class="fas fa-tag"></i>Definir precio</span>' : ''}</p><p class="text-xs text-gray-400">${[r.color, r.serial ? 'S/N ' + r.serial : '', r.acquiredAt].filter(Boolean).join(' · ')}</p></td>
             <td class="p-4 text-sm">${r.supplier || '—'}</td>
             <td class="p-4">${appCurrency}${Number(r.cost).toFixed(2)}</td>
             <td class="p-4 font-semibold">${appCurrency}${Number(r.price).toFixed(2)}</td>
@@ -1849,6 +1942,7 @@ function editResale(id) {
     set('supplier', r.supplier); set('cost', r.cost); set('price', r.price); set('stock', r.stock); set('notes', r.notes);
     setCondPick('resale-condition', condOf(r) || 'usado');
     updateResaleProfitHint();
+    if (r.pendingPrice) suggestPrice();
 }
 
 function updateResaleProfitHint() {
@@ -1866,6 +1960,7 @@ document.getElementById('form-resale').onsubmit = async (e) => {
     const v = (k) => document.getElementById('resale-' + k).value.trim();
     const prev = id ? resale.find(x => x.id == id) : null;
     const item = {
+        ...(prev ? { tradeInSale: prev.tradeInSale, appleId: prev.appleId, battery: prev.battery } : {}),
         id: id ? parseInt(id) : Date.now(),
         brand: v('brand'), name: v('name'), color: v('color'), serial: v('serial'), supplier: v('supplier'),
         cost: parseFloat(v('cost')) || 0, price: parseFloat(v('price')) || 0, stock: parseInt(v('stock')) || 0,
@@ -2427,6 +2522,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

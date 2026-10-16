@@ -1,0 +1,2 @@
+-- Ver el contenido aplicado en la conversación: create_sale registra equipos recibidos (payments[].tradeIn) en resale_items
+-- y cancel_sale los retira si la venta se anula. (Se aplica con el SQL Editor de Supabase.)

@@ -355,6 +355,7 @@
                     </div>
                     <button onclick="openResaleModal()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30"><i class="fas fa-plus"></i> Nuevo equipo</button>
                 </div>
+                <div id="resale-pending-banner"></div>
                 <div class="flex flex-wrap items-center gap-2">
                 <div class="search-box"><i class="fas fa-search"></i><input id="resale-search" type="search" oninput="renderResaleItems()" placeholder="Buscar modelo, IMEI o proveedor"></div>
                 <div id="resale-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
@@ -778,6 +779,26 @@
 
             <div id="settle-payments-list" class="space-y-3 mb-6 max-h-60 overflow-y-auto"></div>
 
+            <button type="button" onclick="openTradeIn()" class="w-full py-2 mb-3 border-2 border-dashed border-sky-300 dark:border-sky-800 rounded-xl text-sky-600 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition"><i class="fab fa-apple mr-2"></i> Recibir equipo (parte de pago)</button>
+            <div id="tradein-form" class="hidden mb-4 p-4 rounded-2xl border border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-900/10 space-y-3">
+                <p class="font-semibold text-sm"><i class="fab fa-apple mr-1"></i> Equipo que entrega el cliente</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <input id="ti-model" list="ti-models" placeholder="Modelo (ej: iPhone 12 Pro)" oninput="tradeInSuggest()" class="field-sm col-span-2">
+                    <datalist id="ti-models"><option value="iPhone 11"><option value="iPhone 11 Pro"><option value="iPhone 11 Pro Max"><option value="iPhone 12"><option value="iPhone 12 Mini"><option value="iPhone 12 Pro"><option value="iPhone 12 Pro Max"><option value="iPhone 13"><option value="iPhone 13 Mini"><option value="iPhone 13 Pro"><option value="iPhone 13 Pro Max"><option value="iPhone 14"><option value="iPhone 14 Plus"><option value="iPhone 14 Pro"><option value="iPhone 14 Pro Max"><option value="iPhone 15"><option value="iPhone 15 Plus"><option value="iPhone 15 Pro"><option value="iPhone 15 Pro Max"><option value="iPhone 16"><option value="iPhone 16 Plus"><option value="iPhone 16 Pro"><option value="iPhone 16 Pro Max"><option value="iPhone 16e"><option value="iPhone 17"><option value="iPhone 17 Air"><option value="iPhone 17 Pro"><option value="iPhone 17 Pro Max"></datalist>
+                    <select id="ti-capacity" onchange="tradeInSuggest()" class="field-sm"><option value="">Capacidad</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option><option>2TB</option></select>
+                    <input id="ti-color" placeholder="Color" class="field-sm">
+                    <input id="ti-imei" placeholder="IMEI / Serial" class="field-sm">
+                    <input id="ti-battery" type="number" min="0" max="100" placeholder="Batería %" class="field-sm">
+                    <input id="ti-appleid" type="email" placeholder="Correo de Apple ID / iCloud" class="field-sm col-span-2">
+                    <select id="ti-state" class="field-sm"><option value="Excelente estado">Excelente estado</option><option value="Buen estado">Buen estado</option><option value="Detalles de uso">Detalles de uso</option><option value="Con fallas">Con fallas</option></select>
+                    <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span><input id="ti-value" type="number" min="0" step="1" placeholder="Valor que se le da" oninput="tradeInSuggest()" class="field-sm w-full pl-7"></div>
+                </div>
+                <p id="ti-suggest" class="text-xs text-gray-500"></p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeTradeIn()" class="px-3 py-1.5 text-sm text-gray-500">Cancelar</button>
+                    <button type="button" onclick="addTradeIn()" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-sky-600 text-white hover:bg-sky-700">Descontar del pago</button>
+                </div>
+            </div>
             <button onclick="addPaymentRow()" class="w-full py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 hover:text-brand hover:border-brand transition-all mb-6">
                 <i class="fas fa-plus mr-2"></i> Agregar otro método de pago
             </button>
