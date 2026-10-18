@@ -7,11 +7,14 @@
     <meta name="description" content="Sistema de ventas e inventario de DGT Technology">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>DgtTecnologyVzla | Vendra</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <script>if (localStorage.getItem('ns_theme') === 'dark') document.documentElement.classList.add('dark');</script>
 </head>
-<body class="bg-slate-50 text-gray-800 dark:bg-gray-950 dark:text-gray-100 mode-tienda">
+<body class="text-gray-800 dark:text-gray-100 mode-tienda">
     <!-- BIENVENIDA DEL PROGRAMA -->
     <div id="splash" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#05060f] text-white">
         <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(600px 400px at 50% 40%, rgba(56,189,248,.14), transparent 70%)"></div>
@@ -109,7 +112,7 @@
     <div class="flex h-[100dvh] overflow-hidden">
         <div id="nav-overlay" onclick="toggleNav(false)" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm lg:hidden no-print"></div>
         <!-- SIDEBAR -->
-        <aside id="sidebar" class="w-72 lg:w-64 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col no-print transition-colors duration-300">
+        <aside id="sidebar" class="w-72 lg:hidden shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col no-print transition-colors duration-300">
             <div class="p-6 pb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden">
@@ -155,192 +158,236 @@
 
         <div class="flex-1 flex flex-col min-w-0">
         <!-- BARRA SUPERIOR: TIENDA / REVENTA -->
-        <header class="no-print sticky top-0 z-40 flex items-center gap-3 px-4 md:px-8 py-3 bg-slate-50/80 dark:bg-[#060816]/70 backdrop-blur-xl border-b border-gray-200/70 dark:border-white/5">
-            <button onclick="toggleNav(true)" class="lg:hidden w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border dark:border-gray-800 text-gray-600 dark:text-gray-300" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
-            <div class="mode-switch flex p-1 rounded-full bg-white dark:bg-gray-900 border dark:border-gray-800 shadow-sm mx-auto lg:mx-0">
-                <button id="mode-btn-tienda" onclick="setMode('tienda')" class="on px-4 md:px-6 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-store mr-1.5"></i>Tienda</button>
-                <button id="mode-btn-reventa" onclick="setMode('reventa')" class="px-4 md:px-6 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-recycle mr-1.5"></i>Reventa</button>
+        <header id="topbar" class="no-print sticky top-0 z-40 px-4 md:px-6 xl:px-8 py-3 lg:py-4">
+            <div class="flex items-center gap-2.5 xl:gap-4">
+                <button onclick="toggleNav(true)" class="lg:hidden icon-btn" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
+                <div class="hidden lg:flex items-center gap-3 shrink-0 min-w-0">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                        <img data-brand-logo alt="" class="hidden w-full h-full object-contain">
+                        <div data-brand-logo-fallback class="w-full h-full bg-brand rounded-xl flex items-center justify-center text-white"><i class="fas fa-mobile-alt"></i></div>
+                    </div>
+                    <div class="hidden 2xl:block leading-tight">
+                        <p class="font-bold text-[15px] tracking-tight text-gray-900 dark:text-white">DgtTecnology<span class="text-brand">Vzla</span></p>
+                        <p class="text-[11px] text-gray-400">Ventas e inventario</p>
+                    </div>
+                </div>
+                <div class="mode-switch flex p-1 rounded-full bg-white dark:bg-white/5 shadow-sm mx-auto lg:mx-0 shrink-0">
+                    <button id="mode-btn-tienda" title="Modo tienda" onclick="setMode('tienda')" class="on px-4 lg:px-3.5 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-store mr-1.5 lg:mr-0 2xl:mr-1.5"></i><span class="lg:hidden 2xl:inline">Tienda</span></button>
+                    <button id="mode-btn-reventa" title="Modo reventa" onclick="setMode('reventa')" class="px-4 lg:px-3.5 py-2 rounded-full text-sm font-semibold text-gray-500"><i class="fas fa-recycle mr-1.5 lg:mr-0 2xl:mr-1.5"></i><span class="lg:hidden 2xl:inline">Reventa</span></button>
+                </div>
+                <nav id="top-nav" class="top-nav hidden lg:flex min-w-0" aria-label="Secciones"></nav>
+                <span id="net-pill" class="hidden lg:ml-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 flex items-center gap-1.5"></span>
+                <div class="flex items-center gap-2 ml-auto shrink-0">
+                    <button onclick="toggleDarkMode()" class="icon-btn" title="Modo oscuro" aria-label="Cambiar modo oscuro"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:inline text-yellow-300"></i></button>
+                    <button onclick="showSection('config')" class="icon-btn hidden lg:inline-flex admin-only" title="Configuración" aria-label="Configuración"><i class="fas fa-gear"></i></button>
+                    <div class="hidden lg:flex items-center gap-2 pl-1">
+                        <span id="top-avatar" class="avatar w-10 h-10 text-sm" title=""></span>
+                        <button onclick="logout()" title="Cerrar sesión" aria-label="Cerrar sesión" class="icon-btn hover:!text-red-500"><i class="fas fa-right-from-bracket"></i></button>
+                    </div>
+                </div>
             </div>
-            <span id="net-pill" class="hidden ml-auto lg:ml-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 flex items-center gap-1.5"></span>
-            <div class="hidden md:block text-sm text-gray-500 ml-auto capitalize" id="current-date"></div>
-            <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border dark:border-gray-800 text-gray-500 dark:text-yellow-300 md:ml-0" title="Modo oscuro" aria-label="Cambiar modo oscuro"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:inline"></i></button>
         </header>
 
         <!-- MAIN CONTENT -->
-        <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-28 lg:pb-8 no-print transition-colors duration-300">
+        <main class="flex-1 overflow-y-auto px-4 md:px-6 xl:px-8 pt-2 pb-28 lg:pb-8 no-print">
 
 <div class="resale-not-ready hidden" data-mode="reventa"><div class="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm"><i class="fas fa-triangle-exclamation mr-2"></i><b>Reventa aún no está activada en la base de datos.</b> Falta aplicar la actualización <code>20261015000000_reventa.sql</code> en Supabase. Mientras tanto, el modo Tienda funciona normal.</div></div>
             <!-- INICIO (TIENDA) -->
             <section id="section-dashboard" class="section-transition space-y-6">
-                <div class="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Hola, <span id="dash-hello">—</span></h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Así va tu tienda. Toca cualquier tarjeta o gráfica para ver el detalle.</p>
+                <div class="page-head">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <span class="head-ic hidden sm:inline-flex"><i class="fas fa-chart-pie"></i></span>
+                        <div class="min-w-0">
+                            <h2 class="page-title">Hola, <span id="dash-hello">—</span></h2>
+                            <p class="page-sub"><span id="current-date" class="capitalize"></span> · Toca cualquier tarjeta o gráfica para ver el detalle.</p>
+                        </div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="showSection('pos')" class="btn-primary"><i class="fas fa-cash-register"></i> Nueva venta</button>
-                        <button onclick="openModal('modal-product')" class="btn-ghost admin-only"><i class="fas fa-plus"></i> Producto</button>
-                        <button onclick="openModal('modal-customer')" class="btn-ghost"><i class="fas fa-user-plus"></i> Cliente</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="openModal('modal-product')" class="icon-btn admin-only" title="Nuevo producto" aria-label="Nuevo producto"><i class="fas fa-box-open"></i></button>
+                        <button onclick="openModal('modal-customer')" class="icon-btn" title="Nuevo cliente" aria-label="Nuevo cliente"><i class="fas fa-user-plus"></i></button>
+                        <button onclick="showSection('pos')" class="btn-primary"><i class="fas fa-plus"></i> Nueva venta</button>
                     </div>
                 </div>
 
-                <!-- Período: afecta todo lo de abajo -->
-                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Período">
-                    <span class="text-sm text-gray-500 mr-1">Ver:</span>
+                <!-- Indicadores con mini gráficas -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr] gap-4 md:gap-5">
+                    <button id="kpi-today" class="stat-card stat-hero">
+                        <span class="stat-top"><span>Vendido hoy</span><span class="stat-ic text-rose-500 bg-rose-50 dark:bg-rose-500/10"><i class="fas fa-sun"></i></span></span>
+                        <span id="dash-today-sales" class="stat-value">$0.00</span>
+                        <span id="dash-today-count" class="stat-delta text-gray-400"></span>
+                        <span class="hero-art" aria-hidden="true">
+                            <svg viewBox="0 0 220 110" preserveAspectRatio="xMidYMax meet"><defs><linearGradient id="ha1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(var(--brand-light))"/><stop offset="1" stop-color="rgb(var(--brand))"/></linearGradient></defs>
+                                <rect x="0" y="96" width="220" height="14" rx="4" fill="currentColor" opacity=".07"/>
+                                <path d="M24 96c-2-16 2-30 10-40-4 14-2 26 2 40zm6 0c4-18 14-30 26-36-10 12-16 24-18 36zm-8 0c-8-10-12-22-10-34 6 10 10 22 12 34z" fill="#34d399" opacity=".9"/>
+                                <rect x="20" y="86" width="26" height="12" rx="3" fill="#a78b6d" opacity=".75"/>
+                                <rect x="78" y="22" width="44" height="76" rx="8" fill="#111827"/><rect x="82" y="28" width="36" height="62" rx="5" fill="url(#ha1)"/><rect x="94" y="25" width="12" height="2" rx="1" fill="#374151"/>
+                                <path d="M92 66l6-8 6 5 8-13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+                                <rect x="134" y="44" width="40" height="54" rx="4" fill="#fff" stroke="currentColor" stroke-opacity=".12"/><rect x="141" y="53" width="22" height="3" rx="1.5" fill="currentColor" opacity=".3"/><rect x="141" y="61" width="26" height="3" rx="1.5" fill="currentColor" opacity=".15"/><rect x="141" y="69" width="18" height="3" rx="1.5" fill="currentColor" opacity=".15"/><rect x="141" y="83" width="26" height="6" rx="3" fill="rgb(var(--brand))" opacity=".85"/>
+                                <circle cx="190" cy="88" r="9" fill="#fbbf24"/><text x="190" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">$</text>
+                            </svg>
+                        </span>
+                        <span id="dash-today-label" class="sr-only"></span>
+                    </button>
+                    <div class="stat-card" role="group">
+                        <button class="stat-top w-full text-left" onclick="showSection('sales')"><span>Ventas del período</span><span class="stat-ic text-brand bg-brand/10"><i class="fas fa-wallet"></i></span></button>
+                        <span id="dash-total-sales" class="stat-value">$0.00</span>
+                        <span id="dash-total-delta" class="stat-delta"></span>
+                        <div id="dash-mini-bars" class="mini-bars mt-auto pt-3"></div>
+                    </div>
+                    <div class="stat-card" role="group">
+                        <button class="stat-top w-full text-left" onclick="showSection('sales')"><span>Documentos emitidos</span><span class="stat-ic text-sky-500 bg-sky-50 dark:bg-sky-500/10"><i class="fas fa-receipt"></i></span></button>
+                        <span id="dash-count-sales" class="stat-value">0</span>
+                        <span id="dash-ticket" class="stat-delta text-gray-400"></span>
+                        <div id="dash-mini-line" class="mini-line mt-auto pt-2"></div>
+                    </div>
+                    <div class="stat-card sm:col-span-2 xl:col-span-1" role="group">
+                        <div class="stat-top"><span>Cobrado por método</span><button onclick="showSection('sales')" class="corner-btn" aria-label="Ver ventas"><i class="fas fa-arrow-right -rotate-45"></i></button></div>
+                        <div class="flex items-center gap-3"><span id="dash-collected" class="stat-value">$0.00</span><span class="chip-soft" id="dash-collected-n"></span></div>
+                        <div class="flex items-end gap-2 mt-auto pt-3">
+                            <div id="dash-method-tiles" class="flex-1 grid grid-cols-3 gap-2 min-w-0"></div>
+                            <button onclick="showSection('pos')" class="pill-dark shrink-0">Vender</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filter-bar">
+                    <span class="font-semibold text-sm whitespace-nowrap">Período</span>
                     <div id="dash-period" class="seg">
                         <button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button>
                     </div>
-                    <span id="dash-period-label" class="text-xs text-gray-400 ml-1"></span>
+                    <span id="dash-period-label" class="text-xs text-gray-400"></span>
+                    <div class="flex flex-wrap gap-2 lg:ml-auto">
+                        <button onclick="showSection('sellers')" class="filter-chip admin-only"><i class="fas fa-percent text-brand"></i> Comisiones <b id="dash-total-commissions" class="tabular-nums">$0.00</b></button>
+                        <span class="filter-chip"><i class="fas fa-mobile-screen text-sky-500"></i> <span id="dash-units"></span></span>
+                        <button onclick="showLowStock()" class="filter-chip"><i class="fas fa-triangle-exclamation text-amber-500"></i> Stock bajo <b><span id="dash-low-stock">0</span>/<span id="dash-total-products">0</span></b></button>
+                    </div>
                 </div>
 
-                <!-- Indicadores -->
-                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
-                    <button onclick="showSection('sales')" class="kpi">
-                        <span class="kpi-top"><span>Ventas</span><span class="icon-tile kpi-icon"><i class="fas fa-wallet"></i></span></span>
-                        <span id="dash-total-sales" class="kpi-value">$0.00</span>
-                        <span id="dash-total-delta" class="kpi-delta"></span>
-                    </button>
-                    <button onclick="showSection('sales')" class="kpi">
-                        <span class="kpi-top"><span>Documentos emitidos</span><span class="icon-tile kpi-icon"><i class="fas fa-receipt"></i></span></span>
-                        <span id="dash-count-sales" class="kpi-value">0</span>
-                        <span id="dash-ticket" class="kpi-delta text-gray-500"></span>
-                    </button>
-                    <button onclick="showSection('sellers')" class="kpi">
-                        <span class="kpi-top"><span>Comisiones</span><span class="icon-tile kpi-icon"><i class="fas fa-percentage"></i></span></span>
-                        <span id="dash-total-commissions" class="kpi-value">$0.00</span>
-                        <span id="dash-units" class="kpi-delta text-gray-500"></span>
-                    </button>
-                    <button onclick="showLowStock()" class="kpi">
-                        <span class="kpi-top"><span>Stock bajo</span><span class="icon-tile kpi-icon" style="background:linear-gradient(135deg,#F87171,#DC2626)"><i class="fas fa-triangle-exclamation"></i></span></span>
-                        <span class="kpi-value"><span id="dash-low-stock">0</span> <span class="text-base font-medium text-gray-400">de <span id="dash-total-products">0</span></span></span>
-                        <span class="kpi-delta text-gray-500">productos con menos de 5 u</span>
-                    </button>
+                <!-- Tablero de facturas -->
+                <div class="board">
+                    <div id="dash-board-tabs" class="board-tabs" role="tablist">
+                        <button data-t="todas" role="tab">Todas <span class="n"></span></button><button data-t="hoy" role="tab">Hoy <span class="n"></span></button><button data-t="anuladas" role="tab">Anuladas <span class="n"></span></button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 lg:gap-5">
+                        <div class="min-w-0">
+                            <div class="flex items-center justify-between gap-2 mb-3 px-1">
+                                <p class="board-title" id="dash-board-title">Últimas ventas</p>
+                                <button onclick="showSection('sales')" class="board-ic" title="Ver todas las ventas" aria-label="Ver todas las ventas"><i class="fas fa-table-list"></i></button>
+                            </div>
+                            <ol id="dash-recent" class="space-y-1.5"></ol>
+                        </div>
+                        <div id="dash-invoice" class="inv-card"></div>
+                    </div>
                 </div>
 
-                <!-- Gráfica principal + hoy -->
+                <!-- Gráfica principal + tasa -->
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    <div class="vision-card p-5 md:p-6 xl:col-span-2">
+                    <div class="card xl:col-span-2">
                         <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div><p class="font-semibold text-lg">Resumen de ventas</p><p class="muted text-xs" id="dash-chart-sub"></p></div>
-                            <div id="dash-metric" class="seg seg-dark">
+                            <div><p class="card-title">Resumen de ventas</p><p class="card-sub" id="dash-chart-sub"></p></div>
+                            <div id="dash-metric" class="seg">
                                 <button data-m="monto">Monto</button><button data-m="ventas">Ventas</button><button data-m="equipos">Equipos</button>
                             </div>
                         </div>
-                        <div id="dash-area" class="mt-4 text-white" aria-label="Ventas en el período"></div>
+                        <div id="dash-area" class="mt-4 text-gray-500 dark:text-gray-400" aria-label="Ventas en el período"></div>
                     </div>
-                    <div class="vision-card p-5 md:p-6 flex flex-col gap-5">
-                        <div class="balance-card p-5 text-white">
-                            <div class="flex justify-between items-start">
-                                <img data-brand-logo alt="" class="hidden h-8 w-auto max-w-[120px] object-contain">
-                                <span data-brand-logo-fallback class="text-sm font-bold tracking-widest">DGT</span>
-                                <span class="text-xs opacity-80" id="dash-today-label">Hoy</span>
-                            </div>
-                            <p class="text-sm opacity-80 mt-5">Vendido hoy</p>
-                            <p id="dash-today-sales" class="text-3xl font-bold tracking-tight tabular-nums">$0.00</p>
-                            <p class="text-xs opacity-80 mt-1" id="dash-today-count"></p>
-                        </div>
-                        <div class="rate-widget space-y-2">
-                            <div class="flex items-center justify-between"><p class="font-semibold">Tasa del día</p><span class="rate-date text-[10px]"></span></div>
-                            <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2"><span class="font-semibold text-sky-300 text-sm">BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)" class="w-28 p-1.5 rounded-lg bg-white/10 border border-white/10 text-white font-bold text-right tabular-nums outline-none focus:ring-2 focus:ring-brand-light"></label>
-                            <label class="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2"><span class="font-semibold text-amber-300 text-sm">Binance P2P</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)" class="w-28 p-1.5 rounded-lg bg-white/10 border border-white/10 text-white font-bold text-right tabular-nums outline-none focus:ring-2 focus:ring-brand-light"></label>
-                            <div class="flex items-center justify-between pt-1">
-                                <p class="muted text-xs">Brecha <b id="dash-rate-gap" class="text-white tabular-nums">—</b></p>
-                                <button type="button" onclick="fetchLiveRates(true)" class="rate-live-btn text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-400/60 text-emerald-300 hover:bg-emerald-400/10 transition"><i class="fas fa-rotate"></i> Actualizar</button>
-                            </div>
+                    <div class="card rate-widget flex flex-col gap-3">
+                        <div class="flex items-center justify-between"><p class="card-title">Tasa del día</p><span class="rate-date text-[11px] text-gray-400"></span></div>
+                        <label class="rate-row"><span class="font-semibold text-sky-600 dark:text-sky-300 text-sm"><i class="fas fa-building-columns mr-1.5"></i>BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)"></label>
+                        <label class="rate-row"><span class="font-semibold text-amber-600 dark:text-amber-300 text-sm"><i class="fas fa-coins mr-1.5"></i>Binance P2P</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)"></label>
+                        <div class="flex items-center justify-between mt-auto pt-1">
+                            <p class="text-xs text-gray-400">Brecha <b id="dash-rate-gap" class="text-gray-900 dark:text-white tabular-nums">—</b></p>
+                            <button type="button" onclick="fetchLiveRates(true)" class="rate-live-btn btn-ghost !py-2 !text-xs"><i class="fas fa-rotate"></i> Actualizar</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Desgloses -->
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    <div class="vision-card p-5 md:p-6">
-                        <p class="font-semibold">Ventas por vendedor</p>
-                        <p class="muted text-xs mb-3">Toca un vendedor para ver su tarjeta</p>
+                    <div class="card">
+                        <p class="card-title">Ventas por vendedor</p>
+                        <p class="card-sub mb-3">Toca un vendedor para ver sus ventas</p>
                         <div id="dash-by-seller"></div>
                     </div>
-                    <div class="vision-card p-5 md:p-6">
-                        <p class="font-semibold">Cómo te pagan</p>
-                        <p class="muted text-xs mb-3">Monto cobrado por método de pago</p>
+                    <div class="card">
+                        <p class="card-title">Cómo te pagan</p>
+                        <p class="card-sub mb-3">Monto cobrado por método de pago</p>
                         <div id="dash-by-method"></div>
                     </div>
-                    <div class="vision-card p-5 md:p-6 md:col-span-2 xl:col-span-1">
+                    <div class="card md:col-span-2 xl:col-span-1">
                         <div class="flex items-start justify-between gap-3">
-                            <div><p class="font-semibold">Inventario</p><p class="muted text-xs">Productos con 5 u o más</p></div>
-                            <button onclick="showLowStock()" class="text-xs font-semibold text-brand-light hover:underline">Ver stock bajo</button>
+                            <div><p class="card-title">Inventario</p><p class="card-sub">Productos con 5 u o más</p></div>
+                            <button onclick="showLowStock()" class="text-xs font-semibold text-brand hover:underline">Ver stock bajo</button>
                         </div>
                         <div class="flex items-center gap-4 mt-2">
-                            <button onclick="showLowStock()" class="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-brand-light" id="dash-gauge" aria-label="Ver productos con stock bajo"></button>
+                            <button onclick="showLowStock()" class="shrink-0 rounded-full text-gray-900 dark:text-white" id="dash-gauge" aria-label="Ver productos con stock bajo"></button>
                             <div class="space-y-2 text-sm min-w-0 flex-1">
-                                <p class="flex justify-between gap-2"><span class="muted">Unidades</span><b id="dash-units-stock" class="tabular-nums">0</b></p>
-                                <p class="flex justify-between gap-2"><span class="muted">Valor</span><b id="dash-stock-value" class="tabular-nums">$0</b></p>
+                                <p class="flex justify-between gap-2"><span class="text-gray-400">Unidades</span><b id="dash-units-stock" class="tabular-nums">0</b></p>
+                                <p class="flex justify-between gap-2"><span class="text-gray-400">Valor</span><b id="dash-stock-value" class="tabular-nums">$0</b></p>
                             </div>
                         </div>
                         <ul id="dash-low-list" class="mt-3 space-y-1"></ul>
                     </div>
                 </div>
 
-                <!-- Listas -->
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6 xl:col-span-2">
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div><p class="font-semibold">Productos más vendidos</p><p class="text-xs text-gray-400">Por unidades en el período</p></div>
-                            <button onclick="showSection('inventory')" class="text-xs font-semibold text-brand hover:underline admin-only">Ir al inventario</button>
-                        </div>
-                        <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-400"><th class="py-2 pr-3 font-medium">Producto</th><th class="py-2 pr-3 font-medium text-right">Unidades</th><th class="py-2 pr-3 font-medium text-right">Total</th><th class="py-2 w-1/3 font-medium hidden sm:table-cell">Participación</th></tr></thead><tbody id="dash-top-products"></tbody></table></div>
+                <!-- Productos más vendidos -->
+                <div class="card">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div><p class="card-title">Productos más vendidos</p><p class="card-sub">Por unidades en el período · toca uno para ver sus ventas</p></div>
+                        <button onclick="showSection('inventory')" class="text-xs font-semibold text-brand hover:underline admin-only">Ir al inventario</button>
                     </div>
-                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6">
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div><p class="font-semibold">Últimas ventas</p><p class="text-xs text-gray-400">Toca una para ver el detalle</p></div>
-                            <button onclick="showSection('sales')" class="text-xs font-semibold text-brand hover:underline">Ver todas</button>
-                        </div>
-                        <ol id="dash-recent" class="space-y-1"></ol>
-                    </div>
+                    <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-400"><th class="py-2 pr-3 font-medium">Producto</th><th class="py-2 pr-3 font-medium text-right">Unidades</th><th class="py-2 pr-3 font-medium text-right">Total</th><th class="py-2 w-1/3 font-medium hidden sm:table-cell">Participación</th></tr></thead><tbody id="dash-top-products"></tbody></table></div>
                 </div>
             </section>
 
             <!-- PANEL REVENTA -->
             <section id="section-resale-dashboard" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Panel de reventa</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Equipos conseguidos por fuera: cuánto invertiste y cuánto ganaste.</p>
+                <div class="page-head">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <span class="head-ic hidden sm:inline-flex !text-emerald-600"><i class="fas fa-recycle"></i></span>
+                        <div class="min-w-0">
+                            <h2 class="page-title">Panel de reventa</h2>
+                            <p class="page-sub">Equipos conseguidos por fuera: cuánto invertiste y cuánto ganaste.</p>
+                        </div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="setMode('reventa',{section:'pos'})" class="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !shadow-emerald-600/30"><i class="fas fa-cash-register"></i> Vender equipo</button>
-                        <button onclick="openResaleModal()" class="btn-ghost"><i class="fas fa-plus"></i> Registrar equipo</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="openResaleModal()" class="icon-btn" title="Registrar equipo" aria-label="Registrar equipo"><i class="fas fa-plus"></i></button>
+                        <button onclick="setMode('reventa',{section:'pos'})" class="btn-primary btn-emerald"><i class="fas fa-cash-register"></i> Vender equipo</button>
                     </div>
                 </div>
-                <div class="flex flex-wrap items-center gap-2"><span class="text-sm text-gray-500 mr-1">Ver:</span>
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
+                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Vendido en reventa</span><span class="stat-ic text-brand bg-brand/10"><i class="fas fa-sack-dollar"></i></span></span><span id="rs-total" class="stat-value">$0.00</span><span class="stat-delta text-gray-400">en el período</span></button>
+                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Costo de equipos</span><span class="stat-ic text-sky-500 bg-sky-50 dark:bg-sky-500/10"><i class="fas fa-hand-holding-dollar"></i></span></span><span id="rs-cost" class="stat-value">$0.00</span><span class="stat-delta text-gray-400">lo que pagaste</span></button>
+                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Ganancia</span><span class="stat-ic text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"><i class="fas fa-arrow-trend-up"></i></span></span><span id="rs-profit" class="stat-value text-emerald-600 dark:text-emerald-400">$0.00</span><span class="stat-delta text-gray-400">vendido − costo</span></button>
+                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Margen promedio</span><span class="stat-ic text-amber-500 bg-amber-50 dark:bg-amber-500/10"><i class="fas fa-percent"></i></span></span><span id="rs-margin" class="stat-value">0%</span><span class="stat-delta text-gray-400">sobre lo vendido</span></button>
+                </div>
+                <div class="filter-bar">
+                    <span class="font-semibold text-sm">Período</span>
                     <div id="rs-period" class="seg"><button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button></div>
                 </div>
-                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
-                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Vendido en reventa</p><h3 id="rs-total" class="kpi-value">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-sack-dollar"></i></span></div>
-                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Costo de equipos</p><h3 id="rs-cost" class="kpi-value">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-hand-holding-dollar"></i></span></div>
-                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Ganancia</p><h3 id="rs-profit" class="kpi-value text-emerald-500">$0.00</h3></div><span class="icon-tile kpi-icon shrink-0" style="background:linear-gradient(135deg,#34D399,#059669)"><i class="fas fa-arrow-trend-up"></i></span></div>
-                    <div onclick="showSection('resale-sales')" role="button" tabindex="0" class="kpi !flex-row items-center justify-between gap-3 cursor-pointer"><div class="min-w-0"><p class="text-gray-500 text-xs md:text-sm">Margen promedio</p><h3 id="rs-margin" class="kpi-value">0%</h3></div><span class="icon-tile kpi-icon shrink-0"><i class="fas fa-percent"></i></span></div>
-                </div>
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="vision-card p-6 xl:col-span-2">
-                        <div class="flex flex-wrap items-center justify-between gap-2"><div><p class="font-semibold text-lg">Ganancia de reventa</p><p class="muted text-xs" id="rs-chart-sub"></p></div><div class="flex gap-4 text-xs"><span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-white"></span>Vendido</span><span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-emerald-400"></span>Ganancia</span></div></div>
-                        <div id="rs-area" class="mt-4 text-white"></div>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                    <div class="card xl:col-span-2">
+                        <div class="flex flex-wrap items-start justify-between gap-2"><div><p class="card-title">Ganancia de reventa</p><p class="card-sub" id="rs-chart-sub"></p></div><div class="flex gap-4 text-xs text-gray-500"><span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-brand"></span>Vendido</span><span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-emerald-500"></span>Ganancia</span></div></div>
+                        <div id="rs-area" class="mt-4 text-gray-500 dark:text-gray-400"></div>
                     </div>
-                    <div class="vision-card p-6 flex flex-col gap-4">
-                        <p class="font-semibold">Equipos por vender</p>
+                    <div class="board !p-5 md:!p-6 flex flex-col gap-4 !mt-0">
+                        <p class="board-title">Equipos por vender</p>
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="rounded-xl bg-white/5 p-4"><p class="muted text-[11px]">Disponibles</p><p id="rs-available" class="text-2xl font-bold">0</p></div>
-                            <div class="rounded-xl bg-white/5 p-4"><p class="muted text-[11px]">Capital invertido</p><p id="rs-capital" class="text-2xl font-bold">$0</p></div>
-                            <div class="rounded-xl bg-white/5 p-4 col-span-2"><p class="muted text-[11px]">Ganancia esperada si se venden</p><p id="rs-expected" class="text-2xl font-bold text-emerald-300">$0</p></div>
+                            <div class="board-tile"><p class="text-[11px] text-white/55">Disponibles</p><p id="rs-available" class="text-2xl font-bold">0</p></div>
+                            <div class="board-tile"><p class="text-[11px] text-white/55">Capital invertido</p><p id="rs-capital" class="text-2xl font-bold">$0</p></div>
+                            <div class="board-tile col-span-2 !bg-emerald-500/15"><p class="text-[11px] text-white/55">Ganancia esperada si se venden</p><p id="rs-expected" class="text-2xl font-bold text-emerald-300">$0</p></div>
                         </div>
-                        <button onclick="showSection('resale-items')" class="mt-auto w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 font-semibold transition"><i class="fas fa-mobile-screen mr-2"></i>Ver equipos</button>
+                        <button onclick="showSection('resale-items')" class="mt-auto pill-light w-full justify-center"><i class="fas fa-mobile-screen"></i> Ver equipos</button>
                     </div>
                 </div>
-                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6">
-                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="font-semibold">Equipos listos para vender</p><p class="text-xs text-gray-400">Los de mayor ganancia primero · toca uno para venderlo</p></div><button onclick="showSection('resale-items')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todos</button></div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <div class="card">
+                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="card-title">Equipos listos para vender</p><p class="card-sub">Los de mayor ganancia primero · toca uno para venderlo</p></div><button onclick="showSection('resale-items')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todos</button></div>
                         <ul id="rs-avail-list" class="space-y-1"></ul>
                     </div>
-                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 p-5 md:p-6">
-                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="font-semibold">Últimas ventas de reventa</p><p class="text-xs text-gray-400">Toca una para ver el detalle</p></div><button onclick="showSection('resale-sales')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todas</button></div>
+                    <div class="card">
+                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="card-title">Últimas ventas de reventa</p><p class="card-sub">Toca una para ver el detalle</p></div><button onclick="showSection('resale-sales')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todas</button></div>
                         <ol id="rs-recent" class="space-y-1"></ol>
                     </div>
                 </div>
@@ -648,6 +695,7 @@
                 </div>
                 <div class="max-w-4xl flex items-center gap-3 text-xs text-gray-400 pt-2"><span data-program-logo="28"></span><div><p class="font-semibold text-gray-500" data-program-name="text-base"></p><p data-program-credit></p></div></div>
             </section>
+            <footer class="hidden lg:flex items-center justify-center gap-2 pt-10 pb-2 text-[11px] text-gray-400"><span data-program-logo="16"></span><span data-program-credit></span></footer>
         </main>
         </div>
     </div>

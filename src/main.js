@@ -16,8 +16,6 @@ document.addEventListener('click', (e) => {
   if (a) e.preventDefault()
 }, true)
 
-// Los enlaces del menú no deben dejar "#" en la dirección (al recargar, la página debe abrir normal)
-if (location.hash === '#' || location.href.endsWith('#')) history.replaceState(null, '', location.pathname + location.search)
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a[href="#"]')
   if (a) e.preventDefault()

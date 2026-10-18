@@ -3,7 +3,7 @@ const html2pdf = (...a) => html2pdfLib(...a);
 async function loadPdfLib() { if (!html2pdfLib) html2pdfLib = (await import('html2pdf.js')).default; }
 import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate, sendInvoiceEmail, askPriceAssistant, onNetChange, flushOutbox, persistLocal, netState } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
-import { mountAreaChart, mountRankBars, gauge } from './charts.js'
+import { mountAreaChart, mountRankBars, gauge, groupBuckets, mountMiniBars, mountMiniLine } from './charts.js'
 
 // STATE
 let products = [], brands = [], customers = [], sellers = [], payments = [], sales = [], resale = [];
@@ -199,8 +199,33 @@ function pickCondition(btn) {
 let invCond = 'todos', resaleCond = 'todos', posCond = 'todos';
 const condMatch = (filter, x) => filter === 'todos' || condOf(x) === filter;
 
+// NAVEGACIÓN SUPERIOR (PC): se arma a partir del menú lateral
+const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', customers: 'Clientes', sellers: 'Vendedores', payments: 'Pagos', sales: 'Ventas', 'resale-sales': 'Ventas' };
+const TOP_ADMIN = ['brands', 'sellers', 'payments', 'resale-dashboard', 'resale-items'];
+const TOP_ORDER = ['dashboard', 'resale-dashboard', 'pos', 'sales', 'resale-sales', 'inventory', 'resale-items', 'customers', 'brands', 'sellers', 'payments'];
+function buildTopNav() {
+    const nav = document.getElementById('top-nav');
+    if (!nav || nav.childElementCount) return;
+    nav.innerHTML = TOP_ORDER.map(sec => {
+        const src = document.getElementById(`link-${sec}`);
+        if (!src) return '';
+        const icon = src.querySelector('i')?.className.replace('w-6', '').trim() || 'fas fa-circle';
+        const mode = src.dataset.mode ? ` data-mode="${src.dataset.mode}"` : '';
+        return `<a href="#" data-section="${sec}"${mode} class="top-link${TOP_ADMIN.includes(sec) ? ' admin-only' : ''}" title="${TOP_LABEL[sec]}" onclick="showSection('${sec}')"><i class="${icon}"></i><span>${TOP_LABEL[sec]}</span></a>`;
+    }).join('');
+}
+function updateTopAvatar() {
+    const el = document.getElementById('top-avatar');
+    if (!el || !currentProfile) return;
+    const name = currentProfile.full_name || currentProfile.email || '';
+    el.textContent = getInitials(name);
+    el.title = `${name} · ${currentProfile.role === 'admin' ? 'Administrador' : 'Vendedor'}`;
+}
+
 // NAVIGATION
 function showSection(sectionId) {
+    buildTopNav();
+    updateTopAvatar();
     const needMode = SECTION_MODE[sectionId];
     if (needMode && needMode !== appMode) { appMode = needMode; localStorage.setItem('ns_mode', appMode); cart = []; renderCart(); applyModeClasses(); }
     currentSection = sectionId;
@@ -208,7 +233,7 @@ function showSection(sectionId) {
     document.getElementById(`section-${sectionId}`).classList.remove('hidden');
     document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active-link'));
     document.getElementById(`link-${sectionId}`)?.classList.add('active-link');
-    document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.toggle('on', a.dataset.section === sectionId));
+    document.querySelectorAll('.bottom-nav a, .top-link').forEach(a => a.classList.toggle('on', a.dataset.section === sectionId));
     toggleNav(false);
     document.querySelector('main').scrollTop = 0;
 
@@ -1717,6 +1742,7 @@ function updateDashboard() {
     const todayK = dayKey(new Date());
     const today = active.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; });
     countTo('dash-today-sales', money(sum(today)));
+    const kt = document.getElementById('kpi-today'); if (kt) kt.onclick = () => openSalesList('Ventas de hoy', today);
     set('dash-today-count', today.length ? `${today.length} venta(s) · ${today.reduce((a, s) => a + unitsOf(s), 0)} equipo(s)` : 'Aún no hay ventas hoy');
     set('dash-today-label', new Date().toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short' }));
     const bcv = getRate('BCV'), bin = getRate('Binance P2P');
@@ -1731,7 +1757,7 @@ function updateDashboard() {
     if (area && !area.closest('section').classList.contains('hidden')) {
         mountAreaChart(area, {
             labels: bk.map(b => b.label),
-            series: [{ name: M.name, values, color: 'var(--brand-light)' }],
+            series: [{ name: M.name, values, color: 'var(--chart)' }],
             format: M.fmt,
             tipFormat: dashMetric === 'monto' ? money : M.fmt,
             ariaLabel: `${M.name} por ${dashPeriod === 'hoy' ? 'hora' : 'día'}. Use las flechas para recorrer y Enter para ver las ventas.`,
@@ -1775,10 +1801,10 @@ function updateDashboard() {
     html('dash-low-list', low.length ? [...low].sort((a, b) => a.stock - b.stock).slice(0, 4).map(p => {
         const b = brands.find(x => x.id == p.brandId);
         const color = AVAILABLE_COLORS.find(c => c.hex === p.color)?.name || '';
-        return `<li><button onclick="editProduct(${p.id})" class="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 text-sm hover:bg-white/5 text-left">
-            <span class="truncate">${escHtml((b ? b.name + ' ' : '') + p.name)} <span class="muted text-xs">${escHtml(color)}</span></span>
-            <span class="shrink-0 text-xs font-semibold ${p.stock === 0 ? 'text-red-400' : 'text-amber-300'}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></button></li>`;
-    }).join('') : '<li class="text-sm muted py-2">Todo el inventario tiene 5 u o más.</li>');
+        return `<li><button onclick="editProduct(${p.id})" class="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 text-left">
+            <span class="truncate">${escHtml((b ? b.name + ' ' : '') + p.name)} <span class="text-gray-400 text-xs">${escHtml(color)}</span></span>
+            <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${p.stock === 0 ? 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></button></li>`;
+    }).join('') : '<li class="text-sm text-gray-400 py-2">Todo el inventario tiene 5 u o más.</li>');
 
     // Productos más vendidos (período)
     const top = getProductHistory(inP).slice(0, 6);
@@ -1793,9 +1819,123 @@ function updateDashboard() {
         </tr>`).join('') : '<tr><td colspan="4" class="py-8 text-center text-gray-400">No hay ventas en este período. <button onclick="showSection(\'pos\')" class="text-brand font-semibold hover:underline">Registrar una venta</button></td></tr>');
     productSalesScope = inP;
 
-    // Últimas ventas (período)
-    const recent = [...inP].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0)).slice(0, 7);
-    html('dash-recent', recent.length ? recent.map(saleRowHtml).join('') : '<li class="text-sm text-gray-400 text-center py-8">Sin ventas en este período</li>');
+    // Mini gráficas de las tarjetas
+    const groupsMoney = groupBuckets(bk, bk.map(b => sum(inP.filter(s => inRange(s, b)))), 8);
+    const miniBars = document.getElementById('dash-mini-bars');
+    if (miniBars) mountMiniBars(miniBars, { groups: groupsMoney, format: money, onSelect: (g) => openSalesList(g.title, inP.filter(s => inRange(s, g))) });
+    const groupsCount = groupBuckets(bk, bk.map(b => inP.filter(s => inRange(s, b)).length), 10);
+    const miniLine = document.getElementById('dash-mini-line');
+    if (miniLine && !miniLine.closest('section').classList.contains('hidden')) mountMiniLine(miniLine, { values: groupsCount.map(g => g.value), labels: groupsCount.map(g => g.title), format: (v) => `${v} documento(s)` });
+
+    // Cobrado por método (tarjeta con mosaicos)
+    const methods = Object.entries(byMethod).map(([k, v]) => ({ k, value: v.value, list: [...v.list] })).sort((a, b) => b.value - a.value);
+    const collected = methods.reduce((a, m) => a + m.value, 0);
+    countTo('dash-collected', money(collected));
+    set('dash-collected-n', `${methods.length} método${methods.length === 1 ? '' : 's'}`);
+    dashMethodLists = methods;
+    html('dash-method-tiles', methods.length ? methods.slice(0, 3).map((m, i) => `
+        <button onclick="openMethodSales(${i})" class="method-tile${i === 0 ? ' on' : ''}" title="${escHtml(m.k)}: ${money(m.value)}">
+            <span class="text-[13px] font-bold tabular-nums truncate">${shortMoney(m.value)}</span>
+            <span class="text-[11px] truncate opacity-70">${escHtml(m.k)}</span>
+        </button>`).join('') : '<p class="col-span-3 text-xs text-gray-400 py-3">Sin cobros en el período</p>');
+
+    // Tablero de facturas
+    const todayList = active.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; });
+    const cancelled = storeSales.filter(s => s.status === 'cancelada' && inRange(s, r));
+    boardLists = { todas: inP, hoy: todayList, anuladas: cancelled };
+    renderBoard();
+}
+
+// ===== Tablero de facturas (lista oscura + detalle) =====
+let boardTab = 'todas', boardSel = null, boardLists = { todas: [], hoy: [], anuladas: [] }, dashMethodLists = [];
+const BOARD_TITLE = { todas: 'Últimas ventas', hoy: 'Ventas de hoy', anuladas: 'Ventas anuladas' };
+function openMethodSales(i) { const m = dashMethodLists[i]; if (m) openSalesList(`Pagos con ${m.k}`, m.list); }
+function relTime(t) {
+    if (!t) return '';
+    const diff = (Date.now() - t) / 60000;
+    if (diff < 1) return 'Hace un momento';
+    if (diff < 60) return `Hace ${Math.round(diff)} min`;
+    if (diff < 60 * 12 && dayKey(t) === dayKey(new Date())) return `Hace ${Math.round(diff / 60)} h`;
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const hm = t.toLocaleTimeString('es-VE', { hour: 'numeric', minute: '2-digit' });
+    if (dayKey(t) === dayKey(new Date())) return `Hoy ${hm}`;
+    if (dayKey(t) === dayKey(y)) return `Ayer ${hm}`;
+    return t.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }) + ' · ' + hm;
+}
+function saleStatus(s) {
+    if (s.status === 'cancelada') return { text: 'Anulada', cls: 'is-bad' };
+    if (s.pending) return { text: 'Sin enviar', cls: 'is-warn' };
+    const p = (s.payments || [])[0];
+    return { text: p ? payName(p) : 'Pagada', cls: '' };
+}
+function renderBoard() {
+    const tabs = document.getElementById('dash-board-tabs');
+    if (!tabs) return;
+    bindSeg('dash-board-tabs', 't', boardTab, (t) => { boardTab = t; boardSel = null; renderBoard(); });
+    tabs.querySelectorAll('button').forEach(b => { const n = boardLists[b.dataset.t]?.length || 0; b.querySelector('.n').textContent = n ? n : ''; });
+    const list = [...(boardLists[boardTab] || [])].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0));
+    document.getElementById('dash-board-title').textContent = BOARD_TITLE[boardTab];
+    if (!list.find(s => s.id === boardSel)) boardSel = list[0]?.id || null;
+    const shown = list.slice(0, 6);
+    document.getElementById('dash-recent').innerHTML = shown.length ? shown.map(s => {
+        const c = customers.find(x => x.id == s.customerId), st = saleStatus(s);
+        return `<li><button onclick="selectBoardSale('${s.id}')" class="board-row${s.id === boardSel ? ' on' : ''}" aria-pressed="${s.id === boardSel}">
+            <span class="avatar w-10 h-10 text-xs shrink-0">${escHtml(getInitials(c ? c.name : 'Cliente general'))}</span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate"># ${escHtml(s.id)}</span><span class="block text-[11px] text-white/50 truncate">${escHtml(c ? c.name : 'Cliente general')} · ${escHtml(relTime(saleTime(s)))}</span></span>
+            <span class="row-pill ${st.cls} hidden sm:inline-flex">${escHtml(st.text)}</span>
+            <span class="text-sm font-bold tabular-nums shrink-0 ${s.status === 'cancelada' ? 'line-through opacity-50' : ''}">${money(s.total)}</span></button></li>`;
+    }).join('') + (list.length > shown.length ? `<li><button onclick="openBoardAll()" class="board-more">Ver ${list.length - shown.length} más <i class="fas fa-arrow-right text-[10px]"></i></button></li>` : '')
+        : `<li class="text-sm text-white/50 text-center py-12"><i class="fas fa-receipt text-2xl mb-3 block opacity-40"></i>${boardTab === 'anuladas' ? 'No hay ventas anuladas en este período' : 'Sin ventas aquí todavía'}</li>`;
+    renderBoardInvoice();
+}
+function openBoardAll() { openSalesList(BOARD_TITLE[boardTab], boardLists[boardTab] || []); }
+function selectBoardSale(id) {
+    boardSel = id;
+    document.querySelectorAll('#dash-recent .board-row').forEach(b => { const on = b.getAttribute('onclick').includes(`'${id}'`); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    renderBoardInvoice();
+    if (window.innerWidth < 1024) document.getElementById('dash-invoice').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+}
+function renderBoardInvoice() {
+    const el = document.getElementById('dash-invoice');
+    if (!el) return;
+    const s = sales.find(x => x.id === boardSel);
+    if (!s) {
+        el.innerHTML = `<div class="h-full min-h-[220px] flex flex-col items-center justify-center text-center gap-3 text-white/80"><i class="fas fa-file-invoice text-3xl opacity-60"></i><p class="text-sm">Cuando registres una venta, su detalle aparecerá aquí.</p><button onclick="showSection('pos')" class="pill-light"><i class="fas fa-plus"></i> Nueva venta</button></div>`;
+        return;
+    }
+    const c = customers.find(x => x.id == s.customerId);
+    const sl = sellers.find(x => x.id == s.sellerId);
+    const st = saleStatus(s), fee = feeOf(s), items = s.items || [];
+    const itemName = (it) => { const b = brands.find(x => x.id == it.brandId); return (it.source === 'reventa' || !b ? '' : b.name + ' ') + (it.name || 'Producto'); };
+    const tiles = items.slice(0, 3).map(it => `
+        <button onclick="openSaleDetail('${s.id}')" class="inv-tile" title="${escHtml(itemName(it))}">
+            <span class="flex items-start justify-between gap-2"><b class="tabular-nums">${money((Number(it.price) || 0) * (Number(it.qty) || 1))}</b><i class="fas fa-arrow-right -rotate-45 text-[11px] opacity-70 mt-1"></i></span>
+            <span class="text-[11px] opacity-75 truncate">${Number(it.qty) > 1 ? it.qty + '× ' : ''}${escHtml(itemName(it))}</span>
+        </button>`).join('');
+    const extra = items.length > 3
+        ? `<button onclick="openSaleDetail('${s.id}')" class="inv-tile inv-add"><i class="fas fa-ellipsis"></i><span class="text-[11px]">+${items.length - 3} producto(s)</span></button>`
+        : `<button onclick="showSection('pos')" class="inv-tile inv-add"><i class="fas fa-plus"></i><span class="text-[11px]">Nueva venta</span></button>`;
+    const paid = (s.payments || []).map(payName).filter((v, i, a) => a.indexOf(v) === i).join(' + ') || '—';
+    el.innerHTML = `<div class="inv-anim">
+        <div class="grid grid-cols-2 md:grid-cols-[1.2fr_1fr_1.2fr] gap-4 items-start">
+            <div class="min-w-0"><p class="inv-label">${escHtml(s.docType || 'Factura')}</p><p class="text-2xl md:text-[1.7rem] font-bold tracking-tight truncate"># ${escHtml(s.id)}</p><span class="row-pill ${st.cls} mt-1.5">${escHtml(st.text)}</span></div>
+            <div class="min-w-0 hidden md:block"><p class="inv-label">Vendedor</p><p class="font-semibold truncate">${escHtml(sl ? sl.name : 'Sin vendedor')}</p><p class="text-[11px] text-white/60 truncate">${escHtml(relTime(saleTime(s)))}</p></div>
+            <div class="min-w-0"><p class="inv-label">Cliente</p><div class="flex items-center gap-2.5 min-w-0"><span class="avatar avatar-light w-9 h-9 text-xs shrink-0">${escHtml(getInitials(c ? c.name : 'CG'))}</span><span class="min-w-0"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-white/60 truncate">${escHtml(c ? (c.cedula || c.rif || c.phone || c.email || '') : '')}</span></span></div></div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">${tiles}${extra}</div>
+        <div class="inv-foot">
+            <div class="flex flex-wrap gap-x-8 gap-y-2">
+                <div><p class="inv-label">Productos</p><p class="font-bold tabular-nums">${money(s.total - fee)}</p></div>
+                ${fee ? `<div><p class="inv-label">Delivery</p><p class="font-bold tabular-nums">${money(fee)}</p></div>` : `<div class="min-w-0 max-w-[10rem]"><p class="inv-label">Pagado con</p><p class="font-bold truncate">${escHtml(paid)}</p></div>`}
+                <div><p class="inv-label">Total</p><p class="text-lg font-bold tabular-nums">${money(s.total)}</p></div>
+            </div>
+            <div class="flex items-center gap-2 sm:ml-auto">
+                <button onclick="shareInvoice('${s.id}')" class="inv-ic" title="Compartir" aria-label="Compartir"><i class="fas fa-share-nodes"></i></button>
+                <button onclick="emailInvoice('${s.id}')" class="inv-ic" title="Enviar por correo" aria-label="Enviar por correo"><i class="fas fa-envelope"></i></button>
+                <button onclick="openSaleDetail('${s.id}')" class="pill-light">Ver factura</button>
+            </div>
+        </div>
+    </div>`;
 }
 
 function saleRowHtml(s) {
@@ -2143,7 +2283,7 @@ function renderResaleDashboard() {
     const el = document.getElementById('rs-area');
     if (el && !el.closest('section').classList.contains('hidden')) mountAreaChart(el, {
         labels: bk.map(b => b.label),
-        series: [{ name: 'Vendido', values: sold, color: '255 255 255' }, { name: 'Ganancia', values: gain, color: '52 211 153' }],
+        series: [{ name: 'Vendido', values: sold, color: 'var(--chart)' }, { name: 'Ganancia', values: gain, color: '16 185 129' }],
         format: shortMoney,
         tipFormat: money,
         ariaLabel: 'Ventas y ganancia de reventa',
@@ -2531,6 +2671,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

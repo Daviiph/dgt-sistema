@@ -88,7 +88,7 @@ export function mountAreaChart(host, opts) {
       return `<defs><linearGradient id="${id}g${si}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(${col})" stop-opacity=".45"/><stop offset="1" stop-color="rgb(${col})" stop-opacity="0"/></linearGradient></defs>
         ${area}<path d="${line}" fill="none" stroke="rgb(${col})" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#${id}glow)"/>`
     }).join('')
-    const dots = series.map((s, si) => `<circle class="cx-dot" data-s="${si}" r="5" fill="rgb(${s.color || 'var(--brand-light)'})" stroke="#0b0e20" stroke-width="2" opacity="0"/>`).join('')
+    const dots = series.map((s, si) => `<circle class="cx-dot" data-s="${si}" r="5" fill="rgb(${s.color || 'var(--brand-light)'})" stroke="var(--card-bg)" stroke-width="2.5" opacity="0"/>`).join('')
     host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
       <defs><filter id="${id}glow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       ${grid}${xl}${paths}
@@ -141,13 +141,13 @@ export function mountRankBars(host, { items, format = (v) => v, onSelect, empty 
   const max = Math.max(...items.map((i) => i.value), 1)
   const total = items.reduce((a, i) => a + i.value, 0) || 1
   host.innerHTML = items.map((it, k) => `
-    <button type="button" data-k="${k}" class="rank-row group w-full text-left rounded-xl px-2 py-2 -mx-2 transition hover:bg-white/5 focus-visible:bg-white/5">
+    <button type="button" data-k="${k}" class="rank-row group w-full text-left rounded-xl px-2 py-2 -mx-2 hover:bg-gray-50 dark:hover:bg-white/5">
       <span class="flex items-baseline justify-between gap-3 text-sm">
         <span class="truncate">${esc(it.label)}</span>
         <span class="shrink-0 tabular-nums font-semibold">${esc(format(it.value))} <span class="font-normal opacity-50 text-xs">${Math.round((it.value / total) * 100)}%</span></span>
       </span>
-      <span class="mt-1.5 block h-1.5 rounded-full bg-white/10 overflow-hidden"><span class="block h-full rounded-full transition-all" style="width:${(it.value / max) * 100}%;background:${it.color || 'linear-gradient(90deg, rgb(var(--brand)), rgb(var(--brand-light)))'}"></span></span>
-      ${it.sub ? `<span class="mt-1 block text-[11px] opacity-50">${esc(it.sub)}</span>` : ''}
+      <span class="mt-1.5 block h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden"><span class="rank-fill block h-full rounded-full" style="width:${(it.value / max) * 100}%;background:${it.color || 'linear-gradient(90deg, rgb(var(--brand)), rgb(var(--brand-light)))'}"></span></span>
+      ${it.sub ? `<span class="mt-1 block text-[11px] text-gray-400">${esc(it.sub)}</span>` : ''}
     </button>`).join('')
   host.querySelectorAll('.rank-row').forEach((b) => b.addEventListener('click', () => onSelect && onSelect(items[b.dataset.k], +b.dataset.k)))
 }
@@ -160,10 +160,53 @@ export function gauge(value, { size = 150, color = 'var(--brand-light)', label =
   return `<svg viewBox="0 0 140 140" width="${size}" height="${size}" role="img" aria-label="${Math.round(v * 100)}% ${esc(label)}">
     <defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="rgb(var(--brand))"/><stop offset="1" stop-color="rgb(${color})"/></linearGradient></defs>
     <g transform="rotate(135 70 70)">
-      <circle cx="70" cy="70" r="${r}" fill="none" stroke="white" stroke-opacity=".08" stroke-width="10" stroke-linecap="round" stroke-dasharray="${arc} ${c}"/>
+      <circle cx="70" cy="70" r="${r}" fill="none" stroke="currentColor" stroke-opacity=".08" stroke-width="10" stroke-linecap="round" stroke-dasharray="${arc} ${c}"/>
       <circle cx="70" cy="70" r="${r}" fill="none" stroke="url(#${id})" stroke-width="10" stroke-linecap="round" stroke-dasharray="${arc * v} ${c}"/>
     </g>
-    <text x="70" y="74" text-anchor="middle" font-size="26" font-weight="700" fill="white">${Math.round(v * 100)}%</text>
-    <text x="70" y="94" text-anchor="middle" font-size="9" fill="white" fill-opacity=".55">${esc(label)}</text>
+    <text x="70" y="74" text-anchor="middle" font-size="26" font-weight="700" fill="currentColor">${Math.round(v * 100)}%</text>
+    <text x="70" y="94" text-anchor="middle" font-size="9" fill="currentColor" fill-opacity=".5">${esc(label)}</text>
   </svg>`
+}
+
+// Agrupa los cubos de un período en como máximo `max` columnas (suma valores y une rangos)
+export function groupBuckets(bk, values, max = 8) {
+  const n = bk.length, size = Math.max(1, Math.ceil(n / max)), out = []
+  for (let i = 0; i < n; i += size) {
+    const part = bk.slice(i, i + size)
+    out.push({ label: part[0].label, title: part.length > 1 ? `${part[0].title} – ${part[part.length - 1].title}` : part[0].title,
+      from: part[0].from, to: part[part.length - 1].to, value: values.slice(i, i + size).reduce((a, b) => a + b, 0) })
+  }
+  return out
+}
+
+// Mini barras dentro de una tarjeta (cada barra es un botón)
+export function mountMiniBars(host, { groups, format = (v) => v, onSelect }) {
+  const max = Math.max(1, ...groups.map((g) => g.value))
+  host.innerHTML = `<div class="mb-wrap">${groups.map((g, i) => `
+    <button type="button" data-i="${i}" class="mb-col" title="${esc(g.title)}: ${esc(format(g.value))}" aria-label="${esc(g.title)}: ${esc(format(g.value))}">
+      <span class="mb-track"><span class="mb-bar${i === groups.length - 1 ? ' last' : ''}" style="transform:scaleY(${Math.max(0.04, g.value / max)});--o:${0.35 + 0.65 * ((i + 1) / groups.length)}"></span></span>
+      <span class="mb-lb">${esc(g.label)}</span>
+    </button>`).join('')}</div>`
+  host.querySelectorAll('.mb-col').forEach((b) => b.addEventListener('click', () => onSelect && onSelect(groups[+b.dataset.i])))
+}
+
+// Mini línea con puntos (sparkline) — se dibuja al ancho real del contenedor
+export function mountMiniLine(host, { values, labels = [], format = (v) => v, height = 76 }) {
+  host.classList.add('chart-host')
+  const n = values.length
+  function draw(W) {
+    const id = 'ml' + uid++, P = 8, max = Math.max(1, ...values)
+    const x = (i) => P + (n === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (n - 1))
+    const y = (v) => P + (height - 2 * P) * (1 - v / max)
+    const pts = values.map((v, i) => [x(i), y(v)])
+    const line = smoothPath(pts, y(0))
+    host.innerHTML = `<svg width="${W}" height="${height}" viewBox="0 0 ${W} ${height}" style="display:block;overflow:visible">
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(var(--chart))" stop-opacity=".22"/><stop offset="1" stop-color="rgb(var(--chart))" stop-opacity="0"/></linearGradient></defs>
+      ${n > 1 ? `<path d="${line} L${x(n - 1)},${height} L${x(0)},${height} Z" fill="url(#${id})"/>` : ''}
+      <path class="ml-path" d="${line}" fill="none" stroke="rgb(var(--chart))" stroke-width="2" stroke-linecap="round" pathLength="1"/>
+      ${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i === n - 1 ? 4.5 : 3.5}" fill="var(--card-bg)" stroke="rgb(var(--chart))" stroke-width="2"><title>${esc(labels[i] || '')}: ${esc(format(values[i]))}</title></circle>`).join('')}
+    </svg>`
+  }
+  onResize(host, draw)
+  draw(Math.max(160, host.clientWidth || 240))
 }
