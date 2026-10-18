@@ -34,6 +34,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,svg,woff,woff2,ttf}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/whatsapp/],
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
