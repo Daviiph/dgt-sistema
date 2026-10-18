@@ -319,7 +319,7 @@ main section > div:first-child h2.text-2xl { font-size: clamp(1.6rem, 1.2rem + 1
 .mb-track { flex:1; width:100%; max-width:1.1rem; display:flex; align-items:flex-end; }
 .mb-bar { display:block; width:100%; height:100%; border-radius:.4rem .4rem .2rem .2rem; background: rgb(var(--brand) / var(--o, 1)); transform-origin: bottom; animation: barGrow .6s var(--ease-out) both; }
 .mb-bar.last { background: linear-gradient(180deg, rgb(var(--brand-light)), rgb(var(--brand))); }
-.mb-lb { font-size:9px; color: rgb(156 163 175); white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.mb-lb { font-size:9px; letter-spacing:-.02em; color: rgb(156 163 175); white-space:nowrap; }
 .mb-col:nth-child(2) .mb-bar { animation-delay: 30ms; } .mb-col:nth-child(3) .mb-bar { animation-delay: 60ms; } .mb-col:nth-child(4) .mb-bar { animation-delay: 90ms; }
 .mb-col:nth-child(5) .mb-bar { animation-delay: 120ms; } .mb-col:nth-child(6) .mb-bar { animation-delay: 150ms; } .mb-col:nth-child(n+7) .mb-bar { animation-delay: 180ms; }
 @keyframes barGrow { from { transform: scaleY(0); } }
@@ -340,7 +340,7 @@ main section > div:first-child h2.text-2xl { font-size: clamp(1.6rem, 1.2rem + 1
 @media (min-width: 768px) { .board { padding: 4.75rem 1.5rem 1.5rem; } }
 .dark .board { box-shadow: 0 0 0 1px rgb(255 255 255 / .06); }
 .board-tabs { position:absolute; top:0; left:50%; transform: translateX(-50%); display:flex; gap:.2rem; padding: 0 .55rem .55rem; border-radius: 0 0 1.6rem 1.6rem; background: rgb(var(--page)); max-width: calc(100% - 2rem); }
-.board-tabs::before, .board-tabs::after { content:''; position:absolute; top:0; width:1.2rem; height:1.2rem; background: radial-gradient(circle at 0 100%, transparent 1.2rem, rgb(var(--page)) 1.25rem); }
+.board-tabs::before, .board-tabs::after { content:''; position:absolute; top:0; width:1.2rem; height:1.2rem; background: radial-gradient(circle at 100% 100%, transparent 1.2rem, rgb(var(--page)) 1.25rem); }
 .board-tabs::before { left:-1.2rem; transform: scaleX(-1); }
 .board-tabs::after { right:-1.2rem; }
 .board-tabs button { display:inline-flex; align-items:center; gap:.4rem; padding:.6rem 1rem; border-radius:999px; font-size:.82rem; font-weight:600; color: rgb(55 65 81); background: var(--card-bg); white-space:nowrap; transition: background-color .2s var(--ease-out), color .15s, transform .16s var(--ease-out); }
@@ -425,3 +425,6 @@ main, #sidebar nav, .modal-scroll { overscroll-behavior: contain; }
   .mb-bar, .rank-fill, .mini-line .ml-path, .inv-anim { animation: none !important; }
   .stat-card:active, .board-row:active { transform: none; }
 }
+
+#section-resale-dashboard .stat-card { min-height: 0; }
+body.mode-reventa .seg > button.on { background:#10B981; }
