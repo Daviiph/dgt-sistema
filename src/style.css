@@ -844,3 +844,5 @@ main .bg-white.rounded-2xl, main .dark\:bg-gray-900.rounded-2xl { border-radius:
 @media (prefers-reduced-motion: reduce) { .fixed.inset-0.backdrop-blur-sm:not(.hidden) > div:first-child { animation: none; } }
 /* Las pantallas ocultas siempre se ocultan (el estilo .v-page no debe anular .hidden) */
 main section.hidden, .v-page.hidden { display: none !important; }
+.v-page { grid-template-columns: minmax(0, 1fr); }
+.v-page > * { min-width: 0; }
