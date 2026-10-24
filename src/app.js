@@ -1698,7 +1698,7 @@ function updateDashboard() {
 
     bindPeriod('dash-period', dashPeriod, r, (st) => { dashPeriod = st; savePeriod('ns_dash_period', st); updateDashboard(); });
     bindSeg('dash-metric', 'm', dashMetric, (m) => { dashMetric = m; updateDashboard(); });
-    set('dash-period-label', rangeLabel(r));
+    set('dash-period-label', dashPeriod.k === 'custom' ? '' : rangeLabel(r));
     set('dash-hello', currentProfile ? ((currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] || '—') : '—');
 
     const total = sum(inP);
@@ -1940,7 +1940,7 @@ function saleRowHtml(s) {
 }
 
 // ===== Clientes de un período: quién compró, cuánto, cuándo =====
-const fullStamp = (t) => t.toLocaleString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).replace(/\./g, '');
+const fullStamp = (t) => `${t.toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '')}, ${t.toLocaleTimeString('es-VE', { hour: 'numeric', minute: '2-digit' })}`;
 const itemsText = (s) => (s.items || []).map(i => `${i.name}${i.qty > 1 ? ' ×' + i.qty : ''}`).join(', ');
 let clientIndex = {};
 function clientStats(list) {
