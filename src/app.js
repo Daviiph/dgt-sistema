@@ -3,7 +3,7 @@ const html2pdf = (...a) => html2pdfLib(...a);
 async function loadPdfLib() { if (!html2pdfLib) html2pdfLib = (await import('html2pdf.js')).default; }
 import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, sendInvoiceEmail, askPriceAssistant, onNetChange, flushOutbox, persistLocal, netState } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
-import { saleTime as saleTimeOf, stampCaracas, previousRange as prevRangeOf, buckets as bucketsOf, rangeLabel } from './fechas.js'
+import { saleTime as saleTimeOf, stampCaracas, previousRange as prevRangeOf, buckets as bucketsOf, rangeLabel, presetRange as presetRangeOf } from './fechas.js'
 import { loadPeriod, savePeriod, rangeOf, periodTitle, mountPeriod } from './periodo.js'
 import { mountDonut, mountAreaChart, mountRankBars, gauge, groupBuckets, mountMiniBars, mountMiniLine } from './charts.js'
 
@@ -230,7 +230,7 @@ function buildTopNav() {
         const src = document.getElementById(`link-${sec}`);
         if (!src) return '';
         const mode = src.dataset.mode ? ` data-mode="${src.dataset.mode}"` : '';
-        return `<a href="#" data-section="${sec}"${mode} class="top-link${TOP_ADMIN.includes(sec) ? ' admin-only' : ''}" onclick="showSection('${sec}')"><i class="${navIcon(sec)}"></i><span>${TOP_LABEL[sec]}</span></a>`;
+        return `<button type="button" data-section="${sec}"${mode} class="top-link${TOP_ADMIN.includes(sec) ? ' admin-only' : ''}" onclick="showSection('${sec}')"><i class="${navIcon(sec)}"></i><span>${TOP_LABEL[sec]}</span></button>`;
     }).join('') + `<button type="button" id="top-more" class="top-link admin-only" onclick="openMoreMenu(this)" aria-haspopup="menu" aria-expanded="false"><i class="fas fa-ellipsis"></i><span>Más</span><i class="fas fa-chevron-down chev"></i></button>`;
 }
 // Menú flotante junto a un botón (se cierra al tocar fuera, con Esc o al desplazar)
@@ -284,9 +284,9 @@ function showSection(sectionId) {
     currentSection = sectionId;
     document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
     document.getElementById(`section-${sectionId}`).classList.remove('hidden');
-    document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active-link'));
+    document.querySelectorAll('#sidebar nav a, #sidebar nav button').forEach(a => a.classList.remove('active-link'));
     document.getElementById(`link-${sectionId}`)?.classList.add('active-link');
-    document.querySelectorAll('.bottom-nav a, .top-link').forEach(a => a.classList.toggle('on', a.dataset.section === sectionId));
+    document.querySelectorAll('.bottom-nav a, .bottom-nav button, .top-link').forEach(a => a.classList.toggle('on', a.dataset.section === sectionId));
     document.getElementById('top-more')?.classList.toggle('on', TOP_MORE.includes(sectionId));
     closePopMenu();
     toggleNav(false);
@@ -359,6 +359,7 @@ function editBrand(id) {
 }
 
 function renderBrands() {
+    brandsScreen();
     const tbody = document.getElementById('brands-table-body');
     if(brands.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center text-gray-500">No hay marcas registradas</td></tr>';
@@ -447,6 +448,7 @@ function editProduct(id) {
 }
 
 function renderInventory() {
+    inventoryScreen();
     const tbody = document.getElementById('inventory-table-body');
     bindSeg('inv-filter', 'f', invFilter, (f) => { invFilter = f; renderInventory(); });
     bindSeg('inv-cond', 'c', invCond, (c) => { invCond = c; renderInventory(); });
@@ -571,6 +573,7 @@ function toggleCustomerInvoices(id) {
 }
 
 function renderCustomers() {
+    customersScreen();
     const container = document.getElementById('customers-cards');
     const data = customers.map(c => {
         const allSales = sales.filter(sl => sl.customerId == c.id);
@@ -716,6 +719,7 @@ function editSeller(id) {
 }
 
 function renderSellers() {
+    sellersScreen();
     const container = document.getElementById('sellers-cards');
     if(sellers.length === 0) {
         container.innerHTML = '<div class="col-span-full p-8 text-center text-gray-500 bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-800">No hay vendedores registrados</div>';
@@ -791,6 +795,7 @@ function editPayment(id) {
 }
 
 function renderPayments() {
+    paymentsScreen();
     const tbody = document.getElementById('payments-table-body');
     if(payments.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center text-gray-500">No hay métodos de pago registrados</td></tr>';
@@ -1519,7 +1524,9 @@ function renderSales() {
     const q = (document.getElementById('sales-search').value || '').toLowerCase().trim();
     const list = all.filter(s => (r.all || inRange(s, r)) && (salesStatus === 'todas' || (s.status || 'activa') === salesStatus) && matchSale(s, q));
     const act = list.filter(s => s.status !== 'cancelada');
-    document.getElementById('sales-summary').innerHTML = summaryCards(list, [['Ticket promedio', money(act.length ? act.reduce((a, s) => a + s.total, 0) / act.length : 0), '']]);
+    salesScreenKpis('sales-summary', list, all.filter(s => (salesStatus === 'todas' || (s.status || 'activa') === salesStatus) && matchSale(s, q)), r, false);
+    lastSalesExport.tienda = list;
+    mountSalesChart('sales-chart', 'sales-chart-sub', list, r.all ? { ...r } : r, periodTitle(salesPeriod, r), (st) => { salesPeriod = st; savePeriod('ns_sales_period', st); renderSales(); });
     if (!all.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-500">Aún no hay ventas de tienda. <button onclick="showSection(\'pos\')" class="text-brand font-semibold hover:underline">Registrar la primera</button></td></tr>';
         return;
@@ -1967,6 +1974,263 @@ function updateDashboard() {
     renderBoard();
 }
 
+// ===================== PANTALLAS: indicadores, gráficas y descargas =====================
+// Indicadores tocables. Si la cantidad no cambia se actualizan en su lugar (no se repite la animación).
+function renderKpis(hostId, items) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    const list = items.filter(Boolean);
+    const inner = (k) => `<span class="v-kpi-top"><span class="v-kpi-ic"><i class="${k.icon}"></i></span><span class="v-delta">${k.delta || ''}</span></span>
+        <span class="v-kpi-value">${escHtml(k.value)}</span><span class="v-kpi-label">${escHtml(k.label)}</span>${k.hero ? '<span class="v-kpi-deco" aria-hidden="true"></span>' : ''}`;
+    const cls = (k) => `v-kpi${k.hero ? ' is-hero' : ''}${k.on ? ' is-on' : ''}${k.act ? '' : ' is-static'}`;
+    if (host.children.length !== list.length) host.innerHTML = list.map(() => '<button type="button"></button>').join('');
+    [...host.children].forEach((b, i) => {
+        const k = list[i];
+        b.className = cls(k);
+        b.innerHTML = inner(k);
+        b.title = k.title || '';
+        b.setAttribute('aria-pressed', k.on ? 'true' : 'false');
+        b.onclick = k.act || null;
+    });
+}
+const monthRange = () => presetRangeOf('mes');
+function downloadCsv(name, head, rows) {
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    if (!rows.length) return toast('No hay datos para descargar con estos filtros.', 'info', 3000);
+    const blob = new Blob(['﻿' + [head.map(q).join(';'), ...rows.map(r => r.map(q).join(';'))].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name}.csv`.replace(/[\\/:*?"<>|]/g, '-');
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Descargado: ' + a.download, 'ok', 2500);
+}
+const csvNum = (v) => (Number(v) || 0).toFixed(2).replace('.', ',');
+function saleCsvRow(s) {
+    const t = saleTime(s), c = customers.find(x => x.id == s.customerId), sl = sellers.find(x => x.id == s.sellerId);
+    return [t ? t.toLocaleDateString('es-VE') : s.date, t ? t.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : '', s.id, s.docType || '', s.status === 'cancelada' ? 'Anulada' : 'Activa', c ? c.name : 'Cliente general', c ? (c.cedula || '') : '', itemsText(s), unitsOf(s), (s.payments || []).map(payName).join(', '), sl ? sl.name : '', csvNum(s.total), ...(isResaleSale(s) && isAdmin() ? [csvNum(s.costTotal), csvNum(s.total - (Number(s.costTotal) || 0))] : [])];
+}
+const SALE_CSV_HEAD = ['Fecha', 'Hora', 'Documento', 'Tipo', 'Estado', 'Cliente', 'Cédula/RIF', 'Productos', 'Equipos', 'Pago', 'Vendedor', 'Total'];
+
+// Gráfica de ventas de una pantalla: tocar = ver ventas · arrastrar = elegir fechas
+function mountSalesChart(hostId, subId, list, r, title, onPick) {
+    const el = document.getElementById(hostId);
+    const sub = document.getElementById(subId);
+    const act = list.filter(s => s.status !== 'cancelada');
+    const bk = buckets(r);
+    const vals = bk.map(b => act.filter(s => inRange(s, b)).reduce((a, s) => a + s.total, 0));
+    if (sub) sub.textContent = `${title} · ${money(vals.reduce((a, b) => a + b, 0))} · toca un punto para ver las ventas${bk.length > 2 ? ' o arrastra para elegir fechas' : ''}`;
+    if (!el || el.closest('section').classList.contains('hidden')) return;
+    mountAreaChart(el, {
+        labels: bk.map(b => b.label), series: [{ name: 'Vendido', values: vals, color: 'var(--chart)' }],
+        format: shortMoney, tipFormat: money, height: 200,
+        ariaLabel: `Vendido por ${bk[0] ? bk[0].unit : 'día'}`,
+        detail: (i) => `${act.filter(s => inRange(s, bk[i])).length} venta(s)`,
+        onSelect: (i) => openSalesList(bk[i].title, act.filter(s => inRange(s, bk[i]))),
+        onRange: (i, j) => {
+            if (bk[0].unit === 'hora') return openSalesList('Ventas del tramo elegido', act.filter(s => inRange(s, { from: bk[i].from, to: bk[j].to })));
+            const last = new Date(bk[j].to); last.setDate(last.getDate() - 1);
+            const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            onPick({ k: 'custom', a: ymd(bk[i].from), b: ymd(last) });
+        },
+    });
+}
+function salesScreenKpis(hostId, list, all, r, resaleMode) {
+    const act = list.filter(s => s.status !== 'cancelada');
+    const prevR = r.all ? null : previousRange(r);
+    const prevAct = prevR ? all.filter(s => s.status !== 'cancelada' && inRange(s, prevR)) : null;
+    const sum = (l) => l.reduce((a, s) => a + s.total, 0);
+    const cost = (l) => l.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
+    const tot = sum(act), n = act.length, anuladas = list.length - act.length;
+    const items = [
+        { hero: true, icon: 'fas fa-wallet', label: 'Vendido', value: money(tot), delta: prevAct ? kpiDelta(tot, sum(prevAct)) : '', act: () => openSalesList('Ventas del período', act) },
+        { icon: 'fas fa-receipt', label: anuladas ? `Ventas · ${anuladas} anulada${anuladas === 1 ? '' : 's'}` : 'Ventas', value: String(n), delta: prevAct ? kpiDelta(n, prevAct.length) : '', act: () => openSalesList('Ventas del período', list) },
+    ];
+    if (resaleMode && isAdmin()) {
+        const c = cost(act), pc = prevAct ? cost(prevAct) : null;
+        items.push({ icon: 'fas fa-arrow-trend-up', label: `Ganancia · margen ${tot ? Math.round(((tot - c) / tot) * 100) : 0}%`, value: money(tot - c), delta: prevAct ? kpiDelta(tot - c, sum(prevAct) - pc) : '', act: () => openSalesList('Ventas del período (mayor ganancia primero)', [...act].sort((a, b) => (b.total - (b.costTotal || 0)) - (a.total - (a.costTotal || 0)))) });
+    } else {
+        items.push({ icon: 'fas fa-tag', label: 'Ticket promedio', value: money(n ? tot / n : 0), delta: prevAct ? kpiDelta(n ? tot / n : 0, prevAct.length ? sum(prevAct) / prevAct.length : 0) : '', act: () => openSalesList('Ventas del período (de mayor a menor)', [...act].sort((a, b) => b.total - a.total)) });
+    }
+    const u = act.reduce((a, s) => a + unitsOf(s), 0);
+    items.push({ icon: 'fas fa-mobile-screen', label: 'Equipos vendidos', value: String(u), delta: prevAct ? kpiDelta(u, prevAct.reduce((a, s) => a + unitsOf(s), 0)) : '', act: () => openSalesList('Equipos vendidos en el período', act) });
+    renderKpis(hostId, items);
+}
+let lastSalesExport = { tienda: [], reventa: [] };
+function exportSalesCsv(channel) {
+    const list = [...(lastSalesExport[channel] || [])].sort((a, b) => (saleTime(a) || 0) - (saleTime(b) || 0));
+    const head = channel === 'reventa' && isAdmin() ? [...SALE_CSV_HEAD, 'Costo', 'Ganancia'] : SALE_CSV_HEAD;
+    downloadCsv(`ventas ${channel} ${periodTitle(channel === 'reventa' ? rsalesPeriod : salesPeriod, periodRangeOf(channel === 'reventa' ? rsalesPeriod : salesPeriod, sales))}`, head, list.map(saleCsvRow));
+}
+
+// ---- Inventario
+const soldThisMonth = () => { const r = monthRange(); const m = {}; sales.filter(s => !isResaleSale(s) && s.status !== 'cancelada' && inRange(s, r)).forEach(s => (s.items || []).forEach(i => { m[i.id] = (m[i.id] || 0) + (Number(i.qty) || 0); })); return m; };
+function inventoryScreen() {
+    const value = products.reduce((a, p) => a + (p.stock || 0) * (p.price || 0), 0);
+    const units = products.reduce((a, p) => a + (p.stock || 0), 0);
+    const low = products.filter(p => p.stock > 0 && p.stock < 5).length, out = products.filter(p => p.stock <= 0).length;
+    const setF = (f) => () => { invFilter = invFilter === f ? 'todos' : f; renderInventory(); document.getElementById('inv-search')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); };
+    renderKpis('inv-kpis', [
+        { hero: true, icon: 'fas fa-boxes-stacked', label: `Productos · ${units.toLocaleString('en-US')} unidades`, value: String(products.length), on: invFilter === 'todos', act: setF('todos'), title: 'Ver todos' },
+        { icon: 'fas fa-sack-dollar', label: 'Valor del inventario', value: money(value), act: () => exportInventoryCsv(), title: 'Descargar inventario' },
+        { icon: 'fas fa-triangle-exclamation', label: 'Stock bajo (menos de 5)', value: String(low), on: invFilter === 'bajo', act: setF('bajo'), title: 'Filtrar stock bajo' },
+        { icon: 'fas fa-ban', label: 'Agotados', value: String(out), on: invFilter === 'agotado', act: setF('agotado'), title: 'Filtrar agotados' },
+    ]);
+    const byBrand = {};
+    products.forEach(p => { const b = brands.find(x => x.id == p.brandId); const k = b ? String(b.id) : ''; (byBrand[k] = byBrand[k] || { label: b ? b.name : 'Sin marca', value: 0, id: k, n: 0 }); byBrand[k].value += p.stock || 0; byBrand[k].n++; });
+    const brEl = document.getElementById('inv-by-brand');
+    if (brEl) mountDonut(brEl, {
+        items: Object.values(byBrand).map(x => ({ ...x, sub: `${x.n} producto${x.n === 1 ? '' : 's'}` })).sort((a, b) => b.value - a.value),
+        format: (v) => `${v} u`, center: { value: units.toLocaleString('en-US'), label: 'unidades' }, empty: 'Sin productos todavía',
+        onSelect: (it) => { const sel = document.getElementById('inv-brand'); if (sel) { sel.value = sel.value === it.id ? '' : it.id; renderInventory(); toast(sel.value ? `Mostrando ${it.label}` : 'Mostrando todas las marcas', 'info', 2000); } },
+    });
+    const sold = soldThisMonth();
+    const rs = products.filter(p => (sold[p.id] || 0) > 0 && p.stock <= 5).sort((a, b) => a.stock - b.stock || (sold[b.id] || 0) - (sold[a.id] || 0));
+    const fallback = rs.length ? rs : products.filter(p => p.stock < 5).sort((a, b) => a.stock - b.stock);
+    const el = document.getElementById('inv-restock');
+    if (el) el.innerHTML = fallback.slice(0, 6).map(p => {
+        const b = brands.find(x => x.id == p.brandId);
+        return `<li><button type="button" class="v-sale" onclick="editProduct(${p.id})"><span class="v-dot-ic"><i class="fas fa-box"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml((b ? b.name + ' ' : '') + p.name)}</span><span class="block text-[11px] text-gray-400">${sold[p.id] ? `Vendidos este mes: ${sold[p.id]}` : 'Sin ventas este mes'}</span></span>
+            <span class="v-pill ${p.stock <= 0 ? 'is-bad' : 'is-warn'}">${p.stock <= 0 ? 'Agotado' : 'Quedan ' + p.stock}</span></button></li>`;
+    }).join('') || '<li class="v-none">Todo el inventario está bien surtido.</li>';
+}
+function exportInventoryCsv() {
+    const sold = soldThisMonth();
+    downloadCsv(`inventario ${new Date().toLocaleDateString('es-VE')}`, ['Marca', 'Producto', 'Color', 'Condición', 'Precio', 'Stock', 'Valor', 'Vendidos este mes'],
+        products.map(p => { const b = brands.find(x => x.id == p.brandId); return [b ? b.name : '', p.name, AVAILABLE_COLORS.find(c => c.hex === p.color)?.name || '', COND_LABEL[condOf(p)] || '', csvNum(p.price), p.stock || 0, csvNum((p.stock || 0) * (p.price || 0)), sold[p.id] || 0]; }));
+}
+
+// ---- Equipos de reventa
+function resaleItemsScreen() {
+    const avail = resale.filter(r => r.stock > 0), soldN = resale.filter(r => r.stock <= 0).length;
+    const setF = (f) => () => setResaleFilter(f);
+    renderKpis('ri-kpis', [
+        { hero: true, icon: 'fas fa-mobile-screen', label: 'Equipos disponibles', value: String(avail.reduce((a, r) => a + r.stock, 0)), on: resaleFilter === 'disponible', act: setF('disponible') },
+        isAdmin() && { icon: 'fas fa-hand-holding-dollar', label: 'Capital invertido', value: money(avail.reduce((a, r) => a + r.stock * r.cost, 0)), act: setF('disponible') },
+        isAdmin() && { icon: 'fas fa-arrow-trend-up', label: 'Ganancia esperada', value: money(avail.reduce((a, r) => a + r.stock * (r.price - r.cost), 0)), act: setF('disponible') },
+        { icon: 'fas fa-circle-check', label: 'Vendidos', value: String(soldN), on: resaleFilter === 'vendido', act: setF('vendido') },
+    ]);
+}
+
+// ---- Marcas
+function brandsScreen() {
+    const r = monthRange();
+    const act = sales.filter(s => s.status !== 'cancelada' && inRange(s, r));
+    const by = {};
+    act.forEach(s => (s.items || []).forEach(i => {
+        const b = brands.find(x => x.id == i.brandId);
+        const k = b ? String(b.id) : (i.brand || 'Otras');
+        const m = by[k] || (by[k] = { label: b ? b.name : (i.brand || 'Otras'), value: 0, units: 0, list: new Set() });
+        m.value += (Number(i.price) || 0) * (Number(i.qty) || 0); m.units += Number(i.qty) || 0; m.list.add(s);
+    }));
+    const rows = Object.values(by).sort((a, b) => b.value - a.value);
+    const tot = rows.reduce((a, x) => a + x.value, 0);
+    renderKpis('br-kpis', [
+        { hero: true, icon: 'fas fa-tags', label: 'Vendido este mes', value: money(tot), act: () => openSalesList('Ventas del mes', act) },
+        { icon: 'fas fa-layer-group', label: 'Marcas', value: String(brands.length) },
+        { icon: 'fas fa-box', label: 'Productos en inventario', value: String(products.length), act: () => showSection('inventory') },
+        { icon: 'fas fa-crown', label: rows[0] ? `Marca top · ${money(rows[0].value)}` : 'Marca top', value: rows[0] ? rows[0].label : '—', act: rows[0] ? () => openSalesList(`Ventas de ${rows[0].label}`, [...rows[0].list]) : null },
+    ]);
+    brandRows = rows;
+    const max = Math.max(1, ...rows.map(x => x.value));
+    const el = document.getElementById('br-chart');
+    if (el) el.innerHTML = rows.length ? `<ul class="v-funnel">${rows.map((x, i) => `<li><button type="button" class="v-fun v-fun-wide" onclick="openBrandSales(${i})" title="${escHtml(x.label)} · ${x.units} u">
+        <span class="v-fun-name">${escHtml(x.label)}</span><span class="v-fun-track"><span class="v-fun-bar" style="width:${Math.max(14, (x.value / max) * 100)}%">${shortMoney(x.value)}</span></span><span class="v-fun-pct">${Math.round((x.value / (tot || 1)) * 100)}%</span></button></li>`).join('')}</ul>` : '<p class="v-none">Aún no hay ventas este mes.</p>';
+}
+let brandRows = [];
+function openBrandSales(i) { const x = brandRows[i]; if (x) openSalesList(`Ventas de ${x.label} este mes`, [...x.list]); }
+
+// ---- Clientes
+function customersScreen() {
+    const r = monthRange(), prevR = previousRange(r);
+    const act = sales.filter(s => s.status !== 'cancelada');
+    const inM = act.filter(s => inRange(s, r)), inP = act.filter(s => inRange(s, prevR));
+    const buyers = new Set(inM.filter(s => s.customerId).map(s => String(s.customerId)));
+    const prevBuyers = new Set(inP.filter(s => s.customerId).map(s => String(s.customerId)));
+    const cs = clientStats(inM).filter(m => m.key !== '_general').sort(CLIENT_SORT.monto);
+    const sum = (l) => l.reduce((a, s) => a + s.total, 0);
+    renderKpis('cu-kpis', [
+        { hero: true, icon: 'fas fa-users', label: 'Clientes registrados', value: String(customers.length), act: () => document.getElementById('cust-search')?.focus() },
+        { icon: 'fas fa-user-check', label: 'Compraron este mes', value: String(buyers.size), delta: kpiDelta(buyers.size, prevBuyers.size), act: openClientsMonth },
+        { icon: 'fas fa-wallet', label: 'Vendido este mes', value: money(sum(inM)), delta: kpiDelta(sum(inM), sum(inP)), act: () => openSalesList('Ventas de este mes', inM) },
+        { icon: 'fas fa-crown', label: cs[0] ? `Mejor cliente · ${money(cs[0].total)}` : 'Mejor cliente del mes', value: cs[0] ? cs[0].name : '—', act: cs[0] ? () => openClientSales(cs[0].key) : null },
+    ]);
+}
+function openClientsMonth() { salesPeriod = { k: 'mes' }; savePeriod('ns_sales_period', salesPeriod); salesView = 'clientes'; showSection('sales'); }
+function exportCustomersCsv() {
+    downloadCsv('clientes', ['Cliente', 'Cédula/RIF', 'Teléfono', 'Correo', 'Compras', 'Equipos', 'Total comprado', 'Última compra'], customers.map(c => {
+        const l = sales.filter(s => s.customerId == c.id && s.status !== 'cancelada');
+        const last = l.map(saleTime).filter(Boolean).sort((a, b) => b - a)[0];
+        return [c.name, c.cedula || c.rif || '', c.phone || '', c.email || '', l.length, l.reduce((a, s) => a + unitsOf(s), 0), csvNum(l.reduce((a, s) => a + s.total, 0)), last ? last.toLocaleString('es-VE') : ''];
+    }));
+}
+
+// ---- Vendedores
+let slPeriod = loadPeriod('ns_sl_period', 'mes'), slLists = [];
+function sellersScreen() {
+    const act = sales.filter(s => s.status !== 'cancelada');
+    const r = periodRangeOf(slPeriod, act), prevR = r.all ? null : previousRange(r);
+    bindPeriod('sl-period', slPeriod, r, (st) => { slPeriod = st; savePeriod('ns_sl_period', st); renderSellers(); });
+    const inP = act.filter(s => inRange(s, r)), prev = prevR ? act.filter(s => inRange(s, prevR)) : null;
+    const sum = (l) => l.reduce((a, s) => a + s.total, 0);
+    const comm = (l) => l.reduce((a, s) => { const sl = sellers.find(x => x.id == s.sellerId); return a + (sl ? (s.total - feeOf(s)) * sl.comm : 0); }, 0);
+    const by = {};
+    inP.forEach(s => { const k = s.sellerId || '—'; (by[k] = by[k] || []).push(s); });
+    slLists = Object.entries(by).map(([id, l]) => { const sl = sellers.find(x => x.id == id); return { label: sl ? sl.name : 'Sin vendedor', value: sum(l), n: l.length, comm: sl ? sum(l.map(s => ({ ...s, total: s.total - feeOf(s) }))) * sl.comm : 0, list: l }; }).sort((a, b) => b.value - a.value);
+    const title = periodTitle(slPeriod, r);
+    renderKpis('sl-kpis', [
+        { hero: true, icon: 'fas fa-wallet', label: `Vendido · ${title.toLowerCase()}`, value: money(sum(inP)), delta: prev ? kpiDelta(sum(inP), sum(prev)) : '', act: () => openSalesList(`Ventas · ${title}`, inP) },
+        { icon: 'fas fa-receipt', label: 'Ventas', value: String(inP.length), delta: prev ? kpiDelta(inP.length, prev.length) : '', act: () => openSalesList(`Ventas · ${title}`, inP) },
+        isAdmin() && { icon: 'fas fa-percent', label: 'Comisiones a pagar', value: money(comm(inP)), delta: prev ? kpiDelta(comm(inP), comm(prev)) : '' },
+        { icon: 'fas fa-crown', label: slLists[0] ? `Mejor vendedor · ${money(slLists[0].value)}` : 'Mejor vendedor', value: slLists[0] ? slLists[0].label : '—', act: slLists[0] ? () => openSellerList(0) : null },
+    ]);
+    const max = Math.max(1, ...slLists.map(x => x.value));
+    const reps = document.getElementById('sl-reps');
+    if (reps) reps.innerHTML = slLists.length ? `<ul class="v-reps">${slLists.map((x, i) => `<li><button type="button" onclick="openSellerList(${i})" class="v-rep">
+        <span class="v-rep-top"><span class="avatar w-7 h-7 text-[10px] shrink-0">${escHtml(getInitials(x.label))}</span><b class="truncate flex-1">${escHtml(x.label)}</b><b class="tabular-nums">${money(x.value)}</b></span>
+        <span class="v-bar"><span style="width:${(x.value / max) * 100}%"></span></span>
+        <span class="v-rep-sub">${x.n} venta${x.n === 1 ? '' : 's'}${isAdmin() ? ' · comisión ' + money(x.comm) : ''}</span></button></li>`).join('')}</ul>` : '<p class="v-none">Sin ventas en este período</p>';
+    const sub = document.getElementById('sl-sub'); if (sub) sub.textContent = `${title} · toca un vendedor para ver sus ventas`;
+    const dn = document.getElementById('sl-donut');
+    if (dn) mountDonut(dn, { items: slLists.map(x => ({ label: x.label, value: x.value, sub: `${x.n} venta(s)`, list: x.list })), format: money, onSelect: (it) => openSalesList(`Ventas de ${it.label}`, it.list) });
+}
+function openSellerList(i) { const x = slLists[i]; if (x) openSalesList(`Ventas de ${x.label}`, x.list); }
+
+// ---- Formas de pago
+let pmPeriod = loadPeriod('ns_pm_period', 'mes'), pmRows = [];
+function paymentsScreen() {
+    const act = sales.filter(s => s.status !== 'cancelada');
+    const r = periodRangeOf(pmPeriod, act);
+    bindPeriod('pm-period', pmPeriod, r, (st) => { pmPeriod = st; savePeriod('ns_pm_period', st); renderPayments(); });
+    const inP = act.filter(s => inRange(s, r));
+    const by = {};
+    inP.forEach(s => (s.payments || []).forEach(p => { const k = payName(p); const m = by[k] || (by[k] = { label: k, value: 0, bs: 0, list: new Set() }); m.value += Number(p.amount) || 0; if (p.currency === 'VES') m.bs += Number(p.amountBs) || 0; m.list.add(s); }));
+    pmRows = Object.values(by).map(m => ({ ...m, list: [...m.list] })).sort((a, b) => b.value - a.value);
+    const tot = pmRows.reduce((a, m) => a + m.value, 0);
+    const title = periodTitle(pmPeriod, r);
+    const sub = document.getElementById('pm-sub'); if (sub) sub.textContent = `${title} · ${money(tot)} · toca una para ver sus ventas`;
+    const dn = document.getElementById('pm-donut');
+    if (dn) mountDonut(dn, { items: pmRows.map(m => ({ label: m.label, value: m.value, sub: `${m.list.length} venta(s)${m.bs ? ' · ' + fmtBs(m.bs) : ''}`, list: m.list })), format: money, center: pmRows.length ? { value: shortMoney(tot), label: 'cobrado' } : null, onSelect: (it) => openSalesList(`Pagos con ${it.label} · ${title}`, it.list) });
+    const ul = document.getElementById('pm-list');
+    if (ul) ul.innerHTML = pmRows.map((m, i) => `<li><button type="button" class="v-sale" onclick="openPaymentRow(${i})"><span class="v-dot-ic"><i class="fas fa-money-bill-wave"></i></span>
+        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(m.label)}</span><span class="block text-[11px] text-gray-400">${m.list.length} venta${m.list.length === 1 ? '' : 's'}${m.bs ? ' · ' + escHtml(fmtBs(m.bs)) : ''}</span></span>
+        <span class="text-right"><b class="block text-sm tabular-nums">${money(m.value)}</b><span class="v-pill">${Math.round((m.value / (tot || 1)) * 100)}%</span></span></button></li>`).join('') || '<li class="v-none">Sin cobros en este período</li>';
+}
+function openPaymentRow(i) { const m = pmRows[i]; if (m) openSalesList(`Pagos con ${m.label}`, m.list); }
+
+// ---- Panel de reventa: variaciones
+function resaleDashDeltas(r) {
+    const allAct = sales.filter(s => isResaleSale(s) && s.status !== 'cancelada');
+    const prevR = r.all ? null : previousRange(r);
+    const cur = allAct.filter(s => inRange(s, r)), prev = prevR ? allAct.filter(s => inRange(s, prevR)) : null;
+    const tot = (l) => l.reduce((a, s) => a + s.total, 0), cost = (l) => l.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
+    const html = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
+    html('rs-total-delta', prev ? kpiDelta(tot(cur), tot(prev)) : '');
+    html('rs-cost-delta', prev ? kpiDelta(cost(cur), cost(prev)) : '');
+    html('rs-profit-delta', prev ? kpiDelta(tot(cur) - cost(cur), tot(prev) - cost(prev)) : '');
+}
+
 // ===== Últimas ventas =====
 let boardTab = 'todas', boardSel = null, boardLists = { todas: [], hoy: [], anuladas: [] }, dashMethodLists = [];
 const BOARD_TITLE = { todas: 'Últimas ventas', hoy: 'Ventas de hoy', anuladas: 'Ventas anuladas' };
@@ -2247,6 +2511,7 @@ let resaleFilter = 'disponible';
 function setResaleFilter(f) { resaleFilter = f; renderResaleItems(); }
 
 function renderResaleItems() {
+    resaleItemsScreen();
     document.querySelectorAll('#resale-filter button').forEach(b => {
         const on = b.dataset.f === resaleFilter;
         b.className = 'px-4 py-1.5 rounded-full text-sm font-semibold border transition ' + (on ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-gray-900 text-gray-500 dark:border-gray-700');
@@ -2453,8 +2718,9 @@ function renderResaleSales() {
     const list = all.filter(s => (r.all || inRange(s, r)) && matchSale(s, q));
     const act = list.filter(s => s.status !== 'cancelada');
     const tot = act.reduce((a, s) => a + s.total, 0), cost = act.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
-    document.getElementById('resale-sales-summary').innerHTML = [['Vendido', money(tot), ''], ['Costo', money(cost), ''], ['Ganancia', money(tot - cost), 'text-emerald-600']]
-        .map(([l, v, c]) => `<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4"><p class="text-xs text-gray-400">${l}</p><p class="text-lg md:text-xl font-bold tabular-nums ${c}">${v}</p></div>`).join('');
+    salesScreenKpis('resale-sales-summary', list, all.filter(s => matchSale(s, q)), r, true);
+    lastSalesExport.reventa = list;
+    mountSalesChart('rsales-chart', 'rsales-chart-sub', list, r, periodTitle(rsalesPeriod, r), (st) => { rsalesPeriod = st; savePeriod('ns_rsales_period', st); renderResaleSales(); });
     if (!all.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center text-gray-500">Aún no hay ventas de reventa. <button onclick="setMode(\'reventa\',{section:\'pos\'})" class="text-emerald-600 font-semibold hover:underline">Vender un equipo</button></td></tr>';
         return;
@@ -2475,6 +2741,7 @@ function renderResaleDashboard() {
     set('rs-cost', money(cost));
     set('rs-profit', money(tot - cost));
     set('rs-margin', tot > 0 ? `${(((tot - cost) / tot) * 100).toFixed(1)}%` : '0%');
+    resaleDashDeltas(r);
     const avail = resale.filter(r => r.stock > 0);
     set('rs-available', avail.reduce((a, r) => a + r.stock, 0));
     set('rs-capital', money(avail.reduce((a, r) => a + r.stock * r.cost, 0)));
@@ -2884,6 +3151,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { setTheme, openMoreMenu, openUserMenu, setSalesGoal, editSalesGoal, exportPeriodCsv, openSellerSales, openClientSales, exportClientsCsv, openClientsFromDash, setClientQuery, setClientSort, selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { exportSalesCsv, exportInventoryCsv, exportCustomersCsv, openBrandSales, openClientsMonth, openSellerList, openPaymentRow, setTheme, openMoreMenu, openUserMenu, setSalesGoal, editSalesGoal, exportPeriodCsv, openSellerSales, openClientSales, exportClientsCsv, openClientsFromDash, setClientQuery, setClientSort, selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

@@ -92,8 +92,8 @@ body.mode-tienda [data-mode="reventa"], body.mode-reventa [data-mode="tienda"] {
   body.nav-open #sidebar { transform: translateX(0); }
   body.nav-open #nav-overlay { display: block; }
 }
-.bottom-nav a.on { color: rgb(var(--brand)); }
-.dark .bottom-nav a.on { color: rgb(var(--brand-light)); }
+.bottom-nav button.on { color: rgb(var(--brand)); }
+.dark .bottom-nav button.on { color: rgb(var(--brand-light)); }
 
 /* Permisos visuales del rol Vendedor (la base de datos también lo impide) */
 body:not(.role-admin) .admin-only,
@@ -233,7 +233,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 [id^="modal-"]:not(.hidden) > div { animation: modalIn .28s cubic-bezier(.2,.8,.2,1); }
 @keyframes fadeIn { from { opacity:0; } }
 @keyframes modalIn { from { opacity:0; transform: translateY(14px) scale(.98); } }
-#sidebar nav a { transition: background-color .2s, color .2s; }
+#sidebar nav button { transition: background-color .2s, color .2s; }
 .kpi, .vision-card { transition: transform .25s var(--ease-out), box-shadow .25s, border-color .2s; }
 @media (hover: hover) and (pointer: fine) { .kpi:hover { transform: translateY(-2px); } }
 
@@ -747,8 +747,8 @@ main .bg-white.rounded-2xl, main .dark\:bg-gray-900.rounded-2xl { border-radius:
 
 /* Barra inferior (celular) como píldora flotante */
 .bottom-nav > div { border-radius: 999px !important; padding: 6px !important; background: var(--card-bg) !important; border: 0 !important; box-shadow: 0 0 0 1px var(--line), 0 18px 40px -18px rgb(22 18 36 / .45) !important; }
-.bottom-nav a { padding: .45rem 0; border-radius: 999px; color: var(--muted); transition: background-color .2s var(--ease-out), color .2s; }
-.bottom-nav a.on, .dark .bottom-nav a.on { background: var(--pill-bg); color: var(--pill-fg); }
+.bottom-nav button { padding: .45rem 0; border-radius: 999px; color: var(--muted); transition: background-color .2s var(--ease-out), color .2s; }
+.bottom-nav button.on, .dark .bottom-nav button.on { background: var(--pill-bg); color: var(--pill-fg); }
 
 /* Entrada de cada pantalla: aparece con desenfoque, en cascada (como el video) */
 @keyframes vIn { from { opacity: 0; filter: blur(10px); transform: translateY(10px) scale(.985); } to { opacity: 1; filter: none; transform: none; } }
@@ -782,4 +782,63 @@ main .bg-white.rounded-2xl, main .dark\:bg-gray-900.rounded-2xl { border-radius:
   .v-card-head > .v-seg > button { flex: 1; justify-content: center; }
   .v-head { align-items: flex-start; }
 }
-.bottom-nav a { flex: 1 1 0; width: auto !important; padding: .5rem .25rem; }
+.bottom-nav button { flex: 1 1 0; width: auto !important; padding: .5rem .25rem; }
+#sidebar nav button { width: 100%; text-align: left; }
+
+
+/* ===== Demás pantallas con el mismo estilo ===== */
+.v-kpi.is-static { cursor: default; }
+@media (hover: hover) and (pointer: fine) { .v-kpi.is-static:hover { transform: none; } }
+.v-kpi.is-on:not(.is-hero) { box-shadow: 0 0 0 2px rgb(var(--brand)), var(--shadow-card); }
+.v-kpi.is-hero.is-on { box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px rgb(var(--brand) / .5), 0 18px 36px -18px rgb(var(--brand) / .85); }
+.v-kpi-value { min-height: 1.1em; }
+.v-dot-ic { width: 2.25rem; height: 2.25rem; border-radius: 999px; display: grid; place-items: center; flex: none; font-size: .78rem; color: rgb(var(--brand)); background: rgb(var(--brand) / .08); }
+.dark .v-dot-ic { color: rgb(var(--brand-light)); background: rgb(var(--brand-light) / .12); }
+.v-fun-wide { grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) 2.75rem; }
+.v-tile { padding: .9rem 1rem; border-radius: 18px; background: rgb(var(--ink-rgb) / .04); }
+.v-tile p:last-child { color: rgb(var(--ink-rgb)); }
+.v-tile.is-good { background: rgb(16 185 129 / .1); }
+.v-tile-l { font-size: .72rem; color: var(--muted); }
+
+/* Tablas */
+.v-table { background: var(--card-bg); border-radius: 24px; box-shadow: 0 0 0 1px var(--line), var(--shadow-card); overflow-x: auto; }
+.v-table table thead { background: transparent !important; border-bottom: 1px solid var(--line) !important; }
+.v-table thead tr { color: var(--muted) !important; font-size: .68rem; letter-spacing: .06em; }
+.v-table th { font-weight: 600 !important; padding-top: 1rem !important; padding-bottom: .85rem !important; }
+.v-table tbody tr { border-color: var(--line) !important; transition: background-color .15s; }
+.v-table tbody tr:last-child { border-bottom: 0 !important; }
+@media (hover: hover) and (pointer: fine) { .v-table tbody tr:hover { background: rgb(var(--ink-rgb) / .025) !important; } }
+.v-table td { font-size: .875rem; }
+
+/* Buscadores, selectores y campos */
+.search-box > input, .field-sm, #pos-search { background: var(--card-bg) !important; border: 0 !important; box-shadow: 0 0 0 1px var(--line); height: 2.5rem; }
+.field-sm { border-radius: 999px !important; padding-inline: 1rem; }
+.search-box > input:focus, .field-sm:focus, #pos-search:focus { box-shadow: 0 0 0 2px rgb(var(--brand) / .55); --tw-ring-shadow: 0 0 #0000; }
+#pos-search { height: 3rem; }
+#resale-filter button { border: 0 !important; box-shadow: 0 0 0 1px var(--line); }
+
+/* Vender */
+.v-ratebar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; padding: .45rem .55rem .45rem 1rem; border-radius: 999px; background: var(--card-bg); box-shadow: 0 0 0 1px var(--line); font-size: .85rem; }
+.v-ratebar input { width: 6rem !important; border-radius: 999px !important; border: 1px solid var(--line) !important; background: rgb(var(--ink-rgb) / .03) !important; text-align: right; font-weight: 700; padding: .25rem .6rem !important; }
+.v-ratebar .rate-live-btn { border-radius: 999px !important; }
+.v-cart select, .v-cart input[type="text"], .v-cart input[type="number"] { border-radius: 14px !important; border-color: var(--line) !important; background: rgb(var(--ink-rgb) / .03) !important; }
+#pos-products-grid > div { border-radius: 22px !important; border: 0 !important; box-shadow: 0 0 0 1px var(--line), var(--shadow-card) !important; background: var(--card-bg) !important; transition: transform .22s var(--ease-out), box-shadow .22s !important; }
+@media (hover: hover) and (pointer: fine) { #pos-products-grid > div:hover { box-shadow: 0 0 0 2px rgb(var(--brand) / .6), 0 18px 34px -20px rgb(22 18 36 / .35) !important; } }
+#pos-products-grid > div[data-quick] { box-shadow: none !important; border: 2px dashed rgb(16 185 129 / .6) !important; background: transparent !important; }
+#pos-products-grid > div:active { transform: scale(.98); }
+
+/* Clientes y vendedores (tarjetas) */
+#customers-cards > div, #sellers-cards > div { border-radius: 24px !important; border: 0 !important; box-shadow: 0 0 0 1px var(--line), var(--shadow-card) !important; background: var(--card-bg) !important; overflow: hidden; }
+#sellers-cards .bg-gradient-to-r { background: linear-gradient(135deg, rgb(var(--brand)) 0%, rgb(var(--brand-dark)) 60%, rgb(var(--accent2)) 150%) !important; }
+
+/* Configuración */
+.v-config > div:first-child h2, .v-config h2 { font-size: clamp(1.5rem, 1.15rem + 1.2vw, 2.1rem) !important; letter-spacing: -.035em; }
+.v-config > div.bg-white, .v-config > div.dark\:bg-gray-900 { border-radius: 24px !important; border: 0 !important; box-shadow: 0 0 0 1px var(--line), var(--shadow-card) !important; background: var(--card-bg) !important; }
+.v-config .bg-gray-50 { background: rgb(var(--ink-rgb) / .03) !important; border-color: var(--line) !important; border-radius: 18px !important; }
+
+/* Ventanas emergentes */
+.fixed.inset-0.backdrop-blur-sm > div:first-child { border-radius: 28px; border: 0 !important; box-shadow: 0 0 0 1px var(--line), 0 40px 80px -30px rgb(22 18 36 / .5) !important; background-color: var(--card-bg) !important; }
+@media (max-width: 639px) { #modal-day > div { border-radius: 28px 28px 0 0; } }
+.fixed.inset-0.backdrop-blur-sm:not(.hidden) > div:first-child { animation: vPop .32s var(--ease-out) both; }
+@keyframes vPop { from { opacity: 0; transform: translateY(14px) scale(.98); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .fixed.inset-0.backdrop-blur-sm:not(.hidden) > div:first-child { animation: none; } }

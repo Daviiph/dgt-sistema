@@ -60,9 +60,9 @@
                         <div><label for="login-password" class="block text-sm font-medium text-gray-500 mb-1">Contraseña</label>
                         <div class="relative"><input id="login-password" type="password" required autocomplete="current-password" placeholder="••••••••" class="w-full p-3.5 pr-11 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-gray-900 dark:focus:border-white transition">
                         <button type="button" onclick="togglePassword('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" aria-label="Mostrar contraseña"><i class="far fa-eye"></i></button></div></div>
-                        <div class="text-right -mt-2"><a href="#" data-auth-view="forgot" class="text-sm text-gray-500 hover:text-brand">¿Olvidó su contraseña?</a></div>
+                        <div class="text-right -mt-2"><button type="button" data-auth-view="forgot" class="text-sm text-gray-500 hover:text-brand">¿Olvidó su contraseña?</button></div>
                         <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand dark:hover:bg-brand dark:hover:text-white text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Entrar</button>
-                        <p class="text-center text-sm text-gray-500">¿No tiene cuenta? <a href="#" data-auth-view="signup" class="font-semibold text-gray-900 dark:text-white hover:text-brand">Crear cuenta</a></p>
+                        <p class="text-center text-sm text-gray-500">¿No tiene cuenta? <button type="button" data-auth-view="signup" class="font-semibold text-gray-900 dark:text-white hover:text-brand">Crear cuenta</button></p>
                     </form></div>
                     <div id="auth-signup" class="hidden"><form id="form-signup" class="space-y-4">
                         <h2 class="text-3xl font-bold">Crear cuenta</h2>
@@ -73,14 +73,14 @@
                         <input id="signup-password2" type="password" required minlength="8" autocomplete="new-password" placeholder="Repetir contraseña" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
                         <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Crear cuenta</button>
                         <p class="text-xs text-gray-500 text-center">El administrador debe aprobar la cuenta antes de usarla.</p>
-                        <a href="#" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</a>
+                        <button type="button" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</button>
                     </form></div>
                     <div id="auth-forgot" class="hidden"><form id="form-forgot" class="space-y-4">
                         <h2 class="text-3xl font-bold">Recuperar acceso</h2>
                         <p class="text-sm text-gray-500">Escriba su correo y le enviaremos un enlace para crear una nueva contraseña.</p>
                         <input id="forgot-email" type="email" required placeholder="Correo electrónico" class="w-full p-3.5 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-white transition">
                         <button class="auth-btn w-full bg-gray-950 dark:bg-white dark:text-gray-950 hover:bg-brand text-white font-semibold py-3.5 rounded-full transition disabled:opacity-60">Enviar enlace</button>
-                        <a href="#" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</a>
+                        <button type="button" data-auth-view="login" class="block text-center text-sm text-gray-500 hover:text-brand">Volver a iniciar sesión</button>
                     </form></div>
                     <div id="auth-recovery" class="hidden"><form id="form-recovery" class="space-y-4">
                         <h2 class="text-3xl font-bold">Nueva contraseña</h2>
@@ -127,19 +127,19 @@
                 </div>
             </div>
             <nav class="flex-1 px-4 space-y-1 overflow-y-auto">
-                <a href="#" onclick="showSection('dashboard')" id="link-dashboard" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all active-link"><i class="fas fa-chart-pie w-6"></i> Inicio</a>
-                <a href="#" onclick="showSection('resale-dashboard')" id="link-resale-dashboard" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-chart-line w-6"></i> Panel Reventa</a>
-                <a href="#" onclick="showSection('brands')" id="link-brands" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-tags w-6"></i> Marcas</a>
-                <a href="#" onclick="showSection('inventory')" id="link-inventory" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-boxes-stacked w-6"></i> Inventario</a>
-                <a href="#" onclick="showSection('resale-items')" id="link-resale-items" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-mobile-screen w-6"></i> Equipos de Reventa</a>
-                <a href="#" onclick="showSection('pos')" id="link-pos" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cash-register w-6"></i> Punto de Venta</a>
-                <a href="#" onclick="showSection('customers')" id="link-customers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-users w-6"></i> Clientes</a>
-                <a href="#" onclick="showSection('sellers')" id="link-sellers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-user-tie w-6"></i> Vendedores</a>
-                <a href="#" onclick="showSection('payments')" id="link-payments" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-credit-card w-6"></i> Métodos de Pago</a>
-                <a href="#" onclick="showSection('sales')" id="link-sales" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-file-invoice-dollar w-6"></i> Ventas Tienda</a>
-                <a href="#" onclick="showSection('resale-sales')" id="link-resale-sales" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-file-invoice w-6"></i> Ventas Reventa</a>
+                <button type="button" onclick="showSection('dashboard')" id="link-dashboard" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all active-link"><i class="fas fa-chart-pie w-6"></i> Inicio</button>
+                <button type="button" onclick="showSection('resale-dashboard')" id="link-resale-dashboard" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-chart-line w-6"></i> Panel Reventa</button>
+                <button type="button" onclick="showSection('brands')" id="link-brands" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-tags w-6"></i> Marcas</button>
+                <button type="button" onclick="showSection('inventory')" id="link-inventory" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-boxes-stacked w-6"></i> Inventario</button>
+                <button type="button" onclick="showSection('resale-items')" id="link-resale-items" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-mobile-screen w-6"></i> Equipos de Reventa</button>
+                <button type="button" onclick="showSection('pos')" id="link-pos" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cash-register w-6"></i> Punto de Venta</button>
+                <button type="button" onclick="showSection('customers')" id="link-customers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-users w-6"></i> Clientes</button>
+                <button type="button" onclick="showSection('sellers')" id="link-sellers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-user-tie w-6"></i> Vendedores</button>
+                <button type="button" onclick="showSection('payments')" id="link-payments" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-credit-card w-6"></i> Métodos de Pago</button>
+                <button type="button" onclick="showSection('sales')" id="link-sales" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-file-invoice-dollar w-6"></i> Ventas Tienda</button>
+                <button type="button" onclick="showSection('resale-sales')" id="link-resale-sales" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-file-invoice w-6"></i> Ventas Reventa</button>
                 <div class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
-                    <a href="#" onclick="showSection('config')" id="link-config" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cog w-6"></i> Configuración</a>
+                    <button type="button" onclick="showSection('config')" id="link-config" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cog w-6"></i> Configuración</button>
                 </div>
             </nav>
             <div class="p-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
@@ -308,66 +308,51 @@
             </section>
 
             <!-- PANEL REVENTA -->
-            <section id="section-resale-dashboard" class="hidden section-transition space-y-6">
-                <div class="page-head">
-                    <div class="flex items-center gap-4 min-w-0">
-                        <span class="head-ic hidden sm:inline-flex !text-emerald-600"><i class="fas fa-recycle"></i></span>
-                        <div class="min-w-0">
-                            <h2 class="page-title">Panel de reventa</h2>
-                            <p class="page-sub">Equipos conseguidos por fuera: cuánto invertiste y cuánto ganaste.</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="openResaleModal()" class="icon-btn" title="Registrar equipo" aria-label="Registrar equipo"><i class="fas fa-plus"></i></button>
-                        <button onclick="setMode('reventa',{section:'pos'})" class="btn-primary btn-emerald"><i class="fas fa-cash-register"></i> Vender equipo</button>
-                    </div>
+            <section id="section-resale-dashboard" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Panel de reventa</h2><p class="v-sub">Equipos conseguidos por fuera: cuánto invertiste y cuánto ganaste.</p></div>
+                    <div class="v-actions"><div id="rs-period" class="period"></div><button onclick="openResaleModal()" class="v-icon" title="Registrar equipo" aria-label="Registrar equipo"><i class="fas fa-plus"></i></button><button onclick="setMode('reventa',{section:'pos'})" class="v-cta"><i class="fas fa-cash-register"></i><span>Vender equipo</span></button></div>
                 </div>
-                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
-                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Vendido en reventa</span><span class="stat-ic text-brand bg-brand/10"><i class="fas fa-sack-dollar"></i></span></span><span id="rs-total" class="stat-value">$0.00</span><span class="stat-delta text-gray-400">en el período</span></button>
-                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Costo de equipos</span><span class="stat-ic text-sky-500 bg-sky-50 dark:bg-sky-500/10"><i class="fas fa-hand-holding-dollar"></i></span></span><span id="rs-cost" class="stat-value">$0.00</span><span class="stat-delta text-gray-400">lo que pagaste</span></button>
-                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Ganancia</span><span class="stat-ic text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"><i class="fas fa-arrow-trend-up"></i></span></span><span id="rs-profit" class="stat-value text-emerald-600 dark:text-emerald-400">$0.00</span><span class="stat-delta text-gray-400">vendido − costo</span></button>
-                    <button onclick="showSection('resale-sales')" class="stat-card"><span class="stat-top"><span>Margen promedio</span><span class="stat-ic text-amber-500 bg-amber-50 dark:bg-amber-500/10"><i class="fas fa-percent"></i></span></span><span id="rs-margin" class="stat-value">0%</span><span class="stat-delta text-gray-400">sobre lo vendido</span></button>
+                <div class="v-kpis">
+                    <button onclick="showSection('resale-sales')" class="v-kpi is-hero"><span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-sack-dollar"></i></span><span id="rs-total-delta" class="v-delta"></span></span><span id="rs-total" class="v-kpi-value">$0.00</span><span class="v-kpi-label">Vendido en reventa</span><span class="v-kpi-deco" aria-hidden="true"></span></button>
+                    <button onclick="showSection('resale-sales')" class="v-kpi"><span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-hand-holding-dollar"></i></span><span id="rs-cost-delta" class="v-delta"></span></span><span id="rs-cost" class="v-kpi-value">$0.00</span><span class="v-kpi-label">Costo de equipos</span></button>
+                    <button onclick="showSection('resale-sales')" class="v-kpi"><span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-arrow-trend-up"></i></span><span id="rs-profit-delta" class="v-delta"></span></span><span id="rs-profit" class="v-kpi-value">$0.00</span><span class="v-kpi-label">Ganancia</span></button>
+                    <button onclick="showSection('resale-sales')" class="v-kpi"><span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-percent"></i></span></span><span id="rs-margin" class="v-kpi-value">0%</span><span class="v-kpi-label">Margen promedio</span></button>
                 </div>
-                <div class="filter-bar">
-                    <span class="font-semibold text-sm">Período</span>
-                    <div id="rs-period" class="period"></div>
-                </div>
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    <div class="card xl:col-span-2">
-                        <div class="flex flex-wrap items-start justify-between gap-2"><div><p class="card-title">Ganancia de reventa</p><p class="card-sub" id="rs-chart-sub"></p></div><div class="flex gap-4 text-xs text-gray-500"><span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-brand"></span>Vendido</span><span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-emerald-500"></span>Ganancia</span></div></div>
+                <div class="v-row v-row-charts">
+                    <div class="v-card">
+                        <div class="flex flex-wrap items-start justify-between gap-2"><div><p class="v-card-title">Ganancia de reventa</p><p class="v-card-sub" id="rs-chart-sub"></p></div><div class="flex gap-4 text-xs text-gray-500"><span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-brand"></span>Vendido</span><span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-emerald-500"></span>Ganancia</span></div></div>
                         <div id="rs-area" class="mt-4 text-gray-500 dark:text-gray-400"></div>
                     </div>
-                    <div class="board !p-5 md:!p-6 flex flex-col gap-4 !mt-0">
-                        <p class="board-title">Equipos por vender</p>
+                    <div class="v-card flex flex-col gap-4">
+                        <div class="v-card-head !mb-0"><span class="v-card-ic"><i class="fas fa-mobile-screen"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Equipos por vender</p><p class="v-card-sub">Lo que tienes disponible</p></div></div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="board-tile"><p class="text-[11px] text-white/55">Disponibles</p><p id="rs-available" class="text-2xl font-bold">0</p></div>
-                            <div class="board-tile"><p class="text-[11px] text-white/55">Capital invertido</p><p id="rs-capital" class="text-2xl font-bold">$0</p></div>
-                            <div class="board-tile col-span-2 !bg-emerald-500/15"><p class="text-[11px] text-white/55">Ganancia esperada si se venden</p><p id="rs-expected" class="text-2xl font-bold text-emerald-300">$0</p></div>
+                            <div class="v-tile"><p class="text-[11px] v-tile-l">Disponibles</p><p id="rs-available" class="text-2xl font-bold">0</p></div>
+                            <div class="v-tile"><p class="text-[11px] v-tile-l">Capital invertido</p><p id="rs-capital" class="text-2xl font-bold">$0</p></div>
+                            <div class="v-tile col-span-2 is-good"><p class="text-[11px] v-tile-l">Ganancia esperada si se venden</p><p id="rs-expected" class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">$0</p></div>
                         </div>
-                        <button onclick="showSection('resale-items')" class="mt-auto pill-light w-full justify-center"><i class="fas fa-mobile-screen"></i> Ver equipos</button>
+                        <button onclick="showSection('resale-items')" class="mt-auto v-cta w-full justify-center"><i class="fas fa-mobile-screen"></i> Ver equipos</button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <div class="card">
-                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="card-title">Equipos listos para vender</p><p class="card-sub">Los de mayor ganancia primero · toca uno para venderlo</p></div><button onclick="showSection('resale-items')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todos</button></div>
+                <div class="v-row v-row-2">
+                    <div class="v-card">
+                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="v-card-title">Equipos listos para vender</p><p class="v-card-sub">Los de mayor ganancia primero · toca uno para venderlo</p></div><button onclick="showSection('resale-items')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todos</button></div>
                         <ul id="rs-avail-list" class="space-y-1"></ul>
                     </div>
-                    <div class="card">
-                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="card-title">Últimas ventas de reventa</p><p class="card-sub">Toca una para ver el detalle</p></div><button onclick="showSection('resale-sales')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todas</button></div>
+                    <div class="v-card">
+                        <div class="flex items-start justify-between gap-3 mb-3"><div><p class="v-card-title">Últimas ventas de reventa</p><p class="v-card-sub">Toca una para ver el detalle</p></div><button onclick="showSection('resale-sales')" class="text-xs font-semibold text-emerald-600 hover:underline">Ver todas</button></div>
                         <ol id="rs-recent" class="space-y-1"></ol>
                     </div>
                 </div>
             </section>
 
             <!-- EQUIPOS DE REVENTA -->
-            <section id="section-resale-items" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <div>
-                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Equipos de reventa</h2>
-                        <p class="text-sm text-gray-500">Equipos que se consiguen por fuera, no forman parte del inventario de tienda.</p>
-                    </div>
-                    <button onclick="openResaleModal()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30"><i class="fas fa-plus"></i> Nuevo equipo</button>
+            <section id="section-resale-items" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Equipos de reventa</h2><p class="v-sub">Equipos que se consiguen por fuera, no forman parte del inventario de tienda.</p></div>
+                    <div class="v-actions"><button onclick="openResaleModal()" class="v-cta"><i class="fas fa-plus"></i><span>Nuevo equipo</span></button></div>
                 </div>
+                <div id="ri-kpis" class="v-kpis"></div>
                 <div id="resale-pending-banner"></div>
                 <div class="flex flex-wrap items-center gap-2">
                 <div class="search-box"><i class="fas fa-search"></i><input id="resale-search" type="search" oninput="renderResaleItems()" placeholder="Buscar modelo, IMEI o proveedor"></div>
@@ -377,7 +362,7 @@
                     <button onclick="setResaleFilter('vendido')" data-f="vendido" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Vendidos</button>
                     <button onclick="setResaleFilter('todos')" data-f="todos" class="px-4 py-1.5 rounded-full text-sm font-semibold border dark:border-gray-700">Todos</button>
                 </div></div>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div class="v-table">
                     <table class="w-full text-left min-w-[760px]">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500">
@@ -396,12 +381,14 @@
             </section>
 
             <!-- BRANDS -->
-            <section id="section-brands" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Marcas</h2>
-                    <button onclick="openModal('modal-brand')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nueva Marca</button>
+            <section id="section-brands" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Marcas</h2><p class="v-sub">Lo que vende cada marca este mes y su inventario.</p></div>
+                    <div class="v-actions"><button onclick="openModal('modal-brand')" class="v-cta"><i class="fas fa-plus"></i><span>Nueva marca</span></button></div>
                 </div>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div id="br-kpis" class="v-kpis"></div>
+                <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-tags"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Vendido por marca</p><p class="v-card-sub" id="br-sub">Este mes · toca una para ver sus ventas</p></div></div><div id="br-chart"></div></div>
+                <div class="v-table">
                     <table class="w-full text-left">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Nombre de la Marca</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
@@ -412,10 +399,15 @@
             </section>
 
             <!-- INVENTORY -->
-            <section id="section-inventory" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Inventario</h2><p id="inv-summary" class="text-sm text-gray-500 dark:text-gray-400"></p></div>
-                    <button onclick="openModal('modal-product')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Producto</button>
+            <section id="section-inventory" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Inventario</h2><p class="v-sub" id="inv-summary"></p></div>
+                    <div class="v-actions"><button onclick="exportInventoryCsv()" class="v-icon" title="Descargar inventario (Excel)" aria-label="Descargar inventario"><i class="fas fa-download"></i></button><button onclick="openModal('modal-product')" class="v-cta"><i class="fas fa-plus"></i><span>Nuevo producto</span></button></div>
+                </div>
+                <div id="inv-kpis" class="v-kpis"></div>
+                <div class="v-row v-row-2-1">
+                    <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-chart-pie"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Unidades por marca</p><p class="v-card-sub">Toca una marca para filtrar la tabla</p></div></div><div id="inv-by-brand"></div></div>
+                    <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-rotate"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Reponer pronto</p><p class="v-card-sub">Vendidos este mes con poco stock · toca para editar</p></div></div><ul id="inv-restock" class="v-recent"></ul></div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="search-box"><i class="fas fa-search"></i><input id="inv-search" type="search" oninput="renderInventory()" placeholder="Buscar producto o marca"></div>
@@ -423,7 +415,7 @@
                     <div id="inv-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
                     <select id="inv-brand" onchange="renderInventory()" class="field-sm"><option value="">Todas las marcas</option></select>
                 </div>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div class="v-table">
                     <table class="w-full text-left min-w-[640px]">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500">
@@ -436,13 +428,13 @@
             </section>
 
             <!-- POS -->
-            <section id="section-pos" class="hidden section-transition space-y-6">
+            <section id="section-pos" class="hidden section-transition v-page">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Punto de venta</h2>
+                        <h2 class="v-title">Vender</h2>
                         <p class="text-sm"><span data-mode="tienda" class="text-gray-500">Vendiendo productos del <b>inventario de tienda</b></span><span data-mode="reventa" class="text-emerald-600 font-semibold"><i class="fas fa-recycle mr-1"></i>Vendiendo <b>equipos de reventa</b></span></p>
                     </div>
-                    <div class="rate-widget flex flex-wrap items-center gap-3 bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-2xl px-4 py-2 shadow-sm">
+                    <div class="rate-widget v-ratebar">
                         <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400"><i class="fas fa-coins text-brand mr-1"></i>Tasa del día</span>
                         <label class="flex items-center gap-2 text-sm"><span class="font-bold text-blue-600">BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)" class="w-24 p-1 border rounded-lg dark:bg-gray-800 dark:border-gray-700 font-bold text-right outline-none focus:ring-2 focus:ring-brand"></label>
                         <label class="flex items-center gap-2 text-sm"><span class="font-bold text-amber-500">Binance</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)" class="w-24 p-1 border rounded-lg dark:bg-gray-800 dark:border-gray-700 font-bold text-right outline-none focus:ring-2 focus:ring-brand"></label>
@@ -454,12 +446,12 @@
                     <div class="lg:col-span-2 space-y-4">
                         <div class="relative group">
                             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand transition-colors"></i>
-                            <input type="text" id="pos-search" onkeyup="filterPOS()" placeholder="Buscar producto o marca..." class="w-full pl-12 p-3 border rounded-2xl outline-none focus:ring-2 focus:ring-brand bg-white dark:bg-gray-900 dark:border-gray-800 transition-all">
+                            <input type="text" id="pos-search" onkeyup="filterPOS()" placeholder="Buscar producto o marca..." class="v-search-lg w-full pl-12 p-3 border rounded-2xl outline-none focus:ring-2 focus:ring-brand bg-white dark:bg-gray-900 dark:border-gray-800 transition-all">
                         </div>
                         <div id="pos-cond" class="seg"><button data-c="todos">Todos</button><button data-c="sellado">Sellados</button><button data-c="usado">Usados</button></div>
                         <div id="pos-products-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4"></div>
                     </div>
-                    <div id="pos-cart-panel" class="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-2xl shadow-xl border dark:border-gray-800 h-fit space-y-4 lg:sticky lg:top-4">
+                    <div id="pos-cart-panel" class="v-card v-cart h-fit space-y-4 lg:sticky lg:top-4">
                         <div class="flex items-center justify-between border-b pb-2 dark:border-gray-800">
                             <h3 class="text-xl font-bold">Detalle Venta</h3>
                             <span data-mode="tienda" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand/10 text-brand">TIENDA</span>
@@ -495,38 +487,48 @@
                             <div class="flex justify-between text-xl font-bold text-gray-900 dark:text-white"><span>Total:</span> <span id="cart-total">$0.00</span></div>
                             <div id="cart-profit" class="admin-only hidden justify-between text-sm text-emerald-600 font-semibold"><span>Ganancia estimada:</span> <span></span></div>
                         </div>
-                        <button onclick="openPaymentModal()" class="w-full mt-6 bg-brand text-white py-3 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand/30 transform active:scale-95">Liquidar Pago</button>
+                        <button onclick="openPaymentModal()" class="v-cta w-full justify-center !h-12 mt-6 text-base">Cobrar</button>
                     </div>
                 </div>
                 <button id="pos-cart-fab" onclick="document.getElementById('pos-cart-panel').scrollIntoView({behavior:'smooth'})" class="lg:hidden hidden fixed right-4 bottom-24 z-30 bg-brand text-white rounded-full px-5 py-3 font-bold shadow-xl shadow-brand/40"><i class="fas fa-cart-shopping mr-2"></i><span></span></button>
             </section>
 
             <!-- CUSTOMERS -->
-            <section id="section-customers" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Clientes</h2><p class="text-sm text-gray-500 dark:text-gray-400">Ordenados por lo que han comprado.</p></div>
-                    <button onclick="openModal('modal-customer')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Cliente</button>
+            <section id="section-customers" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Clientes</h2><p class="v-sub">Ordenados por lo que han comprado. Toca uno para ver sus compras.</p></div>
+                    <div class="v-actions"><button onclick="exportCustomersCsv()" class="v-icon" title="Descargar clientes (Excel)" aria-label="Descargar clientes"><i class="fas fa-download"></i></button><button onclick="openModal('modal-customer')" class="v-cta"><i class="fas fa-plus"></i><span>Nuevo cliente</span></button></div>
                 </div>
+                <div id="cu-kpis" class="v-kpis"></div>
                 <div class="search-box max-w-md"><i class="fas fa-search"></i><input id="cust-search" type="search" oninput="renderCustomers()" placeholder="Buscar por nombre, cédula o teléfono"></div>
-                <div id="customers-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                <div id="customers-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
             </section>
 
             <!-- SELLERS -->
-            <section id="section-sellers" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Vendedores</h2>
-                    <button onclick="openModal('modal-seller')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Vendedor</button>
+            <section id="section-sellers" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Vendedores</h2><p class="v-sub">Ventas y comisiones de cada vendedor.</p></div>
+                    <div class="v-actions"><div id="sl-period" class="period"></div><button onclick="openModal('modal-seller')" class="v-cta"><i class="fas fa-plus"></i><span>Nuevo vendedor</span></button></div>
                 </div>
-                <div id="sellers-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                <div id="sl-kpis" class="v-kpis"></div>
+                <div class="v-row v-row-charts">
+                    <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-trophy"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Ranking</p><p class="v-card-sub" id="sl-sub">Toca un vendedor para ver sus ventas</p></div></div><div id="sl-reps"></div></div>
+                    <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-chart-pie"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Reparto de ventas</p><p class="v-card-sub">Qué parte vendió cada uno</p></div></div><div id="sl-donut"></div></div>
+                </div>
+                <div id="sellers-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
             </section>
 
             <!-- PAYMENT METHODS -->
-            <section id="section-payments" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap justify-between items-center gap-3">
-                    <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Métodos de pago</h2>
-                    <button onclick="openModal('modal-payment')" class="bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-dark transition shadow-lg shadow-brand/30"><i class="fas fa-plus"></i> Nuevo Método</button>
+            <section id="section-payments" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Formas de pago</h2><p class="v-sub">Cuánto entra por cada forma de pago.</p></div>
+                    <div class="v-actions"><div id="pm-period" class="period"></div><button onclick="openModal('modal-payment')" class="v-cta"><i class="fas fa-plus"></i><span>Nueva forma</span></button></div>
                 </div>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div class="v-row v-row-charts">
+                    <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-chart-pie"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Cobrado por forma de pago</p><p class="v-card-sub" id="pm-sub">Toca una para ver sus ventas</p></div></div><div id="pm-donut"></div></div>
+                    <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-money-bill-wave"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Detalle</p><p class="v-card-sub">Ventas y monto de cada una</p></div></div><ul id="pm-list" class="v-recent"></ul></div>
+                </div>
+                <div class="v-table">
                     <table class="w-full text-left">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Nombre del Método</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
@@ -537,10 +539,10 @@
             </section>
 
             <!-- VENTAS TIENDA -->
-            <section id="section-sales" class="hidden section-transition space-y-6">
-                <div class="flex flex-wrap items-end justify-between gap-3">
-                    <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ventas de tienda</h2><p class="text-sm text-gray-500 dark:text-gray-400">Facturas y notas de entrega de productos del inventario. Toca una fila para ver el detalle.</p></div>
-                    <button onclick="showSection('pos')" class="btn-primary"><i class="fas fa-cash-register"></i> Nueva venta</button>
+            <section id="section-sales" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Ventas de tienda</h2><p class="v-sub">Facturas y notas de entrega. Toca una fila para ver el detalle.</p></div>
+                    <div class="v-actions"><button onclick="exportSalesCsv('tienda')" class="v-icon" title="Descargar ventas (Excel)" aria-label="Descargar ventas"><i class="fas fa-download"></i></button><button onclick="showSection('pos')" class="v-cta"><i class="fas fa-plus"></i><span>Nueva venta</span></button></div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="search-box"><i class="fas fa-search"></i><input id="sales-search" type="search" oninput="renderSales()" placeholder="Buscar factura o cliente"></div>
@@ -548,9 +550,10 @@
                     <div id="sales-status" class="seg"><button data-s="todas">Todas</button><button data-s="activa">Activas</button><button data-s="cancelada">Anuladas</button></div>
                     <div id="sales-view" class="seg"><button data-v="ventas"><i class="fas fa-receipt mr-1"></i>Por venta</button><button data-v="clientes"><i class="fas fa-users mr-1"></i>Por cliente</button></div>
                 </div>
-                <div id="sales-summary" class="grid grid-cols-3 gap-3"></div>
+                <div id="sales-summary" class="v-kpis"></div>
+                <div id="sales-chart-card" class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-chart-simple"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Ventas en el período</p><p class="v-card-sub" id="sales-chart-sub"></p></div></div><div id="sales-chart" class="v-chart"></div></div>
                 <div id="sales-clients" class="card hidden"></div>
-                <div id="sales-table-wrap" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div id="sales-table-wrap" class="v-table">
                     <table class="w-full text-left min-w-[680px]">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Factura</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Pago</th><th class="p-4 font-semibold">Total</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
@@ -561,16 +564,20 @@
             </section>
 
             <!-- VENTAS REVENTA -->
-            <section id="section-resale-sales" class="hidden section-transition space-y-6">
-                <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ventas de reventa</h2><p class="text-sm text-gray-500 dark:text-gray-400">Notas de entrega de equipos conseguidos por fuera. Toca una fila para ver el detalle.</p></div>
+            <section id="section-resale-sales" class="hidden section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0"><h2 class="v-title">Ventas de reventa</h2><p class="v-sub">Notas de entrega de equipos conseguidos por fuera. Toca una fila para ver el detalle.</p></div>
+                    <div class="v-actions"><button onclick="exportSalesCsv('reventa')" class="v-icon" title="Descargar ventas (Excel)" aria-label="Descargar ventas"><i class="fas fa-download"></i></button><button onclick="setMode('reventa',{section:'pos'})" class="v-cta"><i class="fas fa-plus"></i><span>Vender equipo</span></button></div>
+                </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="search-box"><i class="fas fa-search"></i><input id="rsales-search" type="search" oninput="renderResaleSales()" placeholder="Buscar documento, cliente o equipo"></div>
                     <div id="rsales-period" class="period"></div>
                     <div id="rsales-view" class="seg"><button data-v="ventas"><i class="fas fa-receipt mr-1"></i>Por venta</button><button data-v="clientes"><i class="fas fa-users mr-1"></i>Por cliente</button></div>
                 </div>
-                <div id="resale-sales-summary" class="admin-only grid grid-cols-3 gap-3"></div>
+                <div id="resale-sales-summary" class="v-kpis"></div>
+                <div class="v-card"><div class="v-card-head"><span class="v-card-ic"><i class="fas fa-chart-simple"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Ventas en el período</p><p class="v-card-sub" id="rsales-chart-sub"></p></div></div><div id="rsales-chart" class="v-chart"></div></div>
                 <div id="rsales-clients" class="card hidden"></div>
-                <div id="rsales-table-wrap" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div id="rsales-table-wrap" class="v-table">
                     <table class="w-full text-left min-w-[760px]">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Documento</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Equipos</th><th class="p-4 font-semibold admin-only">Costo</th><th class="p-4 font-semibold">Total</th><th class="p-4 font-semibold admin-only">Ganancia</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
@@ -581,7 +588,7 @@
             </section>
 
             <!-- CONFIG -->
-            <section id="section-config" class="hidden section-transition space-y-6">
+            <section id="section-config" class="hidden section-transition v-page v-config">
                 <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Configuración</h2>
                 <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-2xl shadow-sm border dark:border-gray-800 max-w-4xl space-y-5">
                     <h3 class="text-xl font-bold"><i class="fas fa-palette text-brand mr-2"></i>Identidad de la tienda</h3>
@@ -681,13 +688,13 @@
     <!-- BARRA INFERIOR (CELULAR) -->
     <nav class="bottom-nav lg:hidden no-print fixed bottom-0 inset-x-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
         <div class="mx-auto max-w-md flex justify-around items-center rounded-2xl bg-white/90 dark:bg-[#0d1126]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 shadow-xl text-gray-400 py-2">
-            <a href="#" data-section="dashboard" data-mode="tienda" onclick="showSection('dashboard')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-house text-lg"></i>Inicio</a>
-            <a href="#" data-section="resale-dashboard" data-mode="reventa" onclick="showSection(isAdmin() ? 'resale-dashboard' : 'resale-sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-chart-line text-lg"></i>Panel</a>
-            <a href="#" data-section="pos" onclick="showSection('pos')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-cash-register text-lg"></i>Vender</a>
-            <a href="#" data-section="sales" data-mode="tienda" onclick="showSection('sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-receipt text-lg"></i>Ventas</a>
-            <a href="#" data-section="resale-sales" data-mode="reventa" onclick="showSection('resale-sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-receipt text-lg"></i>Ventas</a>
-            <a href="#" data-section="customers" onclick="showSection('customers')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-users text-lg"></i>Clientes</a>
-            <a href="#" onclick="toggleNav(true)" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-bars text-lg"></i>Menú</a>
+            <button type="button" data-section="dashboard" data-mode="tienda" onclick="showSection('dashboard')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-house text-lg"></i>Inicio</button>
+            <button type="button" data-section="resale-dashboard" data-mode="reventa" onclick="showSection(isAdmin() ? 'resale-dashboard' : 'resale-sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-chart-line text-lg"></i>Panel</button>
+            <button type="button" data-section="pos" onclick="showSection('pos')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-cash-register text-lg"></i>Vender</button>
+            <button type="button" data-section="sales" data-mode="tienda" onclick="showSection('sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-receipt text-lg"></i>Ventas</button>
+            <button type="button" data-section="resale-sales" data-mode="reventa" onclick="showSection('resale-sales')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-receipt text-lg"></i>Ventas</button>
+            <button type="button" data-section="customers" onclick="showSection('customers')" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-users text-lg"></i>Clientes</button>
+            <button type="button" onclick="toggleNav(true)" class="flex flex-col items-center text-[10px] gap-1 w-16"><i class="fas fa-bars text-lg"></i>Menú</button>
         </div>
     </nav>
 
