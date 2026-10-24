@@ -253,9 +253,7 @@
                 <!-- Filtros -->
                 <div class="filter-bar">
                     <span class="font-semibold text-sm whitespace-nowrap">Período</span>
-                    <div id="dash-period" class="seg">
-                        <button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button>
-                    </div>
+                    <div id="dash-period" class="period"></div>
                     <span id="dash-period-label" class="text-xs text-gray-400"></span>
                     <div class="flex flex-wrap gap-2 lg:ml-auto">
                         <button onclick="showSection('sellers')" class="filter-chip admin-only"><i class="fas fa-percent text-brand"></i> Comisiones <b id="dash-total-commissions" class="tabular-nums">$0.00</b></button>
@@ -331,6 +329,15 @@
                     </div>
                 </div>
 
+                <!-- Clientes del período -->
+                <div class="card">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div><p class="card-title">Quién te compró</p><p id="dash-clients-sub" class="card-sub">Clientes del período · toca uno para ver sus compras</p></div>
+                        <button onclick="openClientsFromDash()" class="text-xs font-semibold text-brand hover:underline whitespace-nowrap">Ver todos</button>
+                    </div>
+                    <div id="dash-clients"></div>
+                </div>
+
                 <!-- Productos más vendidos -->
                 <div class="card">
                     <div class="flex items-start justify-between gap-3 mb-3">
@@ -364,7 +371,7 @@
                 </div>
                 <div class="filter-bar">
                     <span class="font-semibold text-sm">Período</span>
-                    <div id="rs-period" class="seg"><button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button></div>
+                    <div id="rs-period" class="period"></div>
                 </div>
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
                     <div class="card xl:col-span-2">
@@ -578,11 +585,13 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <div class="search-box"><i class="fas fa-search"></i><input id="sales-search" type="search" oninput="renderSales()" placeholder="Buscar factura o cliente"></div>
-                    <div id="sales-period" class="seg"><button data-p="hoy">Hoy</button><button data-p="7">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button></div>
+                    <div id="sales-period" class="period"></div>
                     <div id="sales-status" class="seg"><button data-s="todas">Todas</button><button data-s="activa">Activas</button><button data-s="cancelada">Anuladas</button></div>
+                    <div id="sales-view" class="seg"><button data-v="ventas"><i class="fas fa-receipt mr-1"></i>Por venta</button><button data-v="clientes"><i class="fas fa-users mr-1"></i>Por cliente</button></div>
                 </div>
                 <div id="sales-summary" class="grid grid-cols-3 gap-3"></div>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div id="sales-clients" class="card hidden"></div>
+                <div id="sales-table-wrap" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
                     <table class="w-full text-left min-w-[680px]">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Factura</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Pago</th><th class="p-4 font-semibold">Total</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
@@ -595,9 +604,14 @@
             <!-- VENTAS REVENTA -->
             <section id="section-resale-sales" class="hidden section-transition space-y-6">
                 <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ventas de reventa</h2><p class="text-sm text-gray-500 dark:text-gray-400">Notas de entrega de equipos conseguidos por fuera. Toca una fila para ver el detalle.</p></div>
-                <div class="search-box max-w-md"><i class="fas fa-search"></i><input id="rsales-search" type="search" oninput="renderResaleSales()" placeholder="Buscar documento, cliente o equipo"></div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="search-box"><i class="fas fa-search"></i><input id="rsales-search" type="search" oninput="renderResaleSales()" placeholder="Buscar documento, cliente o equipo"></div>
+                    <div id="rsales-period" class="period"></div>
+                    <div id="rsales-view" class="seg"><button data-v="ventas"><i class="fas fa-receipt mr-1"></i>Por venta</button><button data-v="clientes"><i class="fas fa-users mr-1"></i>Por cliente</button></div>
+                </div>
                 <div id="resale-sales-summary" class="admin-only grid grid-cols-3 gap-3"></div>
-                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                <div id="rsales-clients" class="card hidden"></div>
+                <div id="rsales-table-wrap" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
                     <table class="w-full text-left min-w-[760px]">
                         <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
                             <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Documento</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Equipos</th><th class="p-4 font-semibold admin-only">Costo</th><th class="p-4 font-semibold">Total</th><th class="p-4 font-semibold admin-only">Ganancia</th><th class="p-4 font-semibold text-center">Acciones</th></tr>

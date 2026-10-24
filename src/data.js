@@ -44,19 +44,9 @@ function fromRow(row) {
   return clean({ ...(row.extra || {}), ...obj })
 }
 
-// Interpreta la fecha de texto de una venta ("13/10/2026, 10:32:34 p. m." o "10/15/2026, 7:06:38 PM")
-export function parseSaleDate(text) {
-  const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap])?\.?\s*(m)?)?/i.exec(String(text || ''))
-  if (!m) return null
-  let [, a, b, y, hh = '0', mm = '0', ss = '0', ap] = m
-  const english = /\b[AP]M\b/.test(text)
-  let day = +a, month = +b
-  if (english || (+a <= 12 && +b > 12)) { day = +b; month = +a }
-  let h = +hh
-  if (ap) { const pm = ap.toLowerCase() === 'p'; if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0 }
-  const d = new Date(+y, month - 1, day, h, +mm, +ss)
-  return isNaN(d) || month > 12 ? null : d
-}
+// Fecha de texto de una venta → instante (hora de Caracas): ver src/fechas.js
+export { parseSaleDate } from './fechas.js'
+import { parseSaleDate } from './fechas.js'
 
 function check({ data, error }) {
   if (error) throw new Error(error.message)

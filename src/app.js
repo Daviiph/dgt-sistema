@@ -1,9 +1,11 @@
 let html2pdfLib = null;
 const html2pdf = (...a) => html2pdfLib(...a);
 async function loadPdfLib() { if (!html2pdfLib) html2pdfLib = (await import('html2pdf.js')).default; }
-import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, parseSaleDate, sendInvoiceEmail, askPriceAssistant, onNetChange, flushOutbox, persistLocal, netState } from './data.js'
+import { fetchAll, syncTables, saveSetting, createSale, cancelSale, deleteSaleRemote, importAll, listProfiles, updateProfile, listAudit, subscribeChanges, clean, sendInvoiceEmail, askPriceAssistant, onNetChange, flushOutbox, persistLocal, netState } from './data.js'
 import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, currentLogo, loadImageFile, analyzeLogo, normalizeBrand } from './theme.js'
-import { mountAreaChart, mountRankBars, gauge, groupBuckets, mountMiniBars, mountMiniLine } from './charts.js'
+import { saleTime as saleTimeOf, stampCaracas, previousRange as prevRangeOf, buckets as bucketsOf, rangeLabel } from './fechas.js'
+import { loadPeriod, savePeriod, rangeOf, periodTitle, mountPeriod } from './periodo.js'
+import { mountDonut, mountAreaChart, mountRankBars, gauge, groupBuckets, mountMiniBars, mountMiniLine } from './charts.js'
 
 // STATE
 let products = [], brands = [], customers = [], sellers = [], payments = [], sales = [], resale = [];
@@ -1226,7 +1228,7 @@ async function executeFinalSale() {
     const sale = {
         id: (channel === 'reventa' ? 'REV-' : 'INV-') + Date.now().toString().slice(-8),
         channel: channel,
-        date: new Date().toLocaleString(),
+        date: stampCaracas(),
         customerId: custId,
         sellerId: sellId,
         rate: rate,
@@ -1413,7 +1415,8 @@ function syncAutoEmailToggle() {
 
 
 
-let salesPeriod = 'todo', salesStatus = 'todas';
+let salesPeriod = loadPeriod('ns_sales_period', 'todo'), salesStatus = 'todas';
+let salesView = 'ventas', rsalesView = 'ventas', rsalesPeriod = loadPeriod('ns_rsales_period', 'todo');
 function salesTableRows(list, withProfit) {
     return [...list].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0)).map(s => {
         const cust = customers.find(c => c.id == s.customerId);
@@ -1455,13 +1458,13 @@ function summaryCards(list, extra = []) {
 }
 
 function renderSales() {
-    bindSeg('sales-period', 'p', salesPeriod, (p) => { salesPeriod = p; renderSales(); });
     bindSeg('sales-status', 's', salesStatus, (v) => { salesStatus = v; renderSales(); });
     const tbody = document.getElementById('sales-table-body');
     const all = sales.filter(s => !isResaleSale(s));
-    const r = periodRange(salesPeriod, all);
+    const r = periodRangeOf(salesPeriod, all);
+    bindPeriod('sales-period', salesPeriod, r, (st) => { salesPeriod = st; savePeriod('ns_sales_period', st); renderSales(); });
     const q = (document.getElementById('sales-search').value || '').toLowerCase().trim();
-    const list = all.filter(s => (salesPeriod === 'todo' || inRange(s, r)) && (salesStatus === 'todas' || (s.status || 'activa') === salesStatus) && matchSale(s, q));
+    const list = all.filter(s => (r.all || inRange(s, r)) && (salesStatus === 'todas' || (s.status || 'activa') === salesStatus) && matchSale(s, q));
     const act = list.filter(s => s.status !== 'cancelada');
     document.getElementById('sales-summary').innerHTML = summaryCards(list, [['Ticket promedio', money(act.length ? act.reduce((a, s) => a + s.total, 0) / act.length : 0), '']]);
     if (!all.length) {
@@ -1469,6 +1472,17 @@ function renderSales() {
         return;
     }
     tbody.innerHTML = list.length ? salesTableRows(list, false) : '<tr><td colspan="5" class="p-10 text-center text-gray-500">Ninguna venta coincide con la búsqueda o el filtro.</td></tr>';
+    showSalesView('sales', salesView, list, periodTitle(salesPeriod, r), () => renderSales(), (v) => { salesView = v; renderSales(); });
+}
+function showSalesView(prefix, view, list, title, rerender, setView) {
+    bindSeg(prefix + '-view', 'v', view, setView);
+    const clients = view === 'clientes';
+    document.getElementById(prefix + '-clients')?.classList.toggle('hidden', !clients);
+    document.getElementById(prefix + '-table-wrap')?.classList.toggle('hidden', clients);
+    if (clients) {
+        refreshClientsPanel = () => { const f = document.activeElement?.hasAttribute('data-cl-search'); renderClientsPanel(prefix + '-clients', list, title); if (f) { const i = document.querySelector(`#${prefix}-clients [data-cl-search]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } };
+        refreshClientsPanel();
+    }
 }
 
 async function reprint(id, asPDF) {
@@ -1610,15 +1624,8 @@ function refreshSalesViews() {
     updateDashboard();
 }
 
-// FECHAS DE VENTA (created_at de la nube; respaldo: texto de la fecha)
-function saleTime(s) {
-    const created = s.createdAt ? new Date(s.createdAt) : null;
-    const written = parseSaleDate(s.date);
-    // Venta hecha sin conexión: la nube la recibió después; vale la hora en que se hizo
-    if (created && !isNaN(created) && written && Math.abs(created - written) > 2 * 3600e3) return written;
-    if (created && !isNaN(created)) return created;
-    return written;
-}
+// FECHAS DE VENTA: ver src/fechas.js (hora de la nube; la escrita solo para ventas sin conexión)
+const saleTime = (s) => saleTimeOf(s);
 const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 const money = (v) => `${appCurrency}${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const shortMoney = (v) => Math.abs(v) >= 1000 ? `${appCurrency}${(v / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)}k` : `${appCurrency}${Math.round(v)}`;
@@ -1626,44 +1633,12 @@ const dayLabel = (d) => d.toLocaleDateString('es-VE', { day: 'numeric', month: '
 const unitsOf = (s) => (s.items || []).reduce((a, i) => a + (Number(i.qty) || 0), 0);
 const escHtml = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// PERÍODOS: hoy, 7, 30, mes, todo → rango [desde, hasta) y cubetas para la gráfica
-const PERIOD_TEXT = { hoy: 'Hoy', 7: 'Últimos 7 días', 30: 'Últimos 30 días', mes: 'Este mes', todo: 'Todo el historial' };
-function periodRange(p, list = []) {
-    const now = new Date();
-    const start = new Date(now); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(end.getDate() + 1);
-    if (p === 'hoy') return { from: start, to: end };
-    if (p === '7' || p === '30') { const f = new Date(start); f.setDate(f.getDate() - (+p - 1)); return { from: f, to: end }; }
-    if (p === 'mes') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: end };
-    const times = list.map(saleTime).filter(Boolean);
-    const first = times.length ? new Date(Math.min(...times)) : start;
-    first.setHours(0, 0, 0, 0);
-    return { from: first, to: end };
-}
-function previousRange(p, r) {
-    if (p === 'todo') return null;
-    if (p === 'mes') { const f = new Date(r.from); f.setMonth(f.getMonth() - 1); const t = new Date(f); t.setDate(t.getDate() + Math.round((r.to - r.from) / 864e5)); return { from: f, to: t }; }
-    const span = r.to - r.from;
-    return { from: new Date(r.from - span), to: new Date(r.from) };
-}
-const inRange = (s, r) => { const t = saleTime(s); return t && t >= r.from && t < r.to; };
-
-// Cubetas: por hora (hoy), por día (≤ 62 días) o por mes
-function buckets(p, r) {
-    const out = [];
-    if (p === 'hoy') {
-        for (let h = 0; h < 24; h++) { const f = new Date(r.from); f.setHours(h); const t = new Date(f); t.setHours(h + 1); out.push({ from: f, to: t, label: `${h}h`, title: `Hoy de ${h}:00 a ${h + 1}:00` }); }
-        return out;
-    }
-    const days = Math.round((r.to - r.from) / 864e5);
-    if (days <= 62) {
-        for (let i = 0; i < days; i++) { const f = new Date(r.from); f.setDate(f.getDate() + i); const t = new Date(f); t.setDate(t.getDate() + 1); out.push({ from: f, to: t, label: dayLabel(f), title: f.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' }) }); }
-        return out;
-    }
-    let f = new Date(r.from.getFullYear(), r.from.getMonth(), 1);
-    while (f < r.to) { const t = new Date(f.getFullYear(), f.getMonth() + 1, 1); out.push({ from: f, to: t, label: f.toLocaleDateString('es-VE', { month: 'short', year: '2-digit' }).replace('.', ''), title: f.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' }) }); f = t; }
-    return out;
-}
+// PERÍODOS: estado { k } o { k:'custom', a, b } → rango [desde, hasta)  (src/periodo.js)
+function periodRangeOf(st, list = []) { return rangeOf(st, list.map(saleTime)); }
+function previousRange(r) { return prevRangeOf(r); }
+const inRange = (s, r) => { const t = saleTime(s); return !!t && t >= r.from && t < r.to; };
+function buckets(r) { return bucketsOf(r); }
+function bindPeriod(id, st, r, onChange) { mountPeriod(document.getElementById(id), { state: st, range: r, onChange }); }
 
 // Controles segmentados (botones con data-*)
 function bindSeg(id, attr, value, onChange) {
@@ -1676,7 +1651,7 @@ function bindSeg(id, attr, value, onChange) {
     });
 }
 
-let dashPeriod = localStorage.getItem('ns_dash_period') || '30';
+let dashPeriod = loadPeriod('ns_dash_period', '30');
 let dashMetric = 'monto';
 const METRIC = {
     monto: { name: 'Vendido', fn: (s) => s.total, fmt: (v) => shortMoney(v), full: (v) => money(v) },
@@ -1713,17 +1688,17 @@ function countTo(id, text) {
 function updateDashboard() {
     const storeSales = sales.filter(s => !isResaleSale(s));
     const active = storeSales.filter(s => s.status !== 'cancelada');
-    const r = periodRange(dashPeriod, active);
+    const r = periodRangeOf(dashPeriod, active);
     const inP = active.filter(s => inRange(s, r));
-    const prevR = previousRange(dashPeriod, r);
+    const prevR = previousRange(r);
     const prev = prevR ? active.filter(s => inRange(s, prevR)) : null;
     const sum = (l) => l.reduce((a, s) => a + s.total, 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
     const html = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
 
-    bindSeg('dash-period', 'p', dashPeriod, (p) => { dashPeriod = p; localStorage.setItem('ns_dash_period', p); updateDashboard(); });
+    bindPeriod('dash-period', dashPeriod, r, (st) => { dashPeriod = st; savePeriod('ns_dash_period', st); updateDashboard(); });
     bindSeg('dash-metric', 'm', dashMetric, (m) => { dashMetric = m; updateDashboard(); });
-    set('dash-period-label', `${r.from.toLocaleDateString('es-VE')} – ${new Date(r.to - 1).toLocaleDateString('es-VE')}`);
+    set('dash-period-label', rangeLabel(r));
     set('dash-hello', currentProfile ? ((currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] || '—') : '—');
 
     const total = sum(inP);
@@ -1749,10 +1724,10 @@ function updateDashboard() {
     set('dash-rate-gap', bcv > 0 && bin > 0 ? `${(((bin - bcv) / bcv) * 100).toFixed(1)}%` : '—');
 
     // Gráfica principal
-    const bk = buckets(dashPeriod, r);
+    const bk = buckets(r);
     const M = METRIC[dashMetric];
     const values = bk.map(b => inP.filter(s => inRange(s, b)).reduce((a, s) => a + M.fn(s), 0));
-    set('dash-chart-sub', `${PERIOD_TEXT[dashPeriod]} · ${M.full(values.reduce((a, b) => a + b, 0))}`);
+    set('dash-chart-sub', `${periodTitle(dashPeriod, r)} · ${M.full(values.reduce((a, b) => a + b, 0))}`);
     const area = document.getElementById('dash-area');
     if (area && !area.closest('section').classList.contains('hidden')) {
         mountAreaChart(area, {
@@ -1760,11 +1735,25 @@ function updateDashboard() {
             series: [{ name: M.name, values, color: 'var(--chart)' }],
             format: M.fmt,
             tipFormat: dashMetric === 'monto' ? money : M.fmt,
-            ariaLabel: `${M.name} por ${dashPeriod === 'hoy' ? 'hora' : 'día'}. Use las flechas para recorrer y Enter para ver las ventas.`,
+            ariaLabel: `${M.name} por ${bk[0] ? bk[0].unit : 'día'}. Use las flechas para recorrer y Enter para ver las ventas.`,
             detail: (i) => { const l = inP.filter(s => inRange(s, bk[i])); return dashMetric === 'monto' ? `${l.length} venta(s)` : money(sum(l)); },
             onSelect: (i) => openSalesList(bk[i].title, inP.filter(s => inRange(s, bk[i]))),
+            onRange: (i, j) => {
+                const span = { from: bk[i].from, to: bk[j].to };
+                if (bk[0].unit === 'hora') return openSalesList(`${bk[i].title.split(' de ')[0]} de ${bk[i].from.getHours()}:00 a ${bk[j].to.getHours() || 24}:00`, inP.filter(s => inRange(s, span)));
+                const last = new Date(span.to); last.setDate(last.getDate() - 1);
+                const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                dashPeriod = { k: 'custom', a: ymd(span.from), b: ymd(last) }; savePeriod('ns_dash_period', dashPeriod);
+                updateDashboard();
+                toast(`Período: ${rangeLabel({ from: span.from, to: span.to })}`, 'info', 2500);
+            },
         });
     }
+
+    // Quién te compró
+    const cs = clientStats(inP).sort(CLIENT_SORT.monto);
+    html('dash-clients', clientRowsHtml(cs, { limit: 6 }));
+    set('dash-clients-sub', cs.length ? `${cs.length} cliente${cs.length === 1 ? '' : 's'} en ${periodTitle(dashPeriod, r).toLowerCase()} · toca uno para ver sus compras` : 'Clientes del período');
 
     // Por vendedor
     const bySeller = {};
@@ -1787,9 +1776,11 @@ function updateDashboard() {
         if (p.currency === 'VES') byMethod[k].bs += Number(p.amountBs) || 0;
         byMethod[k].list.add(s);
     }));
-    mountRankBars(document.getElementById('dash-by-method'), {
-        items: Object.entries(byMethod).map(([k, v]) => ({ label: k, value: v.value, sub: `${v.list.size} venta(s)${v.bs ? ' · ' + fmtBs(v.bs) : ''}`, list: [...v.list] })).sort((a, b) => b.value - a.value),
+    const methodItems = Object.entries(byMethod).map(([k, v]) => ({ label: k, value: v.value, sub: `${v.list.size} venta(s)${v.bs ? ' · ' + fmtBs(v.bs) : ''}`, list: [...v.list] })).sort((a, b) => b.value - a.value);
+    mountDonut(document.getElementById('dash-by-method'), {
+        items: methodItems,
         format: money,
+        center: methodItems.length ? { value: shortMoney(methodItems.reduce((a, m) => a + m.value, 0)), label: 'cobrado' } : null,
         onSelect: (it) => openSalesList(`Pagos con ${it.label}`, it.list),
     });
 
@@ -1944,8 +1935,99 @@ function saleRowHtml(s) {
     const t = saleTime(s);
     return `<li><button onclick="openSaleDetail('${s.id}')" class="w-full flex items-center gap-3 rounded-xl px-2 py-2 -mx-2 text-left hover:bg-gray-50 dark:hover:bg-white/5 transition">
         <span class="w-9 h-9 rounded-xl ${isResaleSale(s) ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-brand/10 text-brand'} flex items-center justify-center shrink-0"><i class="fas ${isResaleSale(s) ? 'fa-recycle' : 'fa-receipt'} text-xs"></i></span>
-        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-gray-400 truncate">${s.id} · ${t ? t.toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : escHtml(s.date)}</span></span>
+        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-gray-500 dark:text-gray-400 truncate">${t ? escHtml(fullStamp(t)) : escHtml(s.date)} · ${s.id}</span><span class="block text-[11px] text-gray-400 truncate">${escHtml(itemsText(s))}${(s.payments || []).length ? ' · ' + escHtml((s.payments || []).map(payName).join(', ')) : ''}</span></span>
         <span class="text-sm font-bold tabular-nums ${cancelled ? 'line-through text-gray-400' : ''}">${money(s.total)}</span></button></li>`;
+}
+
+// ===== Clientes de un período: quién compró, cuánto, cuándo =====
+const fullStamp = (t) => t.toLocaleString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).replace(/\./g, '');
+const itemsText = (s) => (s.items || []).map(i => `${i.name}${i.qty > 1 ? ' ×' + i.qty : ''}`).join(', ');
+let clientIndex = {};
+function clientStats(list) {
+    const map = {};
+    list.filter(s => s.status !== 'cancelada').forEach(s => {
+        const k = s.customerId == null || s.customerId === '' ? '_general' : String(s.customerId);
+        const c = customers.find(x => String(x.id) === k);
+        const m = map[k] || (map[k] = { key: k, name: c ? c.name : 'Cliente general', phone: c ? (c.phone || '') : '', cedula: c ? (c.cedula || '') : '', count: 0, total: 0, units: 0, last: null, first: null, list: [] });
+        const t = saleTime(s);
+        m.count++; m.total += Number(s.total) || 0; m.units += unitsOf(s); m.list.push(s);
+        if (t && (!m.last || t > m.last)) m.last = t;
+        if (t && (!m.first || t < m.first)) m.first = t;
+    });
+    const out = Object.values(map);
+    const grand = out.reduce((a, m) => a + m.total, 0) || 1;
+    out.forEach(m => { m.share = m.total / grand; });
+    out.forEach(m => { clientIndex[m.key] = m; });
+    return out;
+}
+const CLIENT_SORT = {
+    monto: (a, b) => b.total - a.total,
+    compras: (a, b) => b.count - a.count || b.total - a.total,
+    reciente: (a, b) => (b.last || 0) - (a.last || 0),
+    nombre: (a, b) => a.name.localeCompare(b.name, 'es'),
+};
+function clientRowsHtml(stats, { limit = 0 } = {}) {
+    const rows = limit ? stats.slice(0, limit) : stats;
+    if (!rows.length) return '<p class="py-8 text-center text-sm text-gray-400">Nadie compró en este período.</p>';
+    const max = Math.max(...stats.map(m => m.share), 0.0001);
+    return `<ul class="cl-list">${rows.map((m, i) => `
+        <li><button type="button" class="cl-row" onclick="openClientSales('${escHtml(m.key)}')">
+            <span class="cl-rank">${i + 1}</span>
+            <span class="avatar w-10 h-10 text-xs shrink-0">${escHtml(getInitials(m.name))}</span>
+            <span class="cl-main">
+                <span class="cl-top"><b class="truncate">${escHtml(m.name)}</b><b class="tabular-nums shrink-0">${money(m.total)}</b></span>
+                <span class="cl-bar"><span style="width:${Math.max(2, (m.share / max) * 100)}%"></span></span>
+                <span class="cl-meta"><span class="cl-pct">${(m.share * 100).toFixed(m.share < 0.1 ? 1 : 0)}%</span> · ${m.count} compra${m.count === 1 ? '' : 's'} · ${m.units} equipo${m.units === 1 ? '' : 's'}${m.last ? ' · última ' + escHtml(fullStamp(m.last)) : ''}</span>
+            </span>
+        </button></li>`).join('')}</ul>`;
+}
+// Vista completa (Ventas → Por cliente): buscar, ordenar y exportar
+const clientView = { sort: 'monto', q: '' };
+let clientViewStats = [], clientViewTitle = '';
+function renderClientsPanel(hostId, list, title) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    clientViewTitle = title;
+    const all = clientStats(list);
+    const q = clientView.q.toLowerCase().trim();
+    clientViewStats = all.filter(m => !q || `${m.name} ${m.cedula} ${m.phone}`.toLowerCase().includes(q)).sort(CLIENT_SORT[clientView.sort]);
+    const tot = all.reduce((a, m) => a + m.total, 0);
+    host.innerHTML = `
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+            <div><p class="card-title">Clientes · ${escHtml(title)}</p><p class="card-sub">${all.length} cliente${all.length === 1 ? '' : 's'} · ${money(tot)} · toca uno para ver qué compró, cuándo y a qué hora</p></div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="search-box"><i class="fas fa-search"></i><input type="search" value="${escHtml(clientView.q)}" placeholder="Buscar cliente" oninput="setClientQuery(this.value)" data-cl-search></div>
+                <div class="seg" data-cl-sort>${[['monto', 'Monto'], ['compras', 'Compras'], ['reciente', 'Reciente'], ['nombre', 'A–Z']].map(([k, t]) => `<button type="button" data-k="${k}" class="${clientView.sort === k ? 'on' : ''}" onclick="setClientSort('${k}')">${t}</button>`).join('')}</div>
+                <button type="button" onclick="exportClientsCsv()" class="period-custom"><i class="fas fa-file-excel"></i><span>Exportar</span></button>
+            </div>
+        </div>
+        ${clientRowsHtml(clientViewStats)}`;
+}
+let refreshClientsPanel = () => {};
+function setClientQuery(v) { clientView.q = v; refreshClientsPanel(); }
+function setClientSort(k) { clientView.sort = k; refreshClientsPanel(); }
+function openClientSales(key) {
+    const m = clientIndex[key];
+    if (!m) return;
+    openSalesList(`Compras de ${m.name}`, m.list);
+}
+function exportClientsCsv() {
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const head = ['Cliente', 'Cédula/RIF', 'Teléfono', 'Compras', 'Equipos', 'Total', '% del total', 'Primera compra', 'Última compra'];
+    const lines = clientViewStats.map(m => [m.name, m.cedula, m.phone, m.count, m.units, m.total.toFixed(2).replace('.', ','), (m.share * 100).toFixed(1).replace('.', ','), m.first ? m.first.toLocaleString('es-VE') : '', m.last ? m.last.toLocaleString('es-VE') : ''].map(q).join(';'));
+    const detail = ['', q('Detalle de compras'), ['Cliente', 'Documento', 'Fecha', 'Hora', 'Productos', 'Pago', 'Total'].map(q).join(';'),
+        ...clientViewStats.flatMap(m => [...m.list].sort((a, b) => (saleTime(a) || 0) - (saleTime(b) || 0)).map(s => { const t = saleTime(s); return [m.name, s.id, t ? t.toLocaleDateString('es-VE') : s.date, t ? t.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : '', itemsText(s), (s.payments || []).map(payName).join(', '), Number(s.total).toFixed(2).replace('.', ',')].map(q).join(';'); }))];
+    const blob = new Blob(['﻿' + [head.map(q).join(';'), ...lines, ...detail].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `clientes ${clientViewTitle}.csv`.replace(/[\\/:*?"<>|]/g, '-');
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function openClientsFromDash() {
+    salesPeriod = { ...dashPeriod }; savePeriod('ns_sales_period', salesPeriod);
+    salesView = 'clientes';
+    showSection('sales');
 }
 
 let productSalesScope = [];
@@ -2239,7 +2321,9 @@ function renderResaleSales() {
     const tbody = document.getElementById('resale-sales-table-body');
     const all = sales.filter(isResaleSale);
     const q = (document.getElementById('rsales-search').value || '').toLowerCase().trim();
-    const list = all.filter(s => matchSale(s, q));
+    const r = periodRangeOf(rsalesPeriod, all);
+    bindPeriod('rsales-period', rsalesPeriod, r, (st) => { rsalesPeriod = st; savePeriod('ns_rsales_period', st); renderResaleSales(); });
+    const list = all.filter(s => (r.all || inRange(s, r)) && matchSale(s, q));
     const act = list.filter(s => s.status !== 'cancelada');
     const tot = act.reduce((a, s) => a + s.total, 0), cost = act.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
     document.getElementById('resale-sales-summary').innerHTML = [['Vendido', money(tot), ''], ['Costo', money(cost), ''], ['Ganancia', money(tot - cost), 'text-emerald-600']]
@@ -2248,14 +2332,15 @@ function renderResaleSales() {
         tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center text-gray-500">Aún no hay ventas de reventa. <button onclick="setMode(\'reventa\',{section:\'pos\'})" class="text-emerald-600 font-semibold hover:underline">Vender un equipo</button></td></tr>';
         return;
     }
-    tbody.innerHTML = list.length ? salesTableRows(list, true) : '<tr><td colspan="7" class="p-10 text-center text-gray-500">Ninguna venta coincide con la búsqueda.</td></tr>';
+    tbody.innerHTML = list.length ? salesTableRows(list, true) : '<tr><td colspan="7" class="p-10 text-center text-gray-500">Ninguna venta coincide con la búsqueda o el período.</td></tr>';
+    showSalesView('rsales', rsalesView, list, periodTitle(rsalesPeriod, r), () => renderResaleSales(), (v) => { rsalesView = v; renderResaleSales(); });
 }
 
-let rsPeriod = localStorage.getItem('ns_rs_period') || '30';
+let rsPeriod = loadPeriod('ns_rs_period', '30');
 function renderResaleDashboard() {
-    bindSeg('rs-period', 'p', rsPeriod, (p) => { rsPeriod = p; localStorage.setItem('ns_rs_period', p); renderResaleDashboard(); });
     const allAct = sales.filter(s => isResaleSale(s) && s.status !== 'cancelada');
-    const r = periodRange(rsPeriod, allAct);
+    const r = periodRangeOf(rsPeriod, allAct);
+    bindPeriod('rs-period', rsPeriod, r, (st) => { rsPeriod = st; savePeriod('ns_rs_period', st); renderResaleDashboard(); });
     const active = allAct.filter(s => inRange(s, r));
     const tot = active.reduce((a, s) => a + s.total, 0), cost = active.reduce((a, s) => a + (Number(s.costTotal) || 0), 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
@@ -2267,10 +2352,10 @@ function renderResaleDashboard() {
     set('rs-available', avail.reduce((a, r) => a + r.stock, 0));
     set('rs-capital', money(avail.reduce((a, r) => a + r.stock * r.cost, 0)));
     set('rs-expected', money(avail.reduce((a, r) => a + r.stock * (r.price - r.cost), 0)));
-    const bk = buckets(rsPeriod, r);
+    const bk = buckets(r);
     const sold = bk.map(b => active.filter(s => inRange(s, b)).reduce((a, s) => a + s.total, 0));
     const gain = bk.map(b => active.filter(s => inRange(s, b)).reduce((a, s) => a + resaleProfit(s), 0));
-    set('rs-chart-sub', `${PERIOD_TEXT[rsPeriod]} · ganancia ${money(tot - cost)}`);
+    set('rs-chart-sub', `${periodTitle(rsPeriod, r)} · ganancia ${money(tot - cost)}`);
     const recentEl = document.getElementById('rs-recent');
     if (recentEl) recentEl.innerHTML = active.length ? [...active].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0)).slice(0, 6).map(saleRowHtml).join('') : '<li class="text-sm text-gray-400 text-center py-8">Sin ventas de reventa en este período</li>';
     const availEl = document.getElementById('rs-avail-list');
@@ -2671,6 +2756,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { openClientSales, exportClientsCsv, openClientsFromDash, setClientQuery, setClientSort, selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }

@@ -56,7 +56,7 @@ function onResize(host, draw) {
  * opts: { labels[], series:[{name, values[], color:'r g b'}], format(v), height, onSelect(i), hint }
  */
 export function mountAreaChart(host, opts) {
-  const { labels, series, format = (v) => v, onSelect } = opts
+  const { labels, series, format = (v) => v, onSelect, onRange } = opts
   const tipFormat = opts.tipFormat || format
   host.classList.add('chart-host')
   host.tabIndex = 0
@@ -94,7 +94,8 @@ export function mountAreaChart(host, opts) {
       ${grid}${xl}${paths}
       <line class="cx-line" y1="${T}" y2="${y(0)}" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3 3" opacity="0"/>
       ${dots}
-      <rect class="cx-hit" x="${L - 10}" y="0" width="${W - L - R + 20}" height="${H}" fill="transparent" style="cursor:${onSelect ? 'pointer' : 'crosshair'}"/>
+      <rect class="cx-sel" y="${T}" height="${y(0) - T}" rx="6" fill="rgb(var(--brand))" fill-opacity=".1" stroke="rgb(var(--brand))" stroke-opacity=".35" stroke-dasharray="4 3" opacity="0"/>
+      <rect class="cx-hit" x="${L - 10}" y="0" width="${W - L - R + 20}" height="${H}" fill="transparent" style="cursor:${onSelect ? 'pointer' : 'crosshair'};touch-action:pan-y"/>
     </svg>`
     const svg = host.querySelector('svg'), tip = tooltipEl(host)
     const show = (i) => {
@@ -107,7 +108,7 @@ export function mountAreaChart(host, opts) {
       const extra = opts.detail ? opts.detail(i) : ''
       tip.innerHTML = `<p class="tip-label">${esc(labels[i])}</p>` + series.map((s) =>
         `<p class="tip-row"><span class="tip-key" style="background:rgb(${s.color || 'var(--brand-light)'})"></span><b>${esc(tipFormat(s.values[i]))}</b><span>${esc(s.name || '')}</span></p>`).join('') +
-        (extra ? `<p class="tip-extra">${esc(extra)}</p>` : '') + (onSelect ? '<p class="tip-hint">Toque para ver las ventas</p>' : '')
+        (extra ? `<p class="tip-extra">${esc(extra)}</p>` : '') + (onSelect ? `<p class="tip-hint">${onRange && n > 2 ? 'Toque para ver las ventas · arrastre para elegir fechas' : 'Toque para ver las ventas'}</p>` : '')
       tip.classList.add('on')
       placeTip(host, tip, cx, y(Math.max(...series.map((s) => s.values[i]))))
     }
@@ -118,9 +119,35 @@ export function mountAreaChart(host, opts) {
       return Math.max(0, Math.min(n - 1, Math.round(((px - L) / (W - L - R)) * (n - 1))))
     }
     const hit = svg.querySelector('.cx-hit')
-    hit.addEventListener('pointermove', (e) => show(idxFromEvent(e)))
-    hit.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide() })
-    hit.addEventListener('click', (e) => { const i = idxFromEvent(e); show(i); onSelect && onSelect(i) })
+    // Tocar = ver ventas de ese punto · arrastrar de lado = elegir un tramo de fechas (onRange)
+    const sel = svg.querySelector('.cx-sel')
+    let drag = null
+    const paintSel = (a, b) => {
+      const lo = Math.min(a, b), hi = Math.max(a, b), half = n > 1 ? (W - L - R) / (n - 1) / 2 : 0
+      sel.setAttribute('x', x(lo) - half); sel.setAttribute('width', Math.max(2, x(hi) - x(lo) + half * 2)); sel.setAttribute('opacity', 1)
+    }
+    hit.addEventListener('pointerdown', (e) => {
+      if (e.button) return
+      drag = { i: idxFromEvent(e), j: idxFromEvent(e), x0: e.clientX, moved: false, id: e.pointerId }
+    })
+    hit.addEventListener('pointermove', (e) => {
+      const i = idxFromEvent(e)
+      if (drag && onRange && n > 2) {
+        if (!drag.moved && Math.abs(e.clientX - drag.x0) > 8) { drag.moved = true; try { hit.setPointerCapture(drag.id) } catch {} }
+        if (drag.moved) { drag.j = i; paintSel(drag.i, drag.j) }
+      }
+      show(i)
+    })
+    const endDrag = (e) => {
+      if (!drag) return
+      const d = drag; drag = null
+      sel.setAttribute('opacity', 0)
+      if (d.moved && d.i !== d.j) { onRange(Math.min(d.i, d.j), Math.max(d.i, d.j)); return }
+      if (e.type === 'pointerup') { const i = idxFromEvent(e); show(i); onSelect && onSelect(i) }
+    }
+    hit.addEventListener('pointerup', endDrag)
+    hit.addEventListener('pointercancel', () => { drag = null; sel.setAttribute('opacity', 0) })
+    hit.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !drag) hide() })
     host.onkeydown = (e) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); show(Math.max(0, Math.min(n - 1, (active < 0 ? n - 1 : active + (e.key === 'ArrowRight' ? 1 : -1))))) }
       if ((e.key === 'Enter' || e.key === ' ') && active >= 0 && onSelect) { e.preventDefault(); onSelect(active) }
@@ -209,4 +236,40 @@ export function mountMiniLine(host, { values, labels = [], format = (v) => v, he
   }
   onResize(host, draw)
   draw(Math.max(160, host.clientWidth || 240))
+}
+
+/**
+ * Anillo (dona) interactivo: cada porción y cada fila de la leyenda son botones.
+ * items: [{ label, value, sub }] · center: { value, label }
+ */
+const DONUT_COLORS = ['rgb(var(--brand))', 'rgb(236 72 153)', 'rgb(var(--brand-light))', 'rgb(56 189 248)', 'rgb(16 185 129)', 'rgb(245 158 11)', 'rgb(148 163 184)']
+export function mountDonut(host, { items, format = (v) => v, onSelect, center, empty = 'Sin datos en este período' }) {
+  const list = items.filter((i) => i.value > 0)
+  if (!list.length) { host.innerHTML = `<p class="py-6 text-center text-sm opacity-60">${esc(empty)}</p>`; return }
+  const total = list.reduce((a, i) => a + i.value, 0)
+  const r = 54, c = 2 * Math.PI * r, gap = list.length > 1 ? 3 : 0
+  let acc = 0
+  const arcs = list.map((it, k) => {
+    const len = (it.value / total) * c
+    const seg = `<circle class="dn-seg" data-k="${k}" cx="70" cy="70" r="${r}" fill="none" stroke="${it.color || DONUT_COLORS[k % DONUT_COLORS.length]}" stroke-width="16"
+      stroke-dasharray="${Math.max(0.5, len - gap)} ${c}" stroke-dashoffset="${-acc}" tabindex="0" role="button" aria-label="${esc(it.label)}: ${esc(format(it.value))} (${Math.round((it.value / total) * 100)}%)"><title>${esc(it.label)}: ${esc(format(it.value))}</title></circle>`
+    acc += len
+    return seg
+  }).join('')
+  const top = list.reduce((a, b) => (b.value > a.value ? b : a))
+  host.innerHTML = `<div class="dn-wrap">
+    <div class="dn-ring"><svg viewBox="0 0 140 140" width="150" height="150"><g transform="rotate(-90 70 70)">
+      <circle cx="70" cy="70" r="${r}" fill="none" stroke="currentColor" stroke-opacity=".06" stroke-width="16"/>${arcs}</g></svg>
+      <div class="dn-center"><b>${esc(center ? center.value : Math.round((top.value / total) * 100) + '%')}</b><span>${esc(center ? center.label : top.label)}</span></div></div>
+    <div class="dn-legend">${list.map((it, k) => `<button type="button" class="dn-row" data-k="${k}">
+      <span class="dn-key" style="background:${it.color || DONUT_COLORS[k % DONUT_COLORS.length]}"></span>
+      <span class="dn-lb">${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>
+      <span class="dn-v">${esc(format(it.value))}<small>${Math.round((it.value / total) * 100)}%</small></span></button>`).join('')}</div></div>`
+  const pick = (k) => onSelect && onSelect(list[k], k)
+  host.querySelectorAll('[data-k]').forEach((el) => {
+    el.addEventListener('click', () => pick(+el.dataset.k))
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(+el.dataset.k) } })
+    el.addEventListener('pointerenter', () => host.querySelectorAll('[data-k]').forEach((o) => o.classList.toggle('dim', o.dataset.k !== el.dataset.k)))
+    el.addEventListener('pointerleave', () => host.querySelectorAll('[data-k]').forEach((o) => o.classList.remove('dim')))
+  })
 }
