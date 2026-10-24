@@ -78,7 +78,7 @@ export function mountAreaChart(host, opts) {
     }).join('')
     const maxLabels = Math.max(2, Math.floor((W - L - R) / 64))
     const step = Math.max(1, Math.ceil(n / maxLabels))
-    const showX = (i) => (i % step === 0 && (n - 1 - i >= step / 2 || i === n - 1)) || i === n - 1
+    const showX = (i) => i === n - 1 || (i % step === 0 && n - 1 - i >= Math.max(step, 2) * 0.85)
     const vgrid = labels.map((lb, i) => showX(i) && n > 1 ? `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${y(0)}" stroke="currentColor" stroke-opacity=".05"/>` : '').join('')
     const xl = labels.map((lb, i) => showX(i)
       ? `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}" font-size="11" fill="currentColor" fill-opacity=".5">${esc(lb)}</text>` : '').join('')

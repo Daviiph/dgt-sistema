@@ -1804,7 +1804,7 @@ function updateDashboard() {
     bindPeriod('dash-period', dashPeriod, r, (st) => { dashPeriod = st; savePeriod('ns_dash_period', st); updateDashboard(); });
     bindSeg('dash-metric', 'm', dashMetric, (m) => { dashMetric = m; updateDashboard(); });
     set('dash-hello', currentProfile ? ((currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] || '—') : '—');
-    set('current-date', new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' }));
+    { const d = new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' }); set('current-date', d.charAt(0).toUpperCase() + d.slice(1)); }
 
     // Indicadores
     const total = sum(inP), n = inP.length, u = units(inP);
@@ -2866,7 +2866,6 @@ async function startApp(profile) {
     document.body.classList.add(profile.role === 'admin' ? 'role-admin' : 'role-vendedor');
     await reloadData();
     fetchLiveRates(false);
-    document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     applyModeClasses();
     renderCart();
     const admin = profile.role === 'admin';

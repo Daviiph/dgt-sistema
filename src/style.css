@@ -769,3 +769,17 @@ main .bg-white.rounded-2xl, main .dark\:bg-gray-900.rounded-2xl { border-radius:
   .section-transition > *, .v-kpis > *, .v-row > *, .v-bar > span, .v-fun-bar, .v-goal-bar span { animation: none !important; }
   .cx-line-path { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Ajustes de celular */
+@media (max-width: 1023px) { #user-btn { display: none; } }
+.v-kpi.is-hero .v-kpi-value, .v-kpi.is-hero .v-kpi-label { max-width: none; }
+@media (max-width: 640px) {
+  .v-kpi { padding: .85rem .9rem .95rem; border-radius: 20px; }
+  .v-kpi-value { font-size: 1.3rem; }
+  .v-kpi-deco { width: 70px; height: 26px; right: -16px; bottom: -22px; }
+  .v-card-head > .v-seg, .v-card-head > .v-legend { order: 3; width: 100%; }
+  .v-card-head > .v-seg { justify-content: space-between; }
+  .v-card-head > .v-seg > button { flex: 1; justify-content: center; }
+  .v-head { align-items: flex-start; }
+}
+.bottom-nav a { flex: 1 1 0; width: auto !important; padding: .5rem .25rem; }
