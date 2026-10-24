@@ -178,12 +178,13 @@
                 <nav id="top-nav" class="top-nav hidden lg:flex min-w-0" aria-label="Secciones"></nav>
                 <span id="net-pill" class="hidden lg:ml-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 flex items-center gap-1.5"></span>
                 <div class="flex items-center gap-2 ml-auto shrink-0">
-                    <button onclick="toggleDarkMode()" class="icon-btn" title="Modo oscuro" aria-label="Cambiar modo oscuro"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:inline text-yellow-300"></i></button>
-                    <button onclick="showSection('config')" class="icon-btn hidden lg:inline-flex admin-only" title="Configuración" aria-label="Configuración"><i class="fas fa-gear"></i></button>
-                    <div class="hidden lg:flex items-center gap-2 pl-1">
-                        <span id="top-avatar" class="avatar w-10 h-10 text-sm" title=""></span>
-                        <button onclick="logout()" title="Cerrar sesión" aria-label="Cerrar sesión" class="icon-btn hover:!text-red-500"><i class="fas fa-right-from-bracket"></i></button>
+                    <div class="v-theme" role="group" aria-label="Tema">
+                        <button type="button" data-theme-set="light" onclick="setTheme('light', this)" title="Modo claro" aria-label="Modo claro"><i class="fas fa-sun"></i></button>
+                        <button type="button" data-theme-set="dark" onclick="setTheme('dark', this)" title="Modo oscuro" aria-label="Modo oscuro"><i class="fas fa-moon"></i></button>
                     </div>
+                    <button type="button" id="user-btn" class="v-user hidden lg:inline-flex" onclick="openUserMenu(this)" aria-haspopup="menu" aria-expanded="false">
+                        <span id="top-avatar" class="avatar w-9 h-9 text-xs"></span><span id="top-name" class="v-user-name"></span><i class="fas fa-chevron-down"></i>
+                    </button>
                 </div>
             </div>
         </header>
@@ -193,158 +194,116 @@
 
 <div class="resale-not-ready hidden" data-mode="reventa"><div class="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm"><i class="fas fa-triangle-exclamation mr-2"></i><b>Reventa aún no está activada en la base de datos.</b> Falta aplicar la actualización <code>20261015000000_reventa.sql</code> en Supabase. Mientras tanto, el modo Tienda funciona normal.</div></div>
             <!-- INICIO (TIENDA) -->
-            <section id="section-dashboard" class="section-transition space-y-6">
-                <div class="page-head">
-                    <div class="flex items-center gap-4 min-w-0">
-                        <span class="head-ic hidden sm:inline-flex"><i class="fas fa-chart-pie"></i></span>
-                        <div class="min-w-0">
-                            <h2 class="page-title">Hola, <span id="dash-hello">—</span></h2>
-                            <p class="page-sub"><span id="current-date" class="capitalize"></span> · Toca cualquier tarjeta o gráfica para ver el detalle.</p>
-                        </div>
+            <section id="section-dashboard" class="section-transition v-page">
+                <div class="v-head">
+                    <div class="min-w-0">
+                        <h2 class="v-title">Hola, <span id="dash-hello">—</span></h2>
+                        <p class="v-sub"><span id="current-date" class="capitalize"></span><span id="dash-today-line"></span></p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="openModal('modal-product')" class="icon-btn admin-only" title="Nuevo producto" aria-label="Nuevo producto"><i class="fas fa-box-open"></i></button>
-                        <button onclick="openModal('modal-customer')" class="icon-btn" title="Nuevo cliente" aria-label="Nuevo cliente"><i class="fas fa-user-plus"></i></button>
-                        <button onclick="showSection('pos')" class="btn-primary"><i class="fas fa-plus"></i> Nueva venta</button>
+                    <div class="v-actions">
+                        <div id="dash-period" class="period"></div>
+                        <button onclick="exportPeriodCsv()" class="v-icon" title="Descargar las ventas del período (Excel)" aria-label="Descargar las ventas del período"><i class="fas fa-download"></i></button>
+                        <button onclick="showSection('pos')" class="v-cta"><i class="fas fa-plus"></i><span>Nueva venta</span></button>
                     </div>
                 </div>
 
-                <!-- Indicadores con mini gráficas -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr] gap-4 md:gap-5">
-                    <button id="kpi-today" class="stat-card stat-hero">
-                        <span class="stat-top"><span>Vendido hoy</span><span class="stat-ic text-rose-500 bg-rose-50 dark:bg-rose-500/10"><i class="fas fa-sun"></i></span></span>
-                        <span id="dash-today-sales" class="stat-value">$0.00</span>
-                        <span id="dash-today-count" class="stat-delta text-gray-400"></span>
-                        <span class="hero-art" aria-hidden="true">
-                            <svg viewBox="0 0 220 110" preserveAspectRatio="xMidYMax meet"><defs><linearGradient id="ha1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(var(--brand-light))"/><stop offset="1" stop-color="rgb(var(--brand))"/></linearGradient></defs>
-                                <rect x="0" y="96" width="220" height="14" rx="4" fill="currentColor" opacity=".07"/>
-                                <path d="M24 96c-2-16 2-30 10-40-4 14-2 26 2 40zm6 0c4-18 14-30 26-36-10 12-16 24-18 36zm-8 0c-8-10-12-22-10-34 6 10 10 22 12 34z" fill="#34d399" opacity=".9"/>
-                                <rect x="20" y="86" width="26" height="12" rx="3" fill="#a78b6d" opacity=".75"/>
-                                <rect x="78" y="22" width="44" height="76" rx="8" fill="#111827"/><rect x="82" y="28" width="36" height="62" rx="5" fill="url(#ha1)"/><rect x="94" y="25" width="12" height="2" rx="1" fill="#374151"/>
-                                <path d="M92 66l6-8 6 5 8-13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
-                                <rect x="134" y="44" width="40" height="54" rx="4" fill="#fff" stroke="currentColor" stroke-opacity=".12"/><rect x="141" y="53" width="22" height="3" rx="1.5" fill="currentColor" opacity=".3"/><rect x="141" y="61" width="26" height="3" rx="1.5" fill="currentColor" opacity=".15"/><rect x="141" y="69" width="18" height="3" rx="1.5" fill="currentColor" opacity=".15"/><rect x="141" y="83" width="26" height="6" rx="3" fill="rgb(var(--brand))" opacity=".85"/>
-                                <circle cx="190" cy="88" r="9" fill="#fbbf24"/><text x="190" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#78350f">$</text>
-                            </svg>
-                        </span>
-                        <span id="dash-today-label" class="sr-only"></span>
+                <!-- Indicadores -->
+                <div class="v-kpis">
+                    <button id="kpi-total" class="v-kpi is-hero">
+                        <span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-wallet"></i></span><span id="dash-total-delta" class="v-delta"></span></span>
+                        <span id="dash-total-sales" class="v-kpi-value">$0.00</span>
+                        <span class="v-kpi-label">Vendido · <span id="dash-kpi-period">período</span></span>
+                        <span class="v-kpi-deco" aria-hidden="true"></span>
                     </button>
-                    <div class="stat-card" role="group">
-                        <button class="stat-top w-full text-left" onclick="showSection('sales')"><span>Ventas del período</span><span class="stat-ic text-brand bg-brand/10"><i class="fas fa-wallet"></i></span></button>
-                        <span id="dash-total-sales" class="stat-value">$0.00</span>
-                        <span id="dash-total-delta" class="stat-delta"></span>
-                        <div id="dash-mini-bars" class="mini-bars mt-auto pt-3"></div>
-                    </div>
-                    <div class="stat-card" role="group">
-                        <button class="stat-top w-full text-left" onclick="showSection('sales')"><span>Documentos emitidos</span><span class="stat-ic text-sky-500 bg-sky-50 dark:bg-sky-500/10"><i class="fas fa-receipt"></i></span></button>
-                        <span id="dash-count-sales" class="stat-value">0</span>
-                        <span id="dash-ticket" class="stat-delta text-gray-400"></span>
-                        <div id="dash-mini-line" class="mini-line mt-auto pt-2"></div>
-                    </div>
-                    <div class="stat-card sm:col-span-2 xl:col-span-1" role="group">
-                        <div class="stat-top"><span>Cobrado por método</span><button onclick="showSection('sales')" class="corner-btn" aria-label="Ver ventas"><i class="fas fa-arrow-right -rotate-45"></i></button></div>
-                        <div class="flex items-center gap-3"><span id="dash-collected" class="stat-value">$0.00</span><span class="chip-soft" id="dash-collected-n"></span></div>
-                        <div class="flex items-end gap-2 mt-auto pt-3">
-                            <div id="dash-method-tiles" class="flex-1 grid grid-cols-3 gap-2 min-w-0"></div>
-                            <button onclick="showSection('pos')" class="pill-dark shrink-0">Vender</button>
-                        </div>
-                    </div>
+                    <button id="kpi-count" class="v-kpi">
+                        <span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-receipt"></i></span><span id="dash-count-delta" class="v-delta"></span></span>
+                        <span id="dash-count-sales" class="v-kpi-value">0</span>
+                        <span class="v-kpi-label">Ventas</span>
+                    </button>
+                    <button id="kpi-ticket" class="v-kpi">
+                        <span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-tag"></i></span><span id="dash-ticket-delta" class="v-delta"></span></span>
+                        <span id="dash-ticket" class="v-kpi-value">$0.00</span>
+                        <span class="v-kpi-label">Ticket promedio</span>
+                    </button>
+                    <button id="kpi-units" class="v-kpi">
+                        <span class="v-kpi-top"><span class="v-kpi-ic"><i class="fas fa-mobile-screen"></i></span><span id="dash-units-delta" class="v-delta"></span></span>
+                        <span id="dash-units" class="v-kpi-value">0</span>
+                        <span class="v-kpi-label">Equipos vendidos</span>
+                    </button>
                 </div>
 
-                <!-- Filtros -->
-                <div class="filter-bar">
-                    <span class="font-semibold text-sm whitespace-nowrap">Período</span>
-                    <div id="dash-period" class="period"></div>
-                    <span id="dash-period-label" class="text-xs text-gray-400"></span>
-                    <div class="flex flex-wrap gap-2 lg:ml-auto">
-                        <button onclick="showSection('sellers')" class="filter-chip admin-only"><i class="fas fa-percent text-brand"></i> Comisiones <b id="dash-total-commissions" class="tabular-nums">$0.00</b></button>
-                        <span class="filter-chip"><i class="fas fa-mobile-screen text-sky-500"></i> <span id="dash-units"></span></span>
-                        <button onclick="showLowStock()" class="filter-chip"><i class="fas fa-triangle-exclamation text-amber-500"></i> Stock bajo <b><span id="dash-low-stock">0</span>/<span id="dash-total-products">0</span></b></button>
-                    </div>
-                </div>
-
-                <!-- Tablero de facturas -->
-                <div class="board">
-                    <div id="dash-board-tabs" class="board-tabs" role="tablist">
-                        <button data-t="todas" role="tab">Todas <span class="n"></span></button><button data-t="hoy" role="tab">Hoy <span class="n"></span></button><button data-t="anuladas" role="tab">Anuladas <span class="n"></span></button>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4 lg:gap-5">
-                        <div class="min-w-0">
-                            <div class="flex items-center justify-between gap-2 mb-3 px-1">
-                                <p class="board-title" id="dash-board-title">Últimas ventas</p>
-                                <button onclick="showSection('sales')" class="board-ic" title="Ver todas las ventas" aria-label="Ver todas las ventas"><i class="fas fa-table-list"></i></button>
-                            </div>
-                            <ol id="dash-recent" class="space-y-1.5"></ol>
+                <!-- Gráficas principales -->
+                <div class="v-row v-row-charts">
+                    <div class="v-card">
+                        <div class="v-card-head">
+                            <span class="v-card-ic"><i class="fas fa-chart-simple"></i></span>
+                            <div class="min-w-0 flex-1"><p class="v-card-title">Ventas</p><p class="v-card-sub" id="dash-chart-sub"></p></div>
+                            <div id="dash-metric" class="v-seg"><button data-m="monto">Monto</button><button data-m="ventas">Ventas</button><button data-m="equipos">Equipos</button></div>
                         </div>
-                        <div id="dash-invoice" class="inv-card"></div>
+                        <div id="dash-area" class="v-chart" aria-label="Ventas en el período"></div>
                     </div>
-                </div>
-
-                <!-- Gráfica principal + tasa -->
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    <div class="card xl:col-span-2">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div><p class="card-title">Resumen de ventas</p><p class="card-sub" id="dash-chart-sub"></p></div>
-                            <div id="dash-metric" class="seg">
-                                <button data-m="monto">Monto</button><button data-m="ventas">Ventas</button><button data-m="equipos">Equipos</button>
-                            </div>
+                    <div class="v-card">
+                        <div class="v-card-head">
+                            <span class="v-card-ic"><i class="fas fa-bullseye"></i></span>
+                            <div class="min-w-0 flex-1"><p class="v-card-title">Ventas vs meta</p><p class="v-card-sub" id="dash-goal-sub"></p></div>
+                            <div class="v-legend"><span><i class="k-line"></i>Vendido</span><span><i class="k-target"></i>Meta</span></div>
                         </div>
-                        <div id="dash-area" class="mt-4 text-gray-500 dark:text-gray-400" aria-label="Ventas en el período"></div>
-                    </div>
-                    <div class="card rate-widget flex flex-col gap-3">
-                        <div class="flex items-center justify-between"><p class="card-title">Tasa del día</p><span class="rate-date text-[11px] text-gray-400"></span></div>
-                        <label class="rate-row"><span class="font-semibold text-sky-600 dark:text-sky-300 text-sm"><i class="fas fa-building-columns mr-1.5"></i>BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)"></label>
-                        <label class="rate-row"><span class="font-semibold text-amber-600 dark:text-amber-300 text-sm"><i class="fas fa-coins mr-1.5"></i>Binance P2P</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)"></label>
-                        <div class="flex items-center justify-between mt-auto pt-1">
-                            <p class="text-xs text-gray-400">Brecha <b id="dash-rate-gap" class="text-gray-900 dark:text-white tabular-nums">—</b></p>
-                            <button type="button" onclick="fetchLiveRates(true)" class="rate-live-btn btn-ghost !py-2 !text-xs"><i class="fas fa-rotate"></i> Actualizar</button>
-                        </div>
+                        <div id="dash-goal" class="v-chart"></div>
+                        <div id="dash-goal-foot" class="v-goal-foot"></div>
                     </div>
                 </div>
 
                 <!-- Desgloses -->
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    <div class="card">
-                        <p class="card-title">Ventas por vendedor</p>
-                        <p class="card-sub mb-3">Toca un vendedor para ver sus ventas</p>
-                        <div id="dash-by-seller"></div>
-                    </div>
-                    <div class="card">
-                        <p class="card-title">Cómo te pagan</p>
-                        <p class="card-sub mb-3">Monto cobrado por método de pago</p>
+                <div class="v-row v-row-3">
+                    <div class="v-card">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-chart-pie"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Cómo te pagan</p><p class="v-card-sub">Cobrado por forma de pago · toca una</p></div></div>
                         <div id="dash-by-method"></div>
                     </div>
-                    <div class="card md:col-span-2 xl:col-span-1">
-                        <div class="flex items-start justify-between gap-3">
-                            <div><p class="card-title">Inventario</p><p class="card-sub">Productos con 5 u o más</p></div>
-                            <button onclick="showLowStock()" class="text-xs font-semibold text-brand hover:underline">Ver stock bajo</button>
-                        </div>
-                        <div class="flex items-center gap-4 mt-2">
-                            <button onclick="showLowStock()" class="shrink-0 rounded-full text-gray-900 dark:text-white" id="dash-gauge" aria-label="Ver productos con stock bajo"></button>
-                            <div class="space-y-2 text-sm min-w-0 flex-1">
-                                <p class="flex justify-between gap-2"><span class="text-gray-400">Unidades</span><b id="dash-units-stock" class="tabular-nums">0</b></p>
-                                <p class="flex justify-between gap-2"><span class="text-gray-400">Valor</span><b id="dash-stock-value" class="tabular-nums">$0</b></p>
+                    <div class="v-card">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-fire"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Más vendidos</p><p class="v-card-sub">Unidades en el período · toca uno</p></div><span id="dash-top-total" class="v-card-num"></span></div>
+                        <div id="dash-top-products"></div>
+                    </div>
+                    <div class="v-card">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-trophy"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Mejores vendedores</p><p class="v-card-sub">Vendido por vendedor · toca uno</p></div></div>
+                        <div id="dash-by-seller"></div>
+                    </div>
+                </div>
+
+                <!-- Clientes y últimas ventas -->
+                <div class="v-row v-row-2-1">
+                    <div class="v-card">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-users"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Quién te compró</p><p id="dash-clients-sub" class="v-card-sub">Clientes del período</p></div><button onclick="openClientsFromDash()" class="v-link">Ver todos</button></div>
+                        <div id="dash-clients"></div>
+                    </div>
+                    <div class="v-card">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-clock-rotate-left"></i></span><div class="min-w-0 flex-1"><p class="v-card-title" id="dash-board-title">Últimas ventas</p></div><button onclick="openBoardAll()" class="v-link">Ver todas</button></div>
+                        <div id="dash-board-tabs" class="v-seg mb-3" role="tablist"><button data-t="todas" role="tab">Todas <span class="n"></span></button><button data-t="hoy" role="tab">Hoy <span class="n"></span></button><button data-t="anuladas" role="tab">Anuladas <span class="n"></span></button></div>
+                        <ul id="dash-recent" class="v-recent"></ul>
+                    </div>
+                </div>
+
+                <!-- Inventario y tasa -->
+                <div class="v-row v-row-2">
+                    <div class="v-card">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-boxes-stacked"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Inventario</p><p class="v-card-sub"><span id="dash-low-stock">0</span> de <span id="dash-total-products">0</span> productos con menos de 5 u</p></div><button onclick="showLowStock()" class="v-link">Ver stock bajo</button></div>
+                        <div class="flex items-center gap-5">
+                            <button onclick="showLowStock()" class="shrink-0 rounded-full v-ink" id="dash-gauge" aria-label="Ver productos con stock bajo"></button>
+                            <div class="flex-1 min-w-0 grid gap-3">
+                                <p class="v-pair"><span>Unidades en stock</span><b id="dash-units-stock">0</b></p>
+                                <p class="v-pair"><span>Valor del inventario</span><b id="dash-stock-value">$0</b></p>
+                                <p class="v-pair admin-only"><span>Comisiones del período</span><b id="dash-total-commissions">$0.00</b></p>
                             </div>
                         </div>
-                        <ul id="dash-low-list" class="mt-3 space-y-1"></ul>
+                        <ul id="dash-low-list" class="mt-4 grid gap-1"></ul>
                     </div>
-                </div>
-
-                <!-- Clientes del período -->
-                <div class="card">
-                    <div class="flex items-start justify-between gap-3 mb-3">
-                        <div><p class="card-title">Quién te compró</p><p id="dash-clients-sub" class="card-sub">Clientes del período · toca uno para ver sus compras</p></div>
-                        <button onclick="openClientsFromDash()" class="text-xs font-semibold text-brand hover:underline whitespace-nowrap">Ver todos</button>
+                    <div class="v-card rate-widget">
+                        <div class="v-card-head"><span class="v-card-ic"><i class="fas fa-money-bill-transfer"></i></span><div class="min-w-0 flex-1"><p class="v-card-title">Tasa del día</p><p class="v-card-sub"><span class="rate-date"></span></p></div><button type="button" onclick="fetchLiveRates(true)" class="rate-live-btn v-link"><i class="fas fa-rotate"></i> Actualizar</button></div>
+                        <div class="grid gap-2">
+                            <label class="v-rate"><span><i class="fas fa-building-columns"></i>BCV</span><input type="number" step="0.01" min="0" data-rate="BCV" onchange="setDailyRate('BCV', this.value)"></label>
+                            <label class="v-rate"><span><i class="fas fa-coins"></i>Binance P2P</span><input type="number" step="0.01" min="0" data-rate="Binance P2P" onchange="setDailyRate('Binance P2P', this.value)"></label>
+                        </div>
+                        <p class="v-pair mt-4"><span>Brecha entre tasas</span><b id="dash-rate-gap">—</b></p>
                     </div>
-                    <div id="dash-clients"></div>
-                </div>
-
-                <!-- Productos más vendidos -->
-                <div class="card">
-                    <div class="flex items-start justify-between gap-3 mb-3">
-                        <div><p class="card-title">Productos más vendidos</p><p class="card-sub">Por unidades en el período · toca uno para ver sus ventas</p></div>
-                        <button onclick="showSection('inventory')" class="text-xs font-semibold text-brand hover:underline admin-only">Ir al inventario</button>
-                    </div>
-                    <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-xs text-gray-400"><th class="py-2 pr-3 font-medium">Producto</th><th class="py-2 pr-3 font-medium text-right">Unidades</th><th class="py-2 pr-3 font-medium text-right">Total</th><th class="py-2 w-1/3 font-medium hidden sm:table-cell">Participación</th></tr></thead><tbody id="dash-top-products"></tbody></table></div>
                 </div>
             </section>
 
@@ -646,6 +605,11 @@
                             <label class="block font-bold text-sm">Símbolo de Moneda</label>
                             <input type="text" id="config-currency" onchange="updateCurrency()" placeholder="Ej: $, €, Bs." class="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
                             <p class="text-xs text-gray-500">Moneda base para precios e inventario</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl space-y-3 border dark:border-gray-700 admin-only">
+                            <label for="config-goal" class="block font-bold text-sm">Meta de ventas del mes</label>
+                            <input type="number" min="0" step="100" inputmode="numeric" id="config-goal" onchange="setSalesGoal(this.value)" placeholder="Ej: 10000" class="w-full p-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                            <p class="text-xs text-gray-500">Se usa en la gráfica «Ventas vs meta» de Inicio. Déjala vacía para no usar meta.</p>
                         </div>
                         <div class="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl space-y-3 border dark:border-gray-700">
                             <label class="block font-bold text-sm">Tasa del día (Divisas → Bs.)</label>

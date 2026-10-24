@@ -5,7 +5,7 @@ const now = Date.now()
 const iso = (msAgo) => new Date(now - msAgo).toISOString()
 const db = {
   profiles: [{ id: 'u1', email: 'david@dgt.com', full_name: 'David Admin', role: 'admin', active: true, created_at: iso(9 * day) }],
-  settings: [{ key: 'currency', value: '$' }, { key: 'rate_bcv', value: '879.12' }, { key: 'rate', value: '879.12' }, { key: 'rate_binance', value: '1007.5' }, { key: 'rate_date', value: new Date().toLocaleDateString('es-VE') }],
+  settings: [{ key: 'currency', value: '$' }, { key: 'sales_goal', value: '6000' }, { key: 'rate_bcv', value: '879.12' }, { key: 'rate', value: '879.12' }, { key: 'rate_binance', value: '1007.5' }, { key: 'rate_date', value: new Date().toLocaleDateString('es-VE') }],
   brands: [{ id: 1, name: 'Samsung', extra: {} }, { id: 2, name: 'Xiaomi', extra: {} }, { id: 3, name: 'Apple', extra: {} }],
   products: [
     { id: 11, brand_id: '1', name: 'Galaxy A15', category: 'Teléfono', color: '#000000', price: 165, stock: 12, extra: {} },

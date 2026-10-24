@@ -31,25 +31,59 @@ export function periodTitle(st, r) {
   return { hoy: 'Hoy', 7: 'Últimos 7 días', 30: 'Últimos 30 días', mes: 'Este mes', mespasado: 'Mes pasado', todo: 'Todo el historial' }[st.k] || rangeLabel(r)
 }
 
-// Pinta los botones en `el`. onChange(nuevoEstado) cuando el usuario elige.
+// Píldora "Este mes ▾" que abre un menú con los períodos y "Personalizado…" (calendario).
+// onChange(nuevoEstado) cuando el usuario elige.
+let menuOpen = null
 export function mountPeriod(el, { state, range, onChange }) {
   if (!el) return
   el.classList.add('period')
   const custom = state.k === 'custom'
-  el.innerHTML = `
-    <div class="seg period-seg" role="group" aria-label="Período">
-      ${PRESETS.map((p) => `<button type="button" data-p="${p.k}" class="${state.k === p.k ? 'on' : ''}" aria-pressed="${state.k === p.k}">${p.t}</button>`).join('')}
-    </div>
-    <button type="button" class="period-custom ${custom ? 'on' : ''}" aria-haspopup="dialog" aria-pressed="${custom}">
-      <i class="fas fa-calendar-days"></i><span>${custom ? esc(rangeLabel(range)) : 'Personalizado'}</span>
-    </button>`
-  el.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => onChange({ k: b.dataset.p })))
-  el.querySelector('.period-custom').onclick = (e) => openRangePicker({
-    anchor: e.currentTarget,
-    from: range.from,
-    to: new Date(range.to.getTime() - 1),
-    onApply: (a, b) => onChange({ k: 'custom', a: ymd(a), b: ymd(b) }),
-  })
+  const label = custom ? rangeLabel(range) : (PRESETS.find((p) => p.k === state.k) || {}).t || 'Período'
+  el.innerHTML = `<button type="button" class="period-pill" aria-haspopup="menu" aria-expanded="false">
+      <i class="fas fa-calendar-days"></i><span>${esc(label)}</span><i class="fas fa-chevron-down period-chev"></i></button>`
+  const btn = el.querySelector('.period-pill')
+  btn.title = rangeLabel(range)
+  btn.onclick = (e) => {
+    e.stopPropagation()
+    if (menuOpen && menuOpen.btn === btn) return closeMenu()
+    closeMenu()
+    const m = document.createElement('div')
+    m.className = 'period-menu'
+    m.setAttribute('role', 'menu')
+    m.innerHTML = PRESETS.map((p) => `<button type="button" role="menuitemradio" aria-checked="${state.k === p.k}" data-p="${p.k}" class="${state.k === p.k ? 'on' : ''}">${p.t}<i class="fas fa-check"></i></button>`).join('') +
+      `<div class="period-sep"></div><button type="button" role="menuitemradio" aria-checked="${custom}" data-custom class="${custom ? 'on' : ''}"><span><i class="fas fa-calendar-days"></i> Personalizado…</span>${custom ? `<small>${esc(rangeLabel(range))}</small>` : ''}</button>`
+    document.body.appendChild(m)
+    const r = btn.getBoundingClientRect()
+    const w = Math.max(220, r.width)
+    m.style.minWidth = w + 'px'
+    const left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8)
+    m.style.left = left + 'px'
+    m.style.top = (r.bottom + 8) + 'px'
+    btn.setAttribute('aria-expanded', 'true')
+    requestAnimationFrame(() => m.classList.add('in'))
+    m.addEventListener('click', (ev) => {
+      const t = ev.target.closest('button')
+      if (!t) return
+      closeMenu()
+      if (t.dataset.p) return onChange({ k: t.dataset.p })
+      openRangePicker({ anchor: btn, from: range.from, to: new Date(range.to.getTime() - 1), onApply: (a, b) => onChange({ k: 'custom', a: ymd(a), b: ymd(b) }) })
+    })
+    menuOpen = { m, btn }
+    m.querySelector('.on, button')?.focus()
+  }
+}
+function closeMenu() {
+  if (!menuOpen) return
+  const { m, btn } = menuOpen
+  menuOpen = null
+  btn.setAttribute('aria-expanded', 'false')
+  m.remove()
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => { if (menuOpen && !menuOpen.m.contains(e.target)) closeMenu() })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOpen) { const b = menuOpen.btn; closeMenu(); b.focus() } })
+  window.addEventListener('resize', closeMenu)
+  document.addEventListener('scroll', closeMenu, true)
 }
 
 // ---- Calendario ----

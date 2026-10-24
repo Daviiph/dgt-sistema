@@ -71,27 +71,29 @@ export function mountAreaChart(host, opts) {
     const max = niceMax(Math.max(0, ...series.flatMap((s) => s.values)))
     const x = (i) => L + (n === 1 ? (W - L - R) / 2 : (i * (W - L - R)) / (n - 1))
     const y = (v) => T + (H - T - B) * (1 - v / max)
-    const grid = [0, 0.5, 1].map((f) => {
+    const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => {
       const yy = y(max * f)
-      return `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="currentColor" stroke-opacity="${f === 0 ? 0.18 : 0.08}"/>
+      return `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="currentColor" stroke-opacity="${f === 0 ? 0.16 : 0.06}"/>
         <text x="${L - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="currentColor" fill-opacity=".5">${esc(format(max * f))}</text>`
     }).join('')
     const maxLabels = Math.max(2, Math.floor((W - L - R) / 64))
     const step = Math.max(1, Math.ceil(n / maxLabels))
-    const xl = labels.map((lb, i) => ((i % step === 0 && (n - 1 - i >= step / 2 || i === n - 1)) || i === n - 1
-      ? `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}" font-size="11" fill="currentColor" fill-opacity=".5">${esc(lb)}</text>` : '')).join('')
+    const showX = (i) => (i % step === 0 && (n - 1 - i >= step / 2 || i === n - 1)) || i === n - 1
+    const vgrid = labels.map((lb, i) => showX(i) && n > 1 ? `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${y(0)}" stroke="currentColor" stroke-opacity=".05"/>` : '').join('')
+    const xl = labels.map((lb, i) => showX(i)
+      ? `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}" font-size="11" fill="currentColor" fill-opacity=".5">${esc(lb)}</text>` : '').join('')
     const paths = series.map((s, si) => {
       const pts = s.values.map((v, i) => [x(i), y(v)])
       const line = smoothPath(pts, y(0))
       const col = s.color || 'var(--brand-light)'
       const area = si === 0 && n > 1 ? `<path d="${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z" fill="url(#${id}g${si})"/>` : ''
       return `<defs><linearGradient id="${id}g${si}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(${col})" stop-opacity=".45"/><stop offset="1" stop-color="rgb(${col})" stop-opacity="0"/></linearGradient></defs>
-        ${area}<path d="${line}" fill="none" stroke="rgb(${col})" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#${id}glow)"/>`
+        ${area}<path class="cx-line-path" d="${line}" fill="none" stroke="rgb(${col})" stroke-width="${s.flat ? 2 : 2.5}" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>`
     }).join('')
     const dots = series.map((s, si) => `<circle class="cx-dot" data-s="${si}" r="5" fill="rgb(${s.color || 'var(--brand-light)'})" stroke="var(--card-bg)" stroke-width="2.5" opacity="0"/>`).join('')
     host.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
       <defs><filter id="${id}glow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      ${grid}${xl}${paths}
+      ${grid}${vgrid}${xl}${paths}
       <line class="cx-line" y1="${T}" y2="${y(0)}" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3 3" opacity="0"/>
       ${dots}
       <rect class="cx-sel" y="${T}" height="${y(0) - T}" rx="6" fill="rgb(var(--brand))" fill-opacity=".1" stroke="rgb(var(--brand))" stroke-opacity=".35" stroke-dasharray="4 3" opacity="0"/>

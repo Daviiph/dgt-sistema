@@ -232,6 +232,7 @@ async function fetchRemote() {
   out.bcvRate = s.rate_bcv || out.globalRate
   out.binanceRate = s.rate_binance || out.globalRate
   out.rateDate = s.rate_date || ''
+  out.salesGoal = Number(s.sales_goal) || 0
   out.brandColor = s.brand_color || ''
   out.brandLogo = await getLogo(s.brand_logo_at || '')
   out.autoEmail = s.invoice_email_auto !== '0'

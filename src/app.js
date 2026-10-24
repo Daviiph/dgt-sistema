@@ -29,12 +29,28 @@ const AVAILABLE_COLORS = [
     { name: 'Gris', hex: '#808080' }, { name: 'Amarillo', hex: '#FFFF00' }
 ];
 
-// THEME
-function toggleDarkMode() {
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('ns_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+// THEME: el cambio se expande en círculo desde el botón (View Transitions; sin soporte, cambia directo)
+function syncThemeButtons() {
+    const dark = document.documentElement.classList.contains('dark');
+    document.querySelectorAll('[data-theme-set]').forEach(b => { const on = (b.dataset.themeSet === 'dark') === dark; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
 }
+function setTheme(mode, btn) {
+    const root = document.documentElement;
+    const want = mode === 'dark';
+    if (root.classList.contains('dark') === want) return;
+    const apply = () => { root.classList.toggle('dark', want); try { localStorage.setItem('ns_theme', want ? 'dark' : 'light'); } catch {} syncThemeButtons(); };
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!document.startViewTransition || reduce) return apply();
+    const r = btn && btn.getBoundingClientRect ? btn.getBoundingClientRect() : { left: innerWidth - 40, top: 20, width: 0, height: 0 };
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.startViewTransition(apply).ready.then(() => {
+        root.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${end}px at ${x}px ${y}px)`] }, { duration: 650, easing: 'cubic-bezier(.23,1,.32,1)', pseudoElement: '::view-transition-new(root)' });
+    }).catch(() => {});
+}
+function toggleDarkMode(btn) { setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark', btn); }
 if (localStorage.getItem('ns_theme') === 'dark') document.documentElement.classList.add('dark');
+setTimeout(syncThemeButtons, 0);
 
 // CURRENCY
 function updateCurrency() {
@@ -201,27 +217,62 @@ function pickCondition(btn) {
 let invCond = 'todos', resaleCond = 'todos', posCond = 'todos';
 const condMatch = (filter, x) => filter === 'todos' || condOf(x) === filter;
 
-// NAVEGACIÓN SUPERIOR (PC): se arma a partir del menú lateral
-const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', customers: 'Clientes', sellers: 'Vendedores', payments: 'Pagos', sales: 'Ventas', 'resale-sales': 'Ventas' };
-const TOP_ADMIN = ['brands', 'sellers', 'payments', 'resale-dashboard', 'resale-items'];
-const TOP_ORDER = ['dashboard', 'resale-dashboard', 'pos', 'sales', 'resale-sales', 'inventory', 'resale-items', 'customers', 'brands', 'sellers', 'payments'];
+// NAVEGACIÓN SUPERIOR (PC): principales en la píldora, el resto en "Más"
+const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', customers: 'Clientes', sellers: 'Vendedores', payments: 'Formas de pago', sales: 'Ventas', 'resale-sales': 'Ventas', config: 'Configuración' };
+const TOP_ADMIN = ['brands', 'sellers', 'payments', 'resale-dashboard', 'resale-items', 'config'];
+const TOP_MAIN = ['dashboard', 'resale-dashboard', 'pos', 'sales', 'resale-sales', 'inventory', 'resale-items', 'customers'];
+const TOP_MORE = ['brands', 'sellers', 'payments', 'config'];
+const navIcon = (sec) => document.getElementById(`link-${sec}`)?.querySelector('i')?.className.replace('w-6', '').trim() || 'fas fa-circle';
 function buildTopNav() {
     const nav = document.getElementById('top-nav');
     if (!nav || nav.childElementCount) return;
-    nav.innerHTML = TOP_ORDER.map(sec => {
+    nav.innerHTML = TOP_MAIN.map(sec => {
         const src = document.getElementById(`link-${sec}`);
         if (!src) return '';
-        const icon = src.querySelector('i')?.className.replace('w-6', '').trim() || 'fas fa-circle';
         const mode = src.dataset.mode ? ` data-mode="${src.dataset.mode}"` : '';
-        return `<a href="#" data-section="${sec}"${mode} class="top-link${TOP_ADMIN.includes(sec) ? ' admin-only' : ''}" title="${TOP_LABEL[sec]}" onclick="showSection('${sec}')"><i class="${icon}"></i><span>${TOP_LABEL[sec]}</span></a>`;
-    }).join('');
+        return `<a href="#" data-section="${sec}"${mode} class="top-link${TOP_ADMIN.includes(sec) ? ' admin-only' : ''}" onclick="showSection('${sec}')"><i class="${navIcon(sec)}"></i><span>${TOP_LABEL[sec]}</span></a>`;
+    }).join('') + `<button type="button" id="top-more" class="top-link admin-only" onclick="openMoreMenu(this)" aria-haspopup="menu" aria-expanded="false"><i class="fas fa-ellipsis"></i><span>Más</span><i class="fas fa-chevron-down chev"></i></button>`;
+}
+// Menú flotante junto a un botón (se cierra al tocar fuera, con Esc o al desplazar)
+let popMenuEl = null;
+function closePopMenu() { if (!popMenuEl) return; popMenuEl.btn.setAttribute('aria-expanded', 'false'); popMenuEl.el.remove(); popMenuEl = null; }
+function popMenu(btn, html) {
+    if (popMenuEl && popMenuEl.btn === btn) return closePopMenu();
+    closePopMenu();
+    const el = document.createElement('div');
+    el.className = 'v-menu';
+    el.setAttribute('role', 'menu');
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    const r = btn.getBoundingClientRect(), w = el.offsetWidth;
+    el.style.top = (r.bottom + 8) + 'px';
+    el.style.left = Math.min(Math.max(8, r.right - w), innerWidth - w - 8) + 'px';
+    btn.setAttribute('aria-expanded', 'true');
+    el.addEventListener('click', (e) => { if (e.target.closest('button')) closePopMenu(); });
+    popMenuEl = { el, btn };
+    requestAnimationFrame(() => el.classList.add('in'));
+    el.querySelector('button')?.focus();
+}
+document.addEventListener('click', (e) => { if (popMenuEl && !popMenuEl.el.contains(e.target) && !popMenuEl.btn.contains(e.target)) closePopMenu(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && popMenuEl) { const b = popMenuEl.btn; closePopMenu(); b.focus(); } });
+window.addEventListener('resize', closePopMenu);
+function openMoreMenu(btn) {
+    popMenu(btn, TOP_MORE.map(sec => `<button type="button" role="menuitem" class="${currentSection === sec ? 'on' : ''}" onclick="showSection('${sec}')"><i class="${navIcon(sec)}"></i>${TOP_LABEL[sec]}</button>`).join(''));
+}
+function openUserMenu(btn) {
+    const name = currentProfile ? (currentProfile.full_name || currentProfile.email || '') : '';
+    popMenu(btn, `<p class="who"><b>${escHtml(name)}</b>${escHtml(currentProfile?.email || '')} · ${currentProfile?.role === 'admin' ? 'Administrador' : 'Vendedor'}</p><div class="sep"></div>
+        ${isAdmin() ? `<button type="button" role="menuitem" onclick="showSection('config')"><i class="fas fa-gear"></i>Configuración</button>` : ''}
+        <button type="button" role="menuitem" onclick="toggleDarkMode(document.getElementById('user-btn'))"><i class="fas fa-circle-half-stroke"></i>Cambiar tema</button>
+        <div class="sep"></div><button type="button" role="menuitem" class="danger" onclick="logout()"><i class="fas fa-right-from-bracket"></i>Cerrar sesión</button>`);
 }
 function updateTopAvatar() {
     const el = document.getElementById('top-avatar');
     if (!el || !currentProfile) return;
     const name = currentProfile.full_name || currentProfile.email || '';
     el.textContent = getInitials(name);
-    el.title = `${name} · ${currentProfile.role === 'admin' ? 'Administrador' : 'Vendedor'}`;
+    const nm = document.getElementById('top-name');
+    if (nm) nm.textContent = (currentProfile.full_name || name.split('@')[0] || '').split(' ').slice(0, 2).join(' ');
 }
 
 // NAVIGATION
@@ -236,6 +287,8 @@ function showSection(sectionId) {
     document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active-link'));
     document.getElementById(`link-${sectionId}`)?.classList.add('active-link');
     document.querySelectorAll('.bottom-nav a, .top-link').forEach(a => a.classList.toggle('on', a.dataset.section === sectionId));
+    document.getElementById('top-more')?.classList.toggle('on', TOP_MORE.includes(sectionId));
+    closePopMenu();
     toggleNav(false);
     document.querySelector('main').scrollTop = 0;
 
@@ -497,7 +550,7 @@ function getProductHistory(salesList) {
             if(!map[key]) {
                 const b = brands.find(br => br.id == i.brandId);
                 const colorName = AVAILABLE_COLORS.find(c => c.hex === i.color)?.name || '';
-                map[key] = { name: `${b ? b.name + ' ' : ''}${i.name}`, color: i.color, colorName, qty: 0, total: 0, lastDate: sl.date };
+                map[key] = { id: i.id, name: `${b ? b.name + ' ' : ''}${i.name}`, color: i.color, colorName, qty: 0, total: 0, lastDate: sl.date };
             }
             map[key].qty += i.qty;
             map[key].total += i.price * i.qty;
@@ -1685,6 +1738,55 @@ function countTo(id, text) {
     requestAnimationFrame(step);
 }
 
+// Píldora de variación (▲ 12 %) frente al período anterior
+function kpiDelta(cur, prev) {
+    if (prev == null) return '';
+    if (!prev) return cur > 0 ? '<span class="up"><i class="fas fa-arrow-up"></i> nuevo</span>' : '';
+    const d = ((cur - prev) / prev) * 100;
+    const up = d >= 0;
+    return `<span class="${up ? 'up' : 'down'}" title="Frente al período anterior"><i class="fas fa-caret-${up ? 'up' : 'down'}"></i> ${Math.abs(d) >= 100 ? Math.round(Math.abs(d)) : Math.abs(d).toFixed(1)}%</span>`;
+}
+
+// Meta de ventas mensual (Configuración → admin)
+let salesGoal = 0;
+function setSalesGoal(v) {
+    const n = Math.max(0, Math.round(Number(String(v).replace(/[^0-9.]/g, '')) || 0));
+    salesGoal = n;
+    saveSetting('sales_goal', n).then(() => toast(n ? `Meta mensual: ${money(n)}` : 'Meta eliminada', 'ok', 2500)).catch(err => alert('No se pudo guardar la meta: ' + err.message));
+    const cfg = document.getElementById('config-goal'); if (cfg) cfg.value = n || '';
+    updateDashboard();
+}
+function editSalesGoal() {
+    const foot = document.getElementById('dash-goal-foot');
+    if (!foot) return;
+    foot.innerHTML = `<form class="v-goal-form" onsubmit="event.preventDefault();setSalesGoal(this.goal.value)">
+        <label for="goal-input">Meta de ventas del mes (${escHtml(appCurrency)})</label>
+        <div><input id="goal-input" name="goal" type="number" min="0" step="100" inputmode="numeric" value="${salesGoal || ''}" placeholder="Ej. 10000" required>
+        <button type="submit" class="v-cta !py-2">Guardar</button><button type="button" class="v-link" onclick="updateDashboard()">Cancelar</button></div></form>`;
+    document.getElementById('goal-input')?.focus();
+}
+
+// Ventas del período en Excel (CSV con ; para Excel en español)
+let dashPeriodSales = [], dashPeriodTitle = '';
+function exportPeriodCsv() {
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [...dashPeriodSales].sort((a, b) => (saleTime(a) || 0) - (saleTime(b) || 0)).map(s => {
+        const t = saleTime(s), c = customers.find(x => x.id == s.customerId), sl = sellers.find(x => x.id == s.sellerId);
+        return [t ? t.toLocaleDateString('es-VE') : s.date, t ? t.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : '', s.id, s.docType || '', c ? c.name : 'Cliente general', c ? (c.cedula || '') : '', itemsText(s), unitsOf(s), (s.payments || []).map(payName).join(', '), sl ? sl.name : '', Number(s.total).toFixed(2).replace('.', ',')].map(q).join(';');
+    });
+    if (!rows.length) return toast('No hay ventas en este período para descargar.', 'info', 3000);
+    const head = ['Fecha', 'Hora', 'Documento', 'Tipo', 'Cliente', 'Cédula/RIF', 'Productos', 'Equipos', 'Pago', 'Vendedor', 'Total'].map(q).join(';');
+    const blob = new Blob(['﻿' + [head, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ventas ${dashPeriodTitle}.csv`.replace(/[\\/:*?"<>|]/g, '-');
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+let dashSellerLists = [];
+function openSellerSales(i) { const it = dashSellerLists[i]; if (it) openSalesList(`Ventas de ${it.label}`, it.list); }
+
 function updateDashboard() {
     const storeSales = sales.filter(s => !isResaleSale(s));
     const active = storeSales.filter(s => s.status !== 'cancelada');
@@ -1693,22 +1795,37 @@ function updateDashboard() {
     const prevR = previousRange(r);
     const prev = prevR ? active.filter(s => inRange(s, prevR)) : null;
     const sum = (l) => l.reduce((a, s) => a + s.total, 0);
+    const units = (l) => l.reduce((a, s) => a + unitsOf(s), 0);
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
     const html = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
+    const title = periodTitle(dashPeriod, r);
+    dashPeriodSales = inP; dashPeriodTitle = title;
 
     bindPeriod('dash-period', dashPeriod, r, (st) => { dashPeriod = st; savePeriod('ns_dash_period', st); updateDashboard(); });
     bindSeg('dash-metric', 'm', dashMetric, (m) => { dashMetric = m; updateDashboard(); });
-    set('dash-period-label', dashPeriod.k === 'custom' ? '' : rangeLabel(r));
     set('dash-hello', currentProfile ? ((currentProfile.full_name || currentProfile.email || '').split(/[\s@]/)[0] || '—') : '—');
+    set('current-date', new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' }));
 
-    const total = sum(inP);
+    // Indicadores
+    const total = sum(inP), n = inP.length, u = units(inP);
+    const pTotal = prev ? sum(prev) : null, pN = prev ? prev.length : null, pU = prev ? units(prev) : null;
     countTo('dash-total-sales', money(total));
-    html('dash-total-delta', deltaText(total, prev ? sum(prev) : null));
-    countTo('dash-count-sales', inP.length);
-    set('dash-ticket', inP.length ? `Ticket promedio ${money(total / inP.length)}` : 'Sin ventas en el período');
+    set('dash-kpi-period', title.charAt(0).toLowerCase() + title.slice(1));
+    html('dash-total-delta', kpiDelta(total, pTotal));
+    countTo('dash-count-sales', n);
+    html('dash-count-delta', kpiDelta(n, pN));
+    countTo('dash-ticket', money(n ? total / n : 0));
+    html('dash-ticket-delta', kpiDelta(n ? total / n : 0, prev ? (pN ? pTotal / pN : 0) : null));
+    countTo('dash-units', u);
+    html('dash-units-delta', kpiDelta(u, pU));
+    const onKpi = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+    onKpi('kpi-total', () => openSalesList(`Ventas · ${title}`, inP));
+    onKpi('kpi-count', () => openSalesList(`Ventas · ${title}`, inP));
+    onKpi('kpi-ticket', () => openSalesList(`Ventas · ${title} (de mayor a menor)`, [...inP].sort((a, b) => b.total - a.total)));
+    onKpi('kpi-units', () => { productSalesScope = inP; openSalesList(`Equipos vendidos · ${title}`, inP); });
+
     const comm = inP.reduce((a, s) => { const sl = sellers.find(x => x.id == s.sellerId); return a + (sl ? (s.total - feeOf(s)) * sl.comm : 0); }, 0);
-    countTo('dash-total-commissions', money(comm));
-    set('dash-units', `${inP.reduce((a, s) => a + unitsOf(s), 0)} equipos vendidos`);
+    set('dash-total-commissions', money(comm));
     const low = products.filter(p => p.stock < 5);
     set('dash-low-stock', low.length);
     set('dash-total-products', products.length);
@@ -1716,10 +1833,7 @@ function updateDashboard() {
     // Hoy
     const todayK = dayKey(new Date());
     const today = active.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; });
-    countTo('dash-today-sales', money(sum(today)));
-    const kt = document.getElementById('kpi-today'); if (kt) kt.onclick = () => openSalesList('Ventas de hoy', today);
-    set('dash-today-count', today.length ? `${today.length} venta(s) · ${today.reduce((a, s) => a + unitsOf(s), 0)} equipo(s)` : 'Aún no hay ventas hoy');
-    set('dash-today-label', new Date().toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short' }));
+    html('dash-today-line', ` · <button type="button" class="v-today" onclick="openSalesList('Ventas de hoy', boardLists.hoy)">Hoy: <b>${money(sum(today))}</b> en ${today.length} venta${today.length === 1 ? '' : 's'}</button>`);
     const bcv = getRate('BCV'), bin = getRate('Binance P2P');
     set('dash-rate-gap', bcv > 0 && bin > 0 ? `${(((bin - bcv) / bcv) * 100).toFixed(1)}%` : '—');
 
@@ -1727,9 +1841,19 @@ function updateDashboard() {
     const bk = buckets(r);
     const M = METRIC[dashMetric];
     const values = bk.map(b => inP.filter(s => inRange(s, b)).reduce((a, s) => a + M.fn(s), 0));
-    set('dash-chart-sub', `${periodTitle(dashPeriod, r)} · ${M.full(values.reduce((a, b) => a + b, 0))}`);
+    set('dash-chart-sub', `${title} · ${M.full(values.reduce((a, b) => a + b, 0))}`);
+    const visible = (el) => el && !el.closest('section').classList.contains('hidden');
+    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const pickRange = (i, j) => {
+        const span = { from: bk[i].from, to: bk[j].to };
+        if (bk[0].unit === 'hora') return openSalesList(`${bk[i].title.split(' de ')[0]} de ${bk[i].from.getHours()}:00 a ${bk[j].to.getHours() || 24}:00`, inP.filter(s => inRange(s, span)));
+        const last = new Date(span.to); last.setDate(last.getDate() - 1);
+        dashPeriod = { k: 'custom', a: ymd(span.from), b: ymd(last) }; savePeriod('ns_dash_period', dashPeriod);
+        updateDashboard();
+        toast(`Período: ${rangeLabel({ from: span.from, to: span.to })}`, 'info', 2500);
+    };
     const area = document.getElementById('dash-area');
-    if (area && !area.closest('section').classList.contains('hidden')) {
+    if (visible(area)) {
         mountAreaChart(area, {
             labels: bk.map(b => b.label),
             series: [{ name: M.name, values, color: 'var(--chart)' }],
@@ -1738,36 +1862,62 @@ function updateDashboard() {
             ariaLabel: `${M.name} por ${bk[0] ? bk[0].unit : 'día'}. Use las flechas para recorrer y Enter para ver las ventas.`,
             detail: (i) => { const l = inP.filter(s => inRange(s, bk[i])); return dashMetric === 'monto' ? `${l.length} venta(s)` : money(sum(l)); },
             onSelect: (i) => openSalesList(bk[i].title, inP.filter(s => inRange(s, bk[i]))),
-            onRange: (i, j) => {
-                const span = { from: bk[i].from, to: bk[j].to };
-                if (bk[0].unit === 'hora') return openSalesList(`${bk[i].title.split(' de ')[0]} de ${bk[i].from.getHours()}:00 a ${bk[j].to.getHours() || 24}:00`, inP.filter(s => inRange(s, span)));
-                const last = new Date(span.to); last.setDate(last.getDate() - 1);
-                const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                dashPeriod = { k: 'custom', a: ymd(span.from), b: ymd(last) }; savePeriod('ns_dash_period', dashPeriod);
-                updateDashboard();
-                toast(`Período: ${rangeLabel({ from: span.from, to: span.to })}`, 'info', 2500);
-            },
+            onRange: pickRange,
         });
     }
 
+    // Ventas vs meta: lo vendido en cada día/mes contra la meta de ese día/mes
+    const goalEl = document.getElementById('dash-goal');
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthSold = sum(active.filter(s => { const t = saleTime(s); return t && t >= monthStart; }));
+    const unit = bk[0] ? bk[0].unit : 'día';
+    const goalPer = !salesGoal ? 0 : unit === 'mes' ? salesGoal : unit === 'día' ? salesGoal / daysInMonth : salesGoal / daysInMonth / 24;
+    const sold = bk.map(b => sum(inP.filter(s => inRange(s, b))));
+    const hit = goalPer ? sold.filter(v => v >= goalPer).length : 0;
+    set('dash-goal-sub', salesGoal ? `Meta por ${unit}: ${money(goalPer)} · se cumplió ${hit} de ${bk.length} ${unit === 'mes' ? 'meses' : unit === 'día' ? 'días' : 'horas'}` : 'Fija una meta mensual para comparar');
+    if (visible(goalEl)) {
+        if (salesGoal) {
+            mountAreaChart(goalEl, {
+                labels: bk.map(b => b.label),
+                series: [{ name: 'Vendido', values: sold, color: 'var(--chart)' }, { name: 'Meta', values: bk.map(() => goalPer), color: 'var(--ink-rgb)', flat: true }],
+                format: shortMoney, tipFormat: money, height: 220,
+                ariaLabel: `Vendido contra meta por ${unit}`,
+                detail: (i) => { const d = sold[i] - goalPer; return d >= 0 ? `Superó la meta por ${money(d)}` : `Faltaron ${money(-d)}`; },
+                onSelect: (i) => openSalesList(bk[i].title, inP.filter(s => inRange(s, bk[i]))),
+                onRange: pickRange,
+            });
+        } else {
+            goalEl.innerHTML = `<div class="v-empty"><i class="fas fa-bullseye"></i><p>Con una meta mensual verás cada día si vendiste más o menos de lo esperado.</p>${isAdmin() ? '<button class="v-cta" onclick="editSalesGoal()"><i class="fas fa-plus"></i><span>Fijar meta</span></button>' : '<p class="text-xs">La fija un administrador.</p>'}</div>`;
+        }
+    }
+    const pct = salesGoal ? monthSold / salesGoal : 0;
+    html('dash-goal-foot', salesGoal ? `
+        <div class="v-goal-bar"><span style="width:${Math.min(100, pct * 100)}%"></span></div>
+        <div class="v-goal-meta"><span>${now.toLocaleDateString('es-VE', { month: 'long' })}: <b>${money(monthSold)}</b> de ${money(salesGoal)} · <b class="${pct >= 1 ? 'text-emerald-600' : ''}">${Math.round(pct * 100)}%</b>${pct < 1 ? ` · faltan ${money(salesGoal - monthSold)}` : ' · ¡meta cumplida!'}</span>${isAdmin() ? '<button class="v-link" onclick="editSalesGoal()"><i class="fas fa-pen"></i> Cambiar meta</button>' : ''}</div>` : '');
+
     // Quién te compró
     const cs = clientStats(inP).sort(CLIENT_SORT.monto);
-    html('dash-clients', clientRowsHtml(cs, { limit: 6 }));
-    set('dash-clients-sub', cs.length ? `${cs.length} cliente${cs.length === 1 ? '' : 's'} en ${periodTitle(dashPeriod, r).toLowerCase()} · toca uno para ver sus compras` : 'Clientes del período');
+    html('dash-clients', clientRowsHtml(cs, { limit: 5 }));
+    set('dash-clients-sub', cs.length ? `${cs.length} cliente${cs.length === 1 ? '' : 's'} · ${title.toLowerCase()} · toca uno para ver sus compras` : 'Clientes del período');
 
-    // Por vendedor
+    // Mejores vendedores (estilo "top sales reps")
     const bySeller = {};
     inP.forEach(s => { const k = s.sellerId || '—'; (bySeller[k] = bySeller[k] || []).push(s); });
-    mountRankBars(document.getElementById('dash-by-seller'), {
-        items: Object.entries(bySeller).map(([id, l]) => {
-            const sl = sellers.find(x => x.id == id);
-            return { id, label: sl ? sl.name : 'Sin vendedor', value: sum(l), sub: `${l.length} venta(s) · comisión ${money(sl ? sum(l) * sl.comm : 0)}`, list: l };
-        }).sort((a, b) => b.value - a.value).slice(0, 6),
-        format: money,
-        onSelect: (it) => openSalesList(`Ventas de ${it.label}`, it.list),
-    });
+    dashSellerLists = Object.entries(bySeller).map(([id, l]) => {
+        const sl = sellers.find(x => x.id == id);
+        return { label: sl ? sl.name : 'Sin vendedor', value: sum(l), n: l.length, comm: sl ? sum(l) * sl.comm : 0, list: l };
+    }).sort((a, b) => b.value - a.value);
+    const maxS = Math.max(1, ...dashSellerLists.map(x => x.value));
+    html('dash-by-seller', dashSellerLists.length ? `<ul class="v-reps">${dashSellerLists.slice(0, 5).map((x, i) => `
+        <li><button type="button" onclick="openSellerSales(${i})" class="v-rep">
+            <span class="v-rep-top"><span class="avatar w-7 h-7 text-[10px] shrink-0">${escHtml(getInitials(x.label))}</span><b class="truncate flex-1">${escHtml(x.label)}</b><b class="tabular-nums">${money(x.value)}</b></span>
+            <span class="v-bar"><span style="width:${(x.value / maxS) * 100}%"></span></span>
+            <span class="v-rep-sub">${x.n} venta${x.n === 1 ? '' : 's'}${isAdmin() ? ' · comisión ' + money(x.comm) : ''}</span>
+        </button></li>`).join('')}</ul>` : '<p class="v-none">Sin ventas en este período</p>');
 
-    // Por método de pago
+    // Cómo te pagan (anillo)
     const byMethod = {};
     inP.forEach(s => (s.payments || []).forEach(p => {
         const k = payName(p);
@@ -1777,10 +1927,10 @@ function updateDashboard() {
         byMethod[k].list.add(s);
     }));
     const methodItems = Object.entries(byMethod).map(([k, v]) => ({ label: k, value: v.value, sub: `${v.list.size} venta(s)${v.bs ? ' · ' + fmtBs(v.bs) : ''}`, list: [...v.list] })).sort((a, b) => b.value - a.value);
-    mountDonut(document.getElementById('dash-by-method'), {
+    const methodEl = document.getElementById('dash-by-method');
+    if (methodEl) mountDonut(methodEl, {
         items: methodItems,
         format: money,
-        center: methodItems.length ? { value: shortMoney(methodItems.reduce((a, m) => a + m.value, 0)), label: 'cobrado' } : null,
         onSelect: (it) => openSalesList(`Pagos con ${it.label}`, it.list),
     });
 
@@ -1792,52 +1942,32 @@ function updateDashboard() {
     html('dash-low-list', low.length ? [...low].sort((a, b) => a.stock - b.stock).slice(0, 4).map(p => {
         const b = brands.find(x => x.id == p.brandId);
         const color = AVAILABLE_COLORS.find(c => c.hex === p.color)?.name || '';
-        return `<li><button onclick="editProduct(${p.id})" class="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 -mx-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 text-left">
+        return `<li><button onclick="editProduct(${p.id})" class="v-low">
             <span class="truncate">${escHtml((b ? b.name + ' ' : '') + p.name)} <span class="text-gray-400 text-xs">${escHtml(color)}</span></span>
-            <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${p.stock === 0 ? 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></button></li>`;
-    }).join('') : '<li class="text-sm text-gray-400 py-2">Todo el inventario tiene 5 u o más.</li>');
+            <span class="v-pill ${p.stock === 0 ? 'is-bad' : 'is-warn'}">${p.stock === 0 ? 'Agotado' : p.stock + ' u'}</span></button></li>`;
+    }).join('') : '<li class="text-sm text-gray-400 py-1">Todo el inventario tiene 5 u o más.</li>');
 
-    // Productos más vendidos (período)
+    // Más vendidos (barras tipo embudo)
     const top = getProductHistory(inP).slice(0, 6);
     const maxQty = Math.max(1, ...top.map(t => t.qty));
-    const totalUnits = top.reduce((a, t) => a + t.qty, 0) || 1;
-    html('dash-top-products', top.length ? top.map(t => `
-        <tr class="border-t dark:border-gray-800 row-click hover:bg-gray-50 dark:hover:bg-white/5" data-pid="${escHtml(String(t.id))}" data-name="${escHtml(t.name)}" onclick="openProductSales(this)" tabindex="0" onkeydown="if(event.key==='Enter')openProductSales(this)">
-            <td class="py-2.5 pr-3"><div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border dark:border-gray-700 shrink-0" style="background:${t.color || '#ccc'}"></span><span class="font-medium truncate">${escHtml(t.name)}</span></div></td>
-            <td class="py-2.5 pr-3 text-right font-semibold">${t.qty}</td>
-            <td class="py-2.5 pr-3 text-right">${money(t.total)}</td>
-            <td class="py-2.5 hidden sm:table-cell"><div class="flex items-center gap-2"><div class="progress-track flex-1"><div class="progress-bar" style="width:${(t.qty / maxQty) * 100}%"></div></div><span class="text-xs text-gray-400 w-9 text-right">${Math.round((t.qty / totalUnits) * 100)}%</span></div></td>
-        </tr>`).join('') : '<tr><td colspan="4" class="py-8 text-center text-gray-400">No hay ventas en este período. <button onclick="showSection(\'pos\')" class="text-brand font-semibold hover:underline">Registrar una venta</button></td></tr>');
+    const totalUnits = units(inP) || 1;
+    set('dash-top-total', top.length ? `${u} u` : '');
+    html('dash-top-products', top.length ? `<ul class="v-funnel">${top.map(t => `
+        <li><button type="button" class="v-fun" data-pid="${escHtml(String(t.id))}" data-name="${escHtml(t.name)}" onclick="openProductSales(this)" title="${escHtml(t.name)} · ${t.qty} u · ${money(t.total)}">
+            <span class="v-fun-name">${escHtml(t.name)}</span>
+            <span class="v-fun-track"><span class="v-fun-bar" style="width:${Math.max(14, (t.qty / maxQty) * 100)}%">${t.qty}</span></span>
+            <span class="v-fun-pct">${Math.round((t.qty / totalUnits) * 100)}%</span>
+        </button></li>`).join('')}</ul>` : `<p class="v-none">No hay ventas en este período. <button onclick="showSection('pos')" class="v-link">Registrar una venta</button></p>`);
     productSalesScope = inP;
 
-    // Mini gráficas de las tarjetas
-    const groupsMoney = groupBuckets(bk, bk.map(b => sum(inP.filter(s => inRange(s, b)))), 8);
-    const miniBars = document.getElementById('dash-mini-bars');
-    if (miniBars) mountMiniBars(miniBars, { groups: groupsMoney, format: money, onSelect: (g) => openSalesList(g.title, inP.filter(s => inRange(s, g))) });
-    const groupsCount = groupBuckets(bk, bk.map(b => inP.filter(s => inRange(s, b)).length), 10);
-    const miniLine = document.getElementById('dash-mini-line');
-    if (miniLine && !miniLine.closest('section').classList.contains('hidden')) mountMiniLine(miniLine, { values: groupsCount.map(g => g.value), labels: groupsCount.map(g => g.title), format: (v) => `${v} documento(s)` });
-
-    // Cobrado por método (tarjeta con mosaicos)
-    const methods = Object.entries(byMethod).map(([k, v]) => ({ k, value: v.value, list: [...v.list] })).sort((a, b) => b.value - a.value);
-    const collected = methods.reduce((a, m) => a + m.value, 0);
-    countTo('dash-collected', money(collected));
-    set('dash-collected-n', `${methods.length} método${methods.length === 1 ? '' : 's'}`);
-    dashMethodLists = methods;
-    html('dash-method-tiles', methods.length ? methods.slice(0, 3).map((m, i) => `
-        <button onclick="openMethodSales(${i})" class="method-tile${i === 0 ? ' on' : ''}" title="${escHtml(m.k)}: ${money(m.value)}">
-            <span class="text-[13px] font-bold tabular-nums truncate">${shortMoney(m.value)}</span>
-            <span class="text-[11px] truncate opacity-70">${escHtml(m.k)}</span>
-        </button>`).join('') : '<p class="col-span-3 text-xs text-gray-400 py-3">Sin cobros en el período</p>');
-
-    // Tablero de facturas
+    // Últimas ventas
     const todayList = active.filter(s => { const t = saleTime(s); return t && dayKey(t) === todayK; });
     const cancelled = storeSales.filter(s => s.status === 'cancelada' && inRange(s, r));
     boardLists = { todas: inP, hoy: todayList, anuladas: cancelled };
     renderBoard();
 }
 
-// ===== Tablero de facturas (lista oscura + detalle) =====
+// ===== Últimas ventas =====
 let boardTab = 'todas', boardSel = null, boardLists = { todas: [], hoy: [], anuladas: [] }, dashMethodLists = [];
 const BOARD_TITLE = { todas: 'Últimas ventas', hoy: 'Ventas de hoy', anuladas: 'Ventas anuladas' };
 function openMethodSales(i) { const m = dashMethodLists[i]; if (m) openSalesList(`Pagos con ${m.k}`, m.list); }
@@ -1862,22 +1992,19 @@ function saleStatus(s) {
 function renderBoard() {
     const tabs = document.getElementById('dash-board-tabs');
     if (!tabs) return;
-    bindSeg('dash-board-tabs', 't', boardTab, (t) => { boardTab = t; boardSel = null; renderBoard(); });
+    bindSeg('dash-board-tabs', 't', boardTab, (t) => { boardTab = t; renderBoard(); });
     tabs.querySelectorAll('button').forEach(b => { const n = boardLists[b.dataset.t]?.length || 0; b.querySelector('.n').textContent = n ? n : ''; });
     const list = [...(boardLists[boardTab] || [])].sort((a, b) => (saleTime(b) || 0) - (saleTime(a) || 0));
     document.getElementById('dash-board-title').textContent = BOARD_TITLE[boardTab];
-    if (!list.find(s => s.id === boardSel)) boardSel = list[0]?.id || null;
-    const shown = list.slice(0, 6);
+    const shown = list.slice(0, 5);
     document.getElementById('dash-recent').innerHTML = shown.length ? shown.map(s => {
         const c = customers.find(x => x.id == s.customerId), st = saleStatus(s);
-        return `<li><button onclick="selectBoardSale('${s.id}')" class="board-row${s.id === boardSel ? ' on' : ''}" aria-pressed="${s.id === boardSel}">
-            <span class="avatar w-10 h-10 text-xs shrink-0">${escHtml(getInitials(c ? c.name : 'Cliente general'))}</span>
-            <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate"># ${escHtml(s.id)}</span><span class="block text-[11px] text-white/50 truncate">${escHtml(c ? c.name : 'Cliente general')} · ${escHtml(relTime(saleTime(s)))}</span></span>
-            <span class="row-pill ${st.cls} hidden sm:inline-flex">${escHtml(st.text)}</span>
-            <span class="text-sm font-bold tabular-nums shrink-0 ${s.status === 'cancelada' ? 'line-through opacity-50' : ''}">${money(s.total)}</span></button></li>`;
-    }).join('') + (list.length > shown.length ? `<li><button onclick="openBoardAll()" class="board-more">Ver ${list.length - shown.length} más <i class="fas fa-arrow-right text-[10px]"></i></button></li>` : '')
-        : `<li class="text-sm text-white/50 text-center py-12"><i class="fas fa-receipt text-2xl mb-3 block opacity-40"></i>${boardTab === 'anuladas' ? 'No hay ventas anuladas en este período' : 'Sin ventas aquí todavía'}</li>`;
-    renderBoardInvoice();
+        return `<li><button onclick="openSaleDetail('${s.id}')" class="v-sale">
+            <span class="avatar w-9 h-9 text-[11px] shrink-0">${escHtml(getInitials(c ? c.name : 'Cliente general'))}</span>
+            <span class="min-w-0 flex-1"><span class="block text-sm font-semibold truncate">${escHtml(c ? c.name : 'Cliente general')}</span><span class="block text-[11px] text-gray-400 truncate">${escHtml(relTime(saleTime(s)))} · ${escHtml(s.id)}</span></span>
+            <span class="text-right shrink-0"><b class="block text-sm tabular-nums ${s.status === 'cancelada' ? 'line-through opacity-50' : ''}">${money(s.total)}</b><span class="v-pill ${st.cls}">${escHtml(st.text)}</span></span></button></li>`;
+    }).join('') + (list.length > shown.length ? `<li><button onclick="openBoardAll()" class="v-more">Ver ${list.length - shown.length} más <i class="fas fa-arrow-right text-[10px]"></i></button></li>` : '')
+        : `<li class="v-none">${boardTab === 'anuladas' ? 'No hay ventas anuladas en este período' : boardTab === 'hoy' ? 'Aún no hay ventas hoy' : 'Sin ventas en este período'}</li>`;
 }
 function openBoardAll() { openSalesList(BOARD_TITLE[boardTab], boardLists[boardTab] || []); }
 function selectBoardSale(id) {
@@ -2531,6 +2658,8 @@ async function reloadData() {
     if (colorInput) colorInput.value = (brandColor || DEFAULT_COLOR).toLowerCase();
     appCurrency = d.appCurrency; globalRate = d.globalRate;
     bcvRate = d.bcvRate; binanceRate = d.binanceRate; rateDate = d.rateDate;
+    salesGoal = Number(d.salesGoal) || 0;
+    const goalIn = document.getElementById('config-goal'); if (goalIn) goalIn.value = salesGoal || '';
     syncRateInputs();
     document.getElementById('config-currency').value = appCurrency;
     document.getElementById('config-rate').value = globalRate;
@@ -2756,6 +2885,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { openClientSales, exportClientsCsv, openClientsFromDash, setClientQuery, setClientSort, selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { setTheme, openMoreMenu, openUserMenu, setSalesGoal, editSalesGoal, exportPeriodCsv, openSellerSales, openClientSales, exportClientsCsv, openClientsFromDash, setClientQuery, setClientSort, selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }
