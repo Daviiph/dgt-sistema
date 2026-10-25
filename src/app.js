@@ -1740,13 +1740,13 @@ function renderReservations() {
     const btn = (fn, icon, title, cls = '') => `<button onclick="${fn}" title="${title}" aria-label="${title}" class="w-9 h-9 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-brand ${cls}"><i class="fas ${icon}"></i></button>`;
     document.getElementById('res-table-body').innerHTML = list.length ? list.map(r => {
         const c = customers.find(x => x.id == r.customerId), st = resState(r), bal = resBalance(r);
-        const pct = r.total > 0 ? Math.min(100, (r.paid / r.total) * 100) : 0;
+        const pct = st === 'completada' ? 100 : r.total > 0 ? Math.min(100, (r.paid / r.total) * 100) : 0;
         const open = st === 'activa' || st === 'vencida';
         return `<tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5">
             <td class="p-4"><button onclick="openReservationDoc(${r.id})" class="font-bold text-brand hover:underline">${escHtml(r.code)}</button><p class="text-[11px] text-gray-400">${resKindLabel(r)} · ${escHtml(String(r.date || '').split(',')[0])}</p></td>
             <td class="p-4"><p class="font-semibold text-sm">${escHtml(c ? c.name : 'Cliente')}</p><p class="text-[11px] text-gray-400">${escHtml(c ? (c.cedula || c.phone || '') : '')}</p></td>
             <td class="p-4 text-sm max-w-[220px]"><p class="truncate">${r.qty > 1 ? r.qty + '× ' : ''}${escHtml(resItemName(r))}</p>${condBadge(r.item && r.item.condition)}</td>
-            <td class="p-4 w-52"><div class="flex justify-between text-sm gap-2"><b class="tabular-nums">${money(r.paid)}</b><span class="text-gray-400 tabular-nums">/ ${money(r.total)}</span></div><div class="res-track mt-1.5"><span style="width:${pct}%"></span></div><p class="text-[11px] mt-1 font-semibold ${bal > 0 ? 'text-amber-600' : 'text-emerald-600'}">${bal > 0 ? 'Saldo ' + money(bal) : 'Pagada completa'}</p></td>
+            <td class="p-4 w-52"><div class="flex justify-between text-sm gap-2"><b class="tabular-nums">${money(r.paid)}</b><span class="text-gray-400 tabular-nums">/ ${money(r.total)}</span></div><div class="res-track mt-1.5"><span style="width:${pct}%"></span></div><p class="text-[11px] mt-1 font-semibold ${bal > 0 && open ? 'text-amber-600' : st === 'cancelada' ? 'text-gray-400' : 'text-emerald-600'}">${st === 'completada' ? 'Saldo cobrado al entregar' : st === 'cancelada' ? 'Anulada' : bal > 0 ? 'Saldo ' + money(bal) : 'Pagada completa'}</p></td>
             <td class="p-4"><span class="res-pill ${st}">${RES_STATE_LABEL[st]}</span><p class="text-[11px] text-gray-400 mt-1">${st === 'completada' ? escHtml(r.saleId || '') : fmtDateISO(r.expiresAt)}</p></td>
             <td class="p-4"><div class="flex justify-center gap-0.5">
                 ${btn(`openReservationDoc(${r.id})`, 'fa-receipt', 'Comprobante')}
