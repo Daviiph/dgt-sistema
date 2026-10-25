@@ -8,9 +8,15 @@ const TABLES = {
   sellers: { table: 'sellers', cols: ['id', 'name', 'comm'] },
   payments: { table: 'payment_methods', cols: ['id', 'name'] },
   resale: { table: 'resale_items', cols: ['id', 'brand', 'name', 'color', 'serial', 'supplier', 'cost', 'price', 'stock', 'notes', 'acquired_at'] },
+  reservations: { table: 'reservations', cols: ['id', 'customer_id', 'total', 'paid', 'status', 'expires_at'] },
 }
+// Tablas que pueden no existir todavía en la nube (el resto del sistema sigue funcionando)
+const OPTIONAL = new Set(['resale', 'reservations'])
+const ready = { resale: true, reservations: true }
+// Reservas guardadas en este equipo mientras la tabla no exista en la nube
+const RES_LOCAL = 'ns_reservations_local'
 const SALE_COLS = ['id', 'date', 'customer_id', 'seller_id', 'rate', 'rate_type', 'doc_type', 'main_currency', 'payments', 'items', 'total', 'status', 'cancel_reason', 'cancel_date', 'channel', 'cost_total', 'delivery']
-const TEXT_COLS = new Set(['brand_id', 'customer_id', 'seller_id', 'date', 'cancel_date', 'acquired_at'])
+const TEXT_COLS = new Set(['brand_id', 'customer_id', 'seller_id', 'date', 'cancel_date', 'acquired_at', 'expires_at'])
 const META_COLS = new Set(['extra', 'updated_at', 'created_at', 'created_by', 'cancelled_by'])
 
 const toSnake = (k) => k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())
@@ -39,7 +45,7 @@ function fromRow(row) {
   const obj = {}
   for (const [k, v] of Object.entries(row)) {
     if (META_COLS.has(k)) continue
-    obj[toCamel(k)] = typeof v === 'string' && /^(price|stock|comm|rate|total|total_spent|cost|cost_total)$/.test(k) ? Number(v) : v
+    obj[toCamel(k)] = typeof v === 'string' && /^(price|stock|comm|rate|total|total_spent|cost|cost_total|paid)$/.test(k) ? Number(v) : v
   }
   return clean({ ...(row.extra || {}), ...obj })
 }
@@ -98,7 +104,7 @@ function pendingStock() {
 
 const snapToObj = () => Object.fromEntries(Object.entries(snapshot).map(([k, m]) => [k, [...m]]))
 const snapFromObj = (o) => { snapshot = Object.fromEntries(Object.entries(o || {}).map(([k, a]) => [k, new Map(a)])) }
-const ARRAYS = ['brands', 'products', 'customers', 'sellers', 'payments', 'resale', 'sales']
+const ARRAYS = ['brands', 'products', 'customers', 'sellers', 'payments', 'resale', 'reservations', 'sales']
 
 // Guarda en el equipo el estado actual (sólo si hay algo sin enviar o no hay conexión)
 export function persistLocal(state, force = false) {
@@ -223,12 +229,12 @@ async function fetchRemote() {
     ...Object.values(TABLES).map((t) => supabase.from(t.table).select('*').order('id')),
     supabase.from('sales').select('*').order('created_at'),
   ])
-  const out = { resaleReady: true }
+  const out = {}
   Object.keys(TABLES).forEach((name, i) => {
-    // Si la tabla de reventa aún no existe en la nube, el resto del sistema sigue funcionando
-    if (name === 'resale' && rest[i].error) {
-      out.resaleReady = false
-      out[name] = []
+    ready[name] = !(OPTIONAL.has(name) && rest[i].error)
+    // Si una tabla opcional aún no existe en la nube, el resto del sistema sigue funcionando
+    if (!ready[name]) {
+      out[name] = name === 'reservations' ? store.get(RES_LOCAL, []) : []
       snapshot[name] = new Map()
       return
     }
@@ -245,16 +251,25 @@ async function fetchRemote() {
   out.brandColor = s.brand_color || ''
   out.brandLogo = await getLogo(s.brand_logo_at || '')
   out.autoEmail = s.invoice_email_auto !== '0'
-  resaleReady = out.resaleReady
+  out.resaleReady = ready.resale
+  out.reservationsReady = ready.reservations
+  // Reservas hechas antes de crear la tabla: se suben una sola vez
+  const pendingRes = store.get(RES_LOCAL, null)
+  if (ready.reservations && pendingRes && pendingRes.length) {
+    check(await supabase.from('reservations').upsert(pendingRes.map((o) => toRow(o, TABLES.reservations.cols))))
+    store.del(RES_LOCAL)
+    out.reservations = [...out.reservations.filter((o) => !pendingRes.some((x) => String(x.id) === String(o.id))), ...pendingRes]
+    snapshot.reservations = new Map(out.reservations.map((o) => [String(o.id), JSON.stringify(o)]))
+  }
   return out
 }
 
 // Compara los arreglos con la última versión de la nube y envía sólo los cambios
-let resaleReady = true
 async function syncRemote(state) {
   const pend = pendingStock()
   for (const [name, def] of Object.entries(TABLES)) {
-    if (name === 'resale' && !resaleReady) continue
+    if (!ready[name]) { if (name === 'reservations' && state.reservations) store.set(RES_LOCAL, state.reservations); continue }
+    if (!state[name]) continue
     const prev = snapshot[name] || new Map()
     const current = new Map((state[name] || []).map((o) => [String(o.id), o]))
     const upserts = []
@@ -285,6 +300,7 @@ export async function deleteSaleRemote(id) {
 export async function importAll(data, opts = {}) {
   needOnline()
   for (const [name, def] of Object.entries(TABLES)) {
+    if (!ready[name]) continue
     const rows = (data[name] || []).map((o) => toRow(o, def.cols))
     if (rows.length) check(await supabase.from(def.table).upsert(rows))
   }

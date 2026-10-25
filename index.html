@@ -133,6 +133,7 @@
                 <a href="#" onclick="showSection('inventory')" id="link-inventory" data-mode="tienda" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-boxes-stacked w-6"></i> Inventario</a>
                 <a href="#" onclick="showSection('resale-items')" id="link-resale-items" data-mode="reventa" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-mobile-screen w-6"></i> Equipos de Reventa</a>
                 <a href="#" onclick="showSection('pos')" id="link-pos" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-cash-register w-6"></i> Punto de Venta</a>
+                <a href="#" onclick="showSection('reservations')" id="link-reservations" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-bookmark w-6"></i> Reservas</a>
                 <a href="#" onclick="showSection('customers')" id="link-customers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-users w-6"></i> Clientes</a>
                 <a href="#" onclick="showSection('sellers')" id="link-sellers" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-user-tie w-6"></i> Vendedores</a>
                 <a href="#" onclick="showSection('payments')" id="link-payments" class="flex items-center p-3 text-gray-600 dark:text-gray-400 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><i class="fas fa-credit-card w-6"></i> Métodos de Pago</a>
@@ -529,7 +530,9 @@
                             <div class="flex justify-between text-xl font-bold text-gray-900 dark:text-white"><span>Total:</span> <span id="cart-total">$0.00</span></div>
                             <div id="cart-profit" class="admin-only hidden justify-between text-sm text-emerald-600 font-semibold"><span>Ganancia estimada:</span> <span></span></div>
                         </div>
+                        <div id="pos-res-banner" class="hidden mt-4 p-3 rounded-2xl text-sm bg-brand/10 text-brand-dark dark:text-brand-light flex items-start gap-2"></div>
                         <button onclick="openPaymentModal()" class="w-full mt-6 bg-brand text-white py-3 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand/30 transform active:scale-95">Liquidar Pago</button>
+                        <button onclick="openReservationModal({ fromCart: true })" class="w-full mt-2 py-3 rounded-xl font-semibold border-2 border-dashed border-brand/40 text-brand hover:bg-brand/5 transition"><i class="fas fa-bookmark mr-2"></i>Reservar con abono</button>
                     </div>
                 </div>
                 <button id="pos-cart-fab" onclick="document.getElementById('pos-cart-panel').scrollIntoView({behavior:'smooth'})" class="lg:hidden hidden fixed right-4 bottom-24 z-30 bg-brand text-white rounded-full px-5 py-3 font-bold shadow-xl shadow-brand/40"><i class="fas fa-cart-shopping mr-2"></i><span></span></button>
@@ -571,6 +574,39 @@
             </section>
 
             <!-- VENTAS TIENDA -->
+            <!-- RESERVAS Y PREVENTAS -->
+            <section id="section-reservations" class="hidden section-transition space-y-6">
+                <div class="page-head">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <span class="head-ic hidden sm:inline-flex"><i class="fas fa-bookmark"></i></span>
+                        <div class="min-w-0">
+                            <h2 class="page-title">Reservas y preventas</h2>
+                            <p class="page-sub">Equipos apartados con un abono. El saldo se cobra al entregar.</p>
+                        </div>
+                    </div>
+                    <button onclick="openReservationModal()" class="btn-primary"><i class="fas fa-plus"></i> Nueva reserva</button>
+                </div>
+                <div id="res-not-ready" class="hidden p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm"><i class="fas fa-triangle-exclamation mr-2"></i><b>Las reservas se están guardando sólo en este equipo.</b> Falta aplicar <code>20261025000000_reservas.sql</code> en Supabase; al hacerlo se subirán solas a la nube.</div>
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5">
+                    <button onclick="setResFilter('activa')" class="stat-card !min-h-0"><span class="stat-top"><span>Reservas activas</span><span class="stat-ic text-brand bg-brand/10"><i class="fas fa-bookmark"></i></span></span><span id="res-k-active" class="stat-value">0</span><span id="res-k-active-sub" class="stat-delta text-gray-400"></span></button>
+                    <button onclick="setResFilter('activa')" class="stat-card !min-h-0"><span class="stat-top"><span>Abonado</span><span class="stat-ic text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10"><i class="fas fa-hand-holding-dollar"></i></span></span><span id="res-k-paid" class="stat-value text-emerald-600 dark:text-emerald-400">$0.00</span><span class="stat-delta text-gray-400">de reservas activas</span></button>
+                    <button onclick="setResFilter('activa')" class="stat-card !min-h-0"><span class="stat-top"><span>Saldo por cobrar</span><span class="stat-ic text-amber-500 bg-amber-50 dark:bg-amber-500/10"><i class="fas fa-scale-unbalanced"></i></span></span><span id="res-k-balance" class="stat-value">$0.00</span><span class="stat-delta text-gray-400">al entregar</span></button>
+                    <button onclick="setResFilter('vencida')" class="stat-card !min-h-0"><span class="stat-top"><span>Vencen pronto</span><span class="stat-ic text-rose-500 bg-rose-50 dark:bg-rose-500/10"><i class="fas fa-hourglass-half"></i></span></span><span id="res-k-soon" class="stat-value">0</span><span class="stat-delta text-gray-400">en 3 días o vencidas</span></button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="search-box"><i class="fas fa-search"></i><input id="res-search" type="search" oninput="renderReservations()" placeholder="Buscar reserva, cliente o equipo"></div>
+                    <div id="res-filter" class="seg"><button data-f="activa">Activas</button><button data-f="vencida">Vencidas</button><button data-f="completada">Entregadas</button><button data-f="cancelada">Anuladas</button><button data-f="todas">Todas</button></div>
+                </div>
+                <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left min-w-[760px]">
+                        <thead class="bg-gray-50 dark:bg-white/5 border-b dark:border-gray-800">
+                            <tr class="text-xs uppercase tracking-wider text-gray-500"><th class="p-4 font-semibold">Reserva</th><th class="p-4 font-semibold">Cliente</th><th class="p-4 font-semibold">Producto</th><th class="p-4 font-semibold">Abonado / Total</th><th class="p-4 font-semibold">Vence</th><th class="p-4 font-semibold text-center">Acciones</th></tr>
+                        </thead>
+                        <tbody id="res-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
             <section id="section-sales" class="hidden section-transition space-y-6">
                 <div class="flex flex-wrap items-end justify-between gap-3">
                     <div><h2 class="text-2xl md:text-3xl font-bold tracking-tight">Ventas de tienda</h2><p class="text-sm text-gray-500 dark:text-gray-400">Facturas y notas de entrega de productos del inventario. Toca una fila para ver el detalle.</p></div>
@@ -879,6 +915,107 @@
     </div>
 
     <!-- Modal Cliente -->
+    <!-- Modal Reserva / Preventa -->
+    <div id="modal-reservation" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-2xl border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-3 mb-5">
+                <div><h3 class="text-2xl font-bold">Nueva reserva</h3><p class="text-sm text-gray-400">Registra el abono y emite el comprobante para el cliente.</p></div>
+                <button type="button" onclick="closeModal('modal-reservation')" class="icon-btn" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+            </div>
+            <form id="form-reservation" class="space-y-5" onsubmit="event.preventDefault(); saveReservation()">
+                <div class="grid grid-cols-2 gap-2" role="group" aria-label="Tipo">
+                    <label class="res-kind"><input type="radio" name="res-kind" value="reserva" checked onchange="updateResForm()"><span><i class="fas fa-bookmark"></i> Reserva<small>El equipo está en tienda</small></span></label>
+                    <label class="res-kind"><input type="radio" name="res-kind" value="preventa" onchange="updateResForm()"><span><i class="fas fa-truck-ramp-box"></i> Preventa<small>El equipo está por llegar</small></span></label>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <div class="flex justify-between items-center"><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-customer">Cliente</label><button type="button" onclick="openModal('modal-customer')" class="text-brand text-xs font-bold mb-1"><i class="fas fa-plus"></i> Nuevo</button></div>
+                        <select id="res-customer" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                    </div>
+                    <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-seller">Vendedor</label><select id="res-seller" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-product">Producto reservado</label>
+                    <select id="res-product" onchange="onResProduct()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                    <div id="res-custom" class="hidden grid sm:grid-cols-2 gap-3 mt-3">
+                        <input id="res-custom-name" type="text" placeholder="Equipo (ej: iPhone 17 Pro 256GB)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                        <input id="res-custom-detail" type="text" placeholder="Color / detalle (opcional)" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-qty">Cantidad</label><input id="res-qty" type="number" min="1" step="1" value="1" oninput="onResQty()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></div>
+                    <div class="col-span-2"><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-total">Precio total ($)</label><input id="res-total" type="number" min="0" step="0.01" required oninput="updateResForm()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all font-bold"></div>
+                </div>
+                <div class="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 space-y-3">
+                    <p class="text-sm font-semibold">Abono del cliente</p>
+                    <div class="grid sm:grid-cols-3 gap-3">
+                        <input id="res-paid" type="number" min="0.01" step="0.01" required placeholder="Monto $" oninput="updateResForm()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all font-bold">
+                        <select id="res-method" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select>
+                        <select id="res-currency" onchange="updateResForm()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"><option value="USD">Paga en $</option><option value="VES">Paga en Bs.</option></select>
+                    </div>
+                    <p id="res-paid-bs" class="text-xs font-semibold text-brand hidden"></p>
+                    <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                        <div class="rounded-xl bg-white dark:bg-gray-900 p-2"><p class="text-[11px] text-gray-400">Total</p><p id="res-sum-total" class="font-bold tabular-nums">$0.00</p></div>
+                        <div class="rounded-xl bg-white dark:bg-gray-900 p-2"><p class="text-[11px] text-gray-400">Abono</p><p id="res-sum-paid" class="font-bold tabular-nums text-emerald-600">$0.00</p></div>
+                        <div class="rounded-xl bg-brand text-white p-2"><p class="text-[11px] opacity-80">Saldo pendiente</p><p id="res-sum-balance" class="font-bold tabular-nums">$0.00</p></div>
+                    </div>
+                    <p id="res-warn" class="hidden text-xs font-semibold text-red-500"></p>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-expires">Válida hasta</label><input id="res-expires" type="date" required class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all">
+                        <div class="flex gap-1.5 mt-2"><button type="button" onclick="setResDays(7)" class="chip-days">7 días</button><button type="button" onclick="setResDays(15)" class="chip-days">15 días</button><button type="button" onclick="setResDays(30)" class="chip-days">30 días</button></div></div>
+                    <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-notes">Nota interna (opcional)</label><input id="res-notes" type="text" placeholder="Ej: lo retira su hermano" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1" for="res-terms">Términos de la reserva (salen en el comprobante)</label><textarea id="res-terms" rows="4" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all text-sm"></textarea></div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('modal-reservation')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" id="res-save" class="btn-primary"><i class="fas fa-receipt"></i> Guardar y emitir comprobante</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Abono adicional -->
+    <div id="modal-res-abono" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800">
+            <h3 class="text-2xl font-bold">Registrar abono</h3>
+            <p id="abono-sub" class="text-sm text-gray-400 mb-5"></p>
+            <form class="space-y-3" onsubmit="event.preventDefault(); saveResAbono()">
+                <input id="abono-amount" type="number" min="0.01" step="0.01" required placeholder="Monto $" oninput="updateAbonoBs()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all font-bold">
+                <div class="grid grid-cols-2 gap-3"><select id="abono-method" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"></select><select id="abono-currency" onchange="updateAbonoBs()" class="w-full p-3 border rounded-xl dark:bg-gray-800 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand transition-all"><option value="USD">Paga en $</option><option value="VES">Paga en Bs.</option></select></div>
+                <p id="abono-bs" class="text-xs font-semibold text-brand hidden"></p>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeModal('modal-res-abono')" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Guardar abono</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Comprobante de reserva -->
+    <div id="modal-res-doc" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 overflow-hidden">
+            <div class="inv-card !rounded-none p-6">
+                <p class="inv-label" id="rdoc-kind">Comprobante de reserva</p>
+                <p class="text-2xl font-bold tracking-tight" id="rdoc-code"></p>
+                <p class="text-sm text-white/75" id="rdoc-customer"></p>
+                <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+                    <div class="rounded-xl bg-white/15 p-2"><p class="text-[11px] opacity-75">Total</p><p class="font-bold tabular-nums" id="rdoc-total"></p></div>
+                    <div class="rounded-xl bg-white/15 p-2"><p class="text-[11px] opacity-75">Abonado</p><p class="font-bold tabular-nums" id="rdoc-paid"></p></div>
+                    <div class="rounded-xl bg-white p-2 text-gray-900"><p class="text-[11px] text-gray-500">Saldo</p><p class="font-bold tabular-nums" id="rdoc-balance"></p></div>
+                </div>
+            </div>
+            <div class="p-6 space-y-2">
+                <button onclick="shareReservation()" class="w-full py-3 rounded-xl font-semibold text-white bg-[#25D366] hover:brightness-95 transition"><i class="fab fa-whatsapp mr-2"></i>Enviar por WhatsApp</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="downloadReservationPDF()" class="btn-ghost justify-center"><i class="fas fa-file-pdf"></i> PDF</button>
+                    <button onclick="printReservation()" class="btn-ghost justify-center"><i class="fas fa-print"></i> Imprimir</button>
+                </div>
+                <button onclick="closeModal('modal-res-doc')" class="w-full py-2 text-sm text-gray-500 hover:text-gray-700">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-customer" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 no-print backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-gray-900 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border dark:border-gray-800 max-h-[92vh] overflow-y-auto">
             <h3 id="cust-modal-title" class="text-2xl font-bold mb-6">Cliente / Empresa</h3>
@@ -1134,6 +1271,108 @@
                         la vigencia de la garantía de marca. Queda estrictamente excluida la garantía en casos de daños provocados por manipulación incorrecta,
                         sobrecargas eléctricas, humedad, golpes o intervención de personal técnico no autorizado por la marca.
                     </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPROBANTE DE RESERVA / PREVENTA (misma línea que la factura) -->
+    <div id="printable-reservation" class="print-only bg-white text-gray-800" style="font-family:'Plus Jakarta Sans','Inter',sans-serif;">
+        <div style="height:6px;background:linear-gradient(90deg,rgb(var(--brand-deep)),rgb(var(--brand)),rgb(var(--brand-light)));"></div>
+        <div class="relative px-12 pt-8 pb-8">
+            <div id="rv-watermark" class="hidden absolute inset-0 flex items-center justify-center" style="z-index:0;pointer-events:none;">
+                <span id="rv-watermark-text" style="transform:rotate(-30deg);font-size:110px;font-weight:800;color:rgba(220,38,38,0.13);letter-spacing:10px;">ANULADA</span>
+            </div>
+            <div class="relative" style="z-index:1;">
+                <div class="flex justify-between items-start pb-6" style="border-bottom:1px solid #ECECF3;">
+                    <img id="rv-logo" alt="DGT Technology" style="height:90px;max-width:260px;object-fit:contain;">
+                    <div class="text-right">
+                        <h1 id="rv-title" style="font-size:32px;font-weight:800;color:#16162E;line-height:1.1;letter-spacing:-.5px;">Comprobante de Reserva</h1>
+                        <span id="rv-number" class="inline-block mt-3 px-5 py-1 rounded-full text-sm font-semibold" style="background:rgb(var(--brand-soft));color:rgb(var(--brand-deep));"></span>
+                        <p><span id="rv-channel" class="inline-block mt-2 px-3 py-0.5 rounded-full text-[10px] font-bold tracking-widest" style="border:1px solid rgb(var(--brand-line));color:rgb(var(--brand-deep));">TIENDA</span></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-6 py-6 text-sm" style="border-bottom:1px solid #ECECF3;">
+                    <div>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Emitida por</p>
+                        <p class="font-semibold" style="color:#16162E;">DGT Technology</p>
+                        <p>C.I. V-30.300.266</p>
+                        <p>C.C. City Market, Nivel Plaza, Local 167</p>
+                        <p>Tel. +58 422 624 3505</p>
+                    </div>
+                    <div>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Fecha de emisión</p>
+                        <p id="rv-date"></p>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mt-3 mb-1">Válida hasta</p>
+                        <p id="rv-expires" class="font-bold" style="color:#16162E;"></p>
+                    </div>
+                    <div>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Estado</p>
+                        <p id="rv-status" class="font-bold"></p>
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mt-3 mb-1">Vendedor</p>
+                        <p id="rv-seller"></p>
+                    </div>
+                </div>
+
+                <h3 class="flex items-center gap-2 font-bold text-sm mt-6 mb-3" style="color:#16162E;"><span style="width:4px;height:16px;background:rgb(var(--brand));border-radius:2px;display:inline-block;"></span>Datos del cliente</h3>
+                <div class="grid grid-cols-2 gap-x-10 gap-y-4 p-5 rounded-2xl text-sm" style="background:rgb(var(--brand-softer));border:1px solid rgb(var(--brand-line));">
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Nombre y apellido</p><p id="rv-customer"></p></div>
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Cédula / RIF</p><p id="rv-customer-id"></p></div>
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Correo electrónico</p><p id="rv-customer-email"></p></div>
+                    <div><p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-1">Celular</p><p id="rv-customer-phone"></p></div>
+                </div>
+
+                <h3 class="flex items-center gap-2 font-bold text-sm mt-6 mb-3" style="color:#16162E;"><span style="width:4px;height:16px;background:rgb(var(--brand));border-radius:2px;display:inline-block;"></span><span id="rv-item-title">Producto reservado</span></h3>
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr style="background:rgb(var(--brand-soft));color:rgb(var(--brand-deep));font-size:10px;letter-spacing:1.5px;" class="uppercase">
+                            <th class="py-3 px-3 font-semibold">#</th>
+                            <th class="py-3 px-3 font-semibold">Producto</th>
+                            <th class="py-3 px-3 font-semibold text-right">Precio Unit.</th>
+                            <th class="py-3 px-3 font-semibold text-center">Cant.</th>
+                            <th class="py-3 px-3 font-semibold text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rv-items"></tbody>
+                </table>
+
+                <div class="flex justify-between items-start gap-8 mt-6">
+                    <div class="flex-1 text-sm">
+                        <p style="font-size:10px;letter-spacing:2px;color:#8A8AA0;font-weight:600;" class="uppercase mb-2">Abonos recibidos</p>
+                        <div id="rv-payments" class="space-y-1"></div>
+                        <div class="mt-4" style="max-width:300px;">
+                            <div class="flex justify-between mb-1" style="font-size:10px;color:#8A8AA0;"><span>Pagado</span><span id="rv-pct"></span></div>
+                            <div style="height:8px;border-radius:999px;background:#ECECF3;overflow:hidden;"><div id="rv-bar" style="height:100%;border-radius:999px;background:linear-gradient(90deg,rgb(var(--brand)),rgb(var(--brand-light)));"></div></div>
+                        </div>
+                        <div id="rv-cancel-box" class="hidden mt-4 p-3 rounded-xl text-xs" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
+                            <p class="font-bold uppercase mb-1">Reserva anulada</p>
+                            <p id="rv-cancel-reason"></p>
+                        </div>
+                    </div>
+                    <div style="width:290px;" class="text-sm">
+                        <div class="flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;">Precio total</span><span id="rv-total" class="font-semibold"></span></div>
+                        <div class="flex justify-between py-2" style="border-bottom:1px solid #ECECF3;"><span style="color:#8A8AA0;">Total abonado</span><span id="rv-paid" class="font-semibold" style="color:#16A34A;"></span></div>
+                        <div class="flex justify-between items-center mt-3 px-5 py-4 rounded-2xl text-white" style="background:linear-gradient(90deg,rgb(var(--brand-deep)),rgb(var(--brand)),rgb(var(--brand-light)));">
+                            <span style="font-size:11px;letter-spacing:2px;font-weight:700;">SALDO PENDIENTE</span>
+                            <span id="rv-balance" style="font-size:22px;font-weight:700;"></span>
+                        </div>
+                        <p class="text-right mt-2 text-xs" style="color:#8A8AA0;" id="rv-balance-bs"></p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end gap-10 mt-12">
+                    <div class="text-center" style="width:190px;"><div style="border-top:1px solid #16162E;" class="mb-2"></div><p class="text-xs" style="color:#8A8AA0;">Firma del cliente</p></div>
+                    <div class="flex-1 text-center">
+                        <p class="font-bold text-base" style="color:#16162E;">¡Gracias por su confianza!</p>
+                        <p class="text-xs mt-1" style="color:#8A8AA0;">Presente este comprobante al retirar su equipo. Documento sin valor fiscal.</p>
+                    </div>
+                    <div class="text-center" style="width:190px;"><div style="border-top:1px solid #16162E;" class="mb-2"></div><p class="text-xs" style="color:#8A8AA0;">Firma autorizada</p></div>
+                </div>
+
+                <div class="mt-8 pt-4" style="border-top:1px solid #ECECF3;">
+                    <p style="font-size:9px;letter-spacing:1.5px;color:#8A8AA0;font-weight:700;" class="uppercase mb-1">Términos de la reserva</p>
+                    <p id="rv-terms" class="text-justify" style="font-size:8.5px;line-height:1.5;color:#8A8AA0;white-space:pre-line;"></p>
                 </div>
             </div>
         </div>

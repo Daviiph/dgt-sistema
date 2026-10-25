@@ -6,7 +6,7 @@ import { DEFAULT_COLOR, applyPalette, applyLogo, cacheBrand, currentColor, curre
 import { mountAreaChart, mountRankBars, gauge, groupBuckets, mountMiniBars, mountMiniLine } from './charts.js'
 
 // STATE
-let products = [], brands = [], customers = [], sellers = [], payments = [], sales = [], resale = [];
+let products = [], brands = [], customers = [], sellers = [], payments = [], sales = [], resale = [], reservations = [];
 let brandColor = '', brandLogo = '';
 // Modo de trabajo: 'tienda' (inventario propio) o 'reventa' (equipos conseguidos por fuera)
 let appMode = localStorage.getItem('ns_mode') === 'reventa' ? 'reventa' : 'tienda';
@@ -200,9 +200,9 @@ let invCond = 'todos', resaleCond = 'todos', posCond = 'todos';
 const condMatch = (filter, x) => filter === 'todos' || condOf(x) === filter;
 
 // NAVEGACIÓN SUPERIOR (PC): se arma a partir del menú lateral
-const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', customers: 'Clientes', sellers: 'Vendedores', payments: 'Pagos', sales: 'Ventas', 'resale-sales': 'Ventas' };
+const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', reservations: 'Reservas', customers: 'Clientes', sellers: 'Vendedores', payments: 'Pagos', sales: 'Ventas', 'resale-sales': 'Ventas' };
 const TOP_ADMIN = ['brands', 'sellers', 'payments', 'resale-dashboard', 'resale-items'];
-const TOP_ORDER = ['dashboard', 'resale-dashboard', 'pos', 'sales', 'resale-sales', 'inventory', 'resale-items', 'customers', 'brands', 'sellers', 'payments'];
+const TOP_ORDER = ['dashboard', 'resale-dashboard', 'pos', 'sales', 'resale-sales', 'reservations', 'inventory', 'resale-items', 'customers', 'brands', 'sellers', 'payments'];
 function buildTopNav() {
     const nav = document.getElementById('top-nav');
     if (!nav || nav.childElementCount) return;
@@ -248,6 +248,7 @@ function showSection(sectionId) {
     if(sectionId === 'sellers') renderSellers();
     if(sectionId === 'payments') renderPayments();
     if(sectionId === 'sales') renderSales();
+    if(sectionId === 'reservations') renderReservations();
 }
 
 function openModal(id) { 
@@ -465,6 +466,7 @@ document.getElementById('form-customer').onsubmit = (e) => {
     // Si se creó desde el punto de venta, queda seleccionado y se muestra su ficha
     const custSel = document.getElementById('pos-customer');
     if (custSel && custSel.querySelector(`option[value="${custData.id}"]`)) { custSel.value = String(custData.id); renderCustomerCard(); }
+    if (!document.getElementById('modal-reservation').classList.contains('hidden')) { fillResCustomerSelect(); document.getElementById('res-customer').value = String(custData.id); }
 };
 
 function editCustomer(id) {
@@ -875,6 +877,7 @@ function addToCart(id) {
 }
 
 function renderCart() {
+    updateResBanner();
     const container = document.getElementById('cart-items');
     let total = 0, cost = 0;
     container.innerHTML = cart.length ? cart.map((item, idx) => {
@@ -1125,6 +1128,7 @@ function openPaymentModal() {
     selectRateType(rateType);
 
     addPaymentRow();
+    applyReservationPayments();
     updateSettleBalance();
     
     openModal('modal-payment-settle');
@@ -1218,7 +1222,8 @@ async function executeFinalSale() {
             currency: currency,
             amountBs: currency === 'VES' ? Math.round(amount * rate * 100) / 100 : null,
             rateType: rateType,
-            ...(row.dataset.tradein ? { tradeIn: JSON.parse(row.dataset.tradein) } : {})
+            ...(row.dataset.tradein ? { tradeIn: JSON.parse(row.dataset.tradein) } : {}),
+            ...(row.dataset.reservation ? { reservation: row.dataset.reservation } : {})
         });
     });
 
@@ -1263,6 +1268,7 @@ async function executeFinalSale() {
         if ((sale.payments || []).some(p => p.tradeIn)) toast('El equipo recibido se agregó a Equipos de reventa. Confirme su precio de venta.', 'ok', 7000);
     }
     
+    completeReservationFromSale(sale);
     fillInvoice(sale);
 
     cart = [];
@@ -1528,7 +1534,7 @@ function fillInvoice(sale) {
     }).join('');
 
     document.getElementById('inv-payment-details').innerHTML = (sale.payments || []).map(p => {
-        const m = { name: payName(p) };
+        const m = { name: payName(p) + (p.reservation ? ' (abono ' + p.reservation + ')' : '') };
         if (p.tradeIn) return `<div style="max-width:300px;"><div class="flex justify-between"><span>Se recibe ${escHtml(tradeInTitle(p.tradeIn))}</span><span class="font-semibold">${appCurrency} ${fmtMoney(p.amount)}</span></div><p style="font-size:10px;color:#8A8AA0;">Equipo como parte de pago · ${escHtml(tradeInDesc(p.tradeIn))}</p></div>`;
         if (p.currency === 'VES') {
             const bs = p.amountBs != null ? p.amountBs : p.amount * rate;
@@ -1554,6 +1560,422 @@ function fillInvoice(sale) {
         main.innerHTML = `<span style="font-size:12px;opacity:.8;">${appCurrency}</span> ${fmtMoney(totalUsd)}`;
         set('inv-total-sec', `Bs. ${fmtMoney(totalBs)} (Tasa ${sale.rateType ? sale.rateType + ' ' : ''}${fmtMoney(rate)})`);
     }
+}
+
+// ===== RESERVAS Y PREVENTAS =====
+// El cliente abona una parte; el saldo se cobra al entregar desde el punto de venta.
+let resFilter = 'activa', resReady = true, resAbonoId = null, resDocId = null, pendingReservation = null, resTermsEdited = false;
+const isoDay = (d) => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+const todayISO = () => isoDay(new Date());
+const addDaysISO = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return isoDay(d); };
+const fmtDateISO = (iso) => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const resBalance = (r) => Math.max(0, round2((Number(r.total) || 0) - (Number(r.paid) || 0)));
+const resKindLabel = (r) => (r && r.kind === 'preventa') ? 'Preventa' : 'Reserva';
+const RES_STATE_LABEL = { activa: 'Activa', vencida: 'Vencida', completada: 'Entregada', cancelada: 'Anulada' };
+function resState(r) {
+    if (r.status !== 'activa') return r.status;
+    return r.expiresAt && r.expiresAt < todayISO() ? 'vencida' : 'activa';
+}
+const resItemName = (r) => [r.item && r.item.name, r.item && r.item.detail].filter(Boolean).join(' · ') || 'Producto';
+function resTerms(kind) {
+    return kind === 'preventa'
+        ? '1. El abono confirma el pedido del equipo descrito, que se encuentra en tránsito o por encargar.\n2. La fecha de vigencia es la fecha estimada de llegada. La tienda avisará al cliente cuando el equipo esté disponible.\n3. El saldo pendiente se cancela al momento de retirar el equipo. Los pagos en bolívares se calculan a la tasa del día del pago.\n4. Presente este comprobante y su documento de identidad al retirar.'
+        : '1. El abono aparta el equipo descrito hasta la fecha de vigencia indicada en este comprobante.\n2. El saldo pendiente se cancela al momento de retirar el equipo. Los pagos en bolívares se calculan a la tasa del día del pago.\n3. Si el saldo no se cancela antes del vencimiento, la tienda podrá liberar el equipo. Consulte con la tienda cómo se aplica el abono en ese caso.\n4. Presente este comprobante y su documento de identidad al retirar.';
+}
+const resKind = () => (document.querySelector('input[name="res-kind"]:checked') || {}).value || 'reserva';
+
+function fillResCustomerSelect() {
+    const sel = document.getElementById('res-customer'), prev = sel.value;
+    sel.innerHTML = '<option value="">Elige un cliente…</option>' + [...customers].sort((a, b) => String(a.name).localeCompare(String(b.name))).map(c => `<option value="${c.id}">${escHtml(c.name)}${c.cedula ? ' · ' + escHtml(c.cedula) : ''}</option>`).join('');
+    if (prev && customers.some(c => c.id == prev)) sel.value = prev;
+}
+function resProductOptions() {
+    if (appMode === 'reventa') {
+        const list = resale.filter(x => x.stock > 0);
+        return list.length ? `<optgroup label="Equipos de reventa disponibles">${list.map(x => `<option value="reventa:${x.id}">${escHtml([x.brand, x.name].filter(Boolean).join(' '))}${x.color ? ' · ' + escHtml(x.color) : ''} — ${money(x.price)}</option>`).join('')}</optgroup>` : '';
+    }
+    const named = products.map(p => { const b = brands.find(x => x.id == p.brandId); return { p, name: (b ? b.name + ' ' : '') + p.name, color: AVAILABLE_COLORS.find(c => c.hex === p.color)?.name || '' }; })
+        .sort((a, b) => a.name.localeCompare(b.name));
+    return named.length ? `<optgroup label="Inventario de tienda">${named.map(({ p, name, color }) => `<option value="tienda:${p.id}">${escHtml(name)}${color ? ' · ' + escHtml(color) : ''} — ${money(p.price)} (${p.stock > 0 ? p.stock + ' u' : 'agotado'})</option>`).join('')}</optgroup>` : '';
+}
+function resSelected() {
+    const v = document.getElementById('res-product').value;
+    if (!v || v === 'custom') return null;
+    const [src, id] = v.split(':');
+    const p = (src === 'reventa' ? resale : products).find(x => String(x.id) === id);
+    return p ? { src, p } : null;
+}
+
+function openReservationModal(opts = {}) {
+    fillResCustomerSelect();
+    const sellSel = document.getElementById('res-seller');
+    sellSel.innerHTML = sellers.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('') || '<option value="">Sin vendedor</option>';
+    document.getElementById('res-method').innerHTML = payments.map(m => `<option value="${m.id}">${escHtml(m.name)}</option>`).join('') || '<option value="">Cree un método de pago</option>';
+    document.getElementById('res-product').innerHTML = '<option value="">Elige un producto…</option>' + resProductOptions() + '<option value="custom">✎ Otro producto (escribir a mano)</option>';
+    document.getElementById('form-reservation').reset();
+    document.getElementById('res-custom').classList.add('hidden');
+    document.getElementById('res-qty').value = 1;
+    document.getElementById('res-expires').min = todayISO();
+    setResDays(15);
+    resTermsEdited = false;
+    document.getElementById('res-terms').value = resTerms('reserva');
+    document.getElementById('res-terms').oninput = () => { resTermsEdited = true; };
+    const posCust = document.getElementById('pos-customer').value, posSell = document.getElementById('pos-seller').value;
+    if (posCust && customers.some(c => c.id == posCust)) document.getElementById('res-customer').value = posCust;
+    if (posSell) sellSel.value = posSell;
+    if (opts.fromCart && cart.length) {
+        const it = cart[0];
+        const val = `${it.source === 'reventa' ? 'reventa' : 'tienda'}:${it.id}`;
+        const sel = document.getElementById('res-product');
+        if (sel.querySelector(`option[value="${val}"]`)) { sel.value = val; onResProduct(); document.getElementById('res-qty').value = it.qty || 1; onResQty(); }
+        if (cart.length > 1) toast('Una reserva lleva un solo producto: se tomó el primero del carrito.', 'info');
+    }
+    updateResForm();
+    openModal('modal-reservation');
+}
+function setResDays(n) { document.getElementById('res-expires').value = addDaysISO(n); }
+function onResProduct() {
+    const v = document.getElementById('res-product').value;
+    document.getElementById('res-custom').classList.toggle('hidden', v !== 'custom');
+    document.getElementById('res-custom-name').required = v === 'custom';
+    const s = resSelected();
+    if (s) {
+        document.getElementById('res-total').value = round2(s.p.price * (parseInt(document.getElementById('res-qty').value) || 1)).toFixed(2);
+        // Sin existencia: es una preventa
+        if (s.src === 'tienda' && !(s.p.stock > 0)) document.querySelector('input[name="res-kind"][value="preventa"]').checked = true;
+    }
+    updateResForm();
+}
+function onResQty() {
+    const s = resSelected();
+    if (s) document.getElementById('res-total').value = round2(s.p.price * (parseInt(document.getElementById('res-qty').value) || 1)).toFixed(2);
+    updateResForm();
+}
+function updateResForm() {
+    const total = round2(document.getElementById('res-total').value);
+    const paid = round2(document.getElementById('res-paid').value);
+    const bal = round2(total - paid);
+    document.getElementById('res-sum-total').innerText = money(total);
+    document.getElementById('res-sum-paid').innerText = money(paid);
+    document.getElementById('res-sum-balance').innerText = money(Math.max(0, bal));
+    const rate = getRate(rateType);
+    const bsEl = document.getElementById('res-paid-bs');
+    const isBs = document.getElementById('res-currency').value === 'VES';
+    bsEl.classList.toggle('hidden', !isBs);
+    if (isBs) bsEl.innerText = rate > 0 ? `Cobrar ${fmtBs(paid * rate)} · Tasa ${rateType} ${rate.toFixed(2)}` : 'Indique la tasa del día en el punto de venta';
+    const warn = document.getElementById('res-warn');
+    let msg = '';
+    if (paid > total && total > 0) msg = 'El abono no puede ser mayor que el precio total.';
+    else if (total > 0 && paid >= total) msg = 'El abono cubre el total: mejor regístrelo como venta en el punto de venta.';
+    warn.innerText = msg; warn.classList.toggle('hidden', !msg);
+    document.getElementById('res-save').disabled = !!msg;
+    if (!resTermsEdited) document.getElementById('res-terms').value = resTerms(resKind());
+    const kind = resKind();
+    document.getElementById('res-save').innerHTML = `<i class="fas fa-receipt"></i> Guardar y emitir comprobante de ${kind === 'preventa' ? 'preventa' : 'reserva'}`;
+}
+
+function saveReservation() {
+    const custId = document.getElementById('res-customer').value;
+    if (!custId) return alert('Elija el cliente (o cree uno con "Nuevo").');
+    const v = document.getElementById('res-product').value;
+    if (!v) return alert('Elija el producto que se reserva.');
+    const qty = Math.max(1, parseInt(document.getElementById('res-qty').value) || 1);
+    const total = round2(document.getElementById('res-total').value);
+    const paid = round2(document.getElementById('res-paid').value);
+    if (!(total > 0)) return alert('Indique el precio total.');
+    if (!(paid > 0) || paid >= total) return alert('El abono debe ser mayor que cero y menor que el precio total.');
+    const expiresAt = document.getElementById('res-expires').value;
+    if (!expiresAt || expiresAt < todayISO()) return alert('La fecha de vigencia no puede ser anterior a hoy.');
+    let item, channel = appMode;
+    const s = resSelected();
+    if (s) {
+        channel = s.src;
+        if (s.src === 'reventa') item = { source: 'reventa', id: s.p.id, name: [s.p.brand, s.p.name].filter(Boolean).join(' '), detail: [s.p.color, s.p.serial ? 'S/N ' + s.p.serial : ''].filter(Boolean).join(' · '), condition: condOf(s.p) };
+        else {
+            const b = brands.find(x => x.id == s.p.brandId);
+            item = { source: 'tienda', id: s.p.id, brandId: s.p.brandId, name: (b ? b.name + ' ' : '') + s.p.name, detail: AVAILABLE_COLORS.find(c => c.hex === s.p.color)?.name || '', condition: condOf(s.p) };
+        }
+    } else {
+        const name = document.getElementById('res-custom-name').value.trim();
+        if (!name) return alert('Escriba el nombre del producto.');
+        item = { source: channel, id: null, name, detail: document.getElementById('res-custom-detail').value.trim() };
+    }
+    const now = new Date(), stamp = Date.now();
+    const currency = document.getElementById('res-currency').value;
+    const rate = getRate(rateType) || 0;
+    const r = {
+        id: stamp, code: 'RES-' + String(stamp).slice(-8), kind: resKind(), channel,
+        customerId: custId, sellerId: document.getElementById('res-seller').value,
+        item, qty, total, paid,
+        payments: [{ methodId: document.getElementById('res-method').value, amount: paid, currency, amountBs: currency === 'VES' ? round2(paid * rate) : null, rate, rateType, date: now.toLocaleString() }],
+        status: 'activa', date: now.toLocaleString(), createdAt: now.toISOString(), expiresAt,
+        terms: document.getElementById('res-terms').value.trim(), notes: document.getElementById('res-notes').value.trim(),
+    };
+    reservations.push(r);
+    save();
+    closeModal('modal-reservation');
+    toast(`${resKindLabel(r)} ${r.code} registrada. Saldo pendiente ${money(resBalance(r))}.`, 'ok');
+    if (currentSection === 'reservations') renderReservations();
+    openReservationDoc(r.id);
+}
+
+function setResFilter(f) { resFilter = f; renderReservations(); }
+function renderReservations() {
+    bindSeg('res-filter', 'f', resFilter, setResFilter);
+    document.getElementById('res-not-ready').classList.toggle('hidden', resReady);
+    const act = reservations.filter(r => r.status === 'activa');
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+    set('res-k-active', act.length);
+    const pre = act.filter(r => r.kind === 'preventa').length;
+    set('res-k-active-sub', pre ? `${act.length - pre} reserva(s) · ${pre} preventa(s)` : 'apartados con abono');
+    set('res-k-paid', money(act.reduce((a, r) => a + (Number(r.paid) || 0), 0)));
+    set('res-k-balance', money(act.reduce((a, r) => a + resBalance(r), 0)));
+    set('res-k-soon', act.filter(r => r.expiresAt && r.expiresAt <= addDaysISO(3)).length);
+    const q = (document.getElementById('res-search').value || '').toLowerCase().trim();
+    const list = reservations
+        .filter(r => resFilter === 'todas' || resState(r) === resFilter)
+        .filter(r => { if (!q) return true; const c = customers.find(x => x.id == r.customerId); return [r.code, resItemName(r), c && c.name, c && c.cedula, c && c.phone].join(' ').toLowerCase().includes(q); })
+        .sort((a, b) => b.id - a.id);
+    const btn = (fn, icon, title, cls = '') => `<button onclick="${fn}" title="${title}" aria-label="${title}" class="w-9 h-9 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-brand ${cls}"><i class="fas ${icon}"></i></button>`;
+    document.getElementById('res-table-body').innerHTML = list.length ? list.map(r => {
+        const c = customers.find(x => x.id == r.customerId), st = resState(r), bal = resBalance(r);
+        const pct = r.total > 0 ? Math.min(100, (r.paid / r.total) * 100) : 0;
+        const open = st === 'activa' || st === 'vencida';
+        return `<tr class="border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5">
+            <td class="p-4"><button onclick="openReservationDoc(${r.id})" class="font-bold text-brand hover:underline">${escHtml(r.code)}</button><p class="text-[11px] text-gray-400">${resKindLabel(r)} · ${escHtml(String(r.date || '').split(',')[0])}</p></td>
+            <td class="p-4"><p class="font-semibold text-sm">${escHtml(c ? c.name : 'Cliente')}</p><p class="text-[11px] text-gray-400">${escHtml(c ? (c.cedula || c.phone || '') : '')}</p></td>
+            <td class="p-4 text-sm max-w-[220px]"><p class="truncate">${r.qty > 1 ? r.qty + '× ' : ''}${escHtml(resItemName(r))}</p>${condBadge(r.item && r.item.condition)}</td>
+            <td class="p-4 w-52"><div class="flex justify-between text-sm gap-2"><b class="tabular-nums">${money(r.paid)}</b><span class="text-gray-400 tabular-nums">/ ${money(r.total)}</span></div><div class="res-track mt-1.5"><span style="width:${pct}%"></span></div><p class="text-[11px] mt-1 font-semibold ${bal > 0 ? 'text-amber-600' : 'text-emerald-600'}">${bal > 0 ? 'Saldo ' + money(bal) : 'Pagada completa'}</p></td>
+            <td class="p-4"><span class="res-pill ${st}">${RES_STATE_LABEL[st]}</span><p class="text-[11px] text-gray-400 mt-1">${st === 'completada' ? escHtml(r.saleId || '') : fmtDateISO(r.expiresAt)}</p></td>
+            <td class="p-4"><div class="flex justify-center gap-0.5">
+                ${btn(`openReservationDoc(${r.id})`, 'fa-receipt', 'Comprobante')}
+                ${open && bal > 0 ? btn(`openResAbono(${r.id})`, 'fa-hand-holding-dollar', 'Registrar abono') : ''}
+                ${open ? btn(`deliverReservation(${r.id})`, 'fa-box-open', 'Entregar y facturar el saldo') : ''}
+                ${open ? btn(`cancelReservation(${r.id})`, 'fa-ban', 'Anular reserva', 'hover:!text-red-500') : ''}
+                ${st === 'cancelada' && isAdmin() ? btn(`deleteReservation(${r.id})`, 'fa-trash', 'Eliminar', 'hover:!text-red-500') : ''}
+            </div></td></tr>`;
+    }).join('') : `<tr><td colspan="6" class="p-10 text-center text-gray-400"><i class="fas fa-bookmark text-2xl mb-3 block opacity-40"></i>${reservations.length ? 'No hay reservas en este filtro.' : 'Aún no hay reservas.'} <button onclick="openReservationModal()" class="text-brand font-semibold hover:underline">Crear una</button></td></tr>`;
+}
+
+// Abonos adicionales
+function openResAbono(id) {
+    const r = reservations.find(x => x.id === id);
+    if (!r) return;
+    resAbonoId = id;
+    document.getElementById('abono-sub').innerText = `${r.code} · ${resItemName(r)} · saldo ${money(resBalance(r))}`;
+    document.getElementById('abono-amount').value = resBalance(r).toFixed(2);
+    document.getElementById('abono-amount').max = resBalance(r).toFixed(2);
+    document.getElementById('abono-method').innerHTML = payments.map(m => `<option value="${m.id}">${escHtml(m.name)}</option>`).join('');
+    document.getElementById('abono-currency').value = 'USD';
+    updateAbonoBs();
+    openModal('modal-res-abono');
+}
+function updateAbonoBs() {
+    const amount = round2(document.getElementById('abono-amount').value), rate = getRate(rateType);
+    const el = document.getElementById('abono-bs'), isBs = document.getElementById('abono-currency').value === 'VES';
+    el.classList.toggle('hidden', !isBs);
+    if (isBs) el.innerText = rate > 0 ? `Cobrar ${fmtBs(amount * rate)} · Tasa ${rateType} ${rate.toFixed(2)}` : 'Indique la tasa del día en el punto de venta';
+}
+function saveResAbono() {
+    const r = reservations.find(x => x.id === resAbonoId);
+    if (!r) return;
+    const amount = round2(document.getElementById('abono-amount').value);
+    if (!(amount > 0) || amount > resBalance(r) + 0.005) return alert(`El abono debe estar entre $0.01 y el saldo pendiente (${money(resBalance(r))}).`);
+    const currency = document.getElementById('abono-currency').value, rate = getRate(rateType) || 0;
+    r.payments = [...(r.payments || []), { methodId: document.getElementById('abono-method').value, amount, currency, amountBs: currency === 'VES' ? round2(amount * rate) : null, rate, rateType, date: new Date().toLocaleString() }];
+    r.paid = round2((Number(r.paid) || 0) + amount);
+    save();
+    closeModal('modal-res-abono');
+    toast(resBalance(r) > 0 ? `Abono registrado. Saldo pendiente ${money(resBalance(r))}.` : `${r.code} quedó pagada completa. Ya puede entregar el equipo.`, 'ok');
+    renderReservations();
+    openReservationDoc(r.id);
+}
+
+function cancelReservation(id) {
+    const r = reservations.find(x => x.id === id);
+    if (!r) return;
+    const reason = prompt(`Motivo para anular ${r.code} (abonado ${money(r.paid)}):`);
+    if (!reason || !reason.trim()) return;
+    r.status = 'cancelada'; r.cancelReason = reason.trim(); r.cancelDate = new Date().toLocaleString();
+    save(); renderReservations();
+    toast(`${r.code} anulada.`, 'info');
+}
+function deleteReservation(id) {
+    if (!isAdmin()) return;
+    const r = reservations.find(x => x.id === id);
+    if (!r || !confirm(`¿Eliminar definitivamente ${r.code}?`)) return;
+    reservations = reservations.filter(x => x.id !== id);
+    save(); renderReservations();
+}
+function markResDelivered(r) {
+    r.status = 'completada'; r.completedAt = new Date().toLocaleString(); r.saleId = 'Entregada sin factura';
+    save(); renderReservations();
+}
+
+// Entregar: carga el equipo al punto de venta con el precio acordado; los abonos se descuentan al liquidar
+function deliverReservation(id) {
+    const r = reservations.find(x => x.id === id);
+    if (!r) return;
+    const ch = r.channel === 'reventa' ? 'reventa' : 'tienda';
+    const p = r.item && r.item.id != null ? (ch === 'reventa' ? resale : products).find(x => x.id == r.item.id) : null;
+    if (!p || (p.stock || 0) < (r.qty || 1)) {
+        const why = !p ? 'no está registrado en el inventario' : 'no tiene existencia suficiente en el inventario';
+        if (confirm(`"${resItemName(r)}" ${why}, así que no se puede facturar todavía.\n\n¿Marcar la ${resKindLabel(r).toLowerCase()} como entregada sin factura?`)) markResDelivered(r);
+        return;
+    }
+    if (cart.length && !confirm('Se vaciará el carrito actual para facturar esta reserva. ¿Continuar?')) return;
+    if (appMode !== ch) { appMode = ch; localStorage.setItem('ns_mode', ch); applyModeClasses(); }
+    const unit = round2(r.total / (r.qty || 1));
+    cart = [ch === 'reventa'
+        ? { id: p.id, name: [p.brand, p.name].filter(Boolean).join(' '), brand: p.brand || '', colorLabel: p.color || '', serial: p.serial || '', condition: condOf(p), price: unit, cost: Number(p.cost), qty: r.qty || 1, source: 'reventa' }
+        : { ...p, price: unit, qty: r.qty || 1, source: 'tienda' }];
+    pendingReservation = r.id;
+    showSection('pos');
+    const cs = document.getElementById('pos-customer'), ss = document.getElementById('pos-seller');
+    if (cs.querySelector(`option[value="${r.customerId}"]`)) { cs.value = String(r.customerId); renderCustomerCard(); }
+    if (r.sellerId && ss.querySelector(`option[value="${r.sellerId}"]`)) ss.value = String(r.sellerId);
+    renderCart();
+    toast(`${r.code} cargada en el punto de venta. Liquide el saldo de ${money(resBalance(r))} para facturar.`, 'ok', 6000);
+}
+function clearPendingReservation() { pendingReservation = null; updateResBanner(); }
+function updateResBanner() {
+    const el = document.getElementById('pos-res-banner');
+    if (!el) return;
+    const r = pendingReservation && reservations.find(x => x.id === pendingReservation);
+    if (!r || !cart.length) { if (!cart.length) pendingReservation = null; el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.innerHTML = `<i class="fas fa-bookmark mt-0.5"></i><div class="flex-1 min-w-0">Entregando <b>${escHtml(r.code)}</b>. El abono de <b>${money(r.paid)}</b> ya cobrado se descuenta al liquidar. Saldo: <b>${money(resBalance(r))}</b></div><button onclick="clearPendingReservation()" class="shrink-0 opacity-70 hover:opacity-100" aria-label="Quitar reserva"><i class="fas fa-xmark"></i></button>`;
+}
+// En "Liquidar pago": una fila por cada abono ya cobrado
+function applyReservationPayments() {
+    const r = pendingReservation && reservations.find(x => x.id === pendingReservation);
+    if (!r) return;
+    const abonos = (r.payments || []).filter(p => Number(p.amount) > 0);
+    abonos.forEach((ab, i) => {
+        if (i > 0) addPaymentRow();
+        const rows = document.querySelectorAll('#settle-payments-list > div');
+        const row = rows[rows.length - 1];
+        const ms = row.querySelector('.pay-method');
+        if (payments.some(m => m.id == ab.methodId)) ms.value = ab.methodId;
+        ms.disabled = true;
+        const amt = row.querySelector('.pay-amount');
+        amt.value = round2(ab.amount).toFixed(2); amt.readOnly = true;
+        row.querySelector('.pay-currency').value = 'USD';
+        row.querySelector('.pay-currency').disabled = true;
+        row.dataset.reservation = r.code;
+        row.insertAdjacentHTML('afterbegin', `<span class="w-full text-xs font-semibold text-brand"><i class="fas fa-bookmark mr-1"></i>Abono de ${escHtml(r.code)} · ${escHtml(ab.date || '')} (ya cobrado)</span>`);
+    });
+    updateSettleBalance();
+    addPaymentRow();
+    updateSettleBalance();
+}
+function completeReservationFromSale(sale) {
+    const r = pendingReservation && reservations.find(x => x.id === pendingReservation);
+    pendingReservation = null;
+    if (!r || !(sale.payments || []).some(p => p.reservation === r.code)) return;
+    r.status = 'completada'; r.saleId = sale.id; r.completedAt = new Date().toLocaleString();
+    save();
+    toast(`${r.code} entregada y facturada en ${sale.id}.`, 'ok');
+}
+
+// Comprobante (misma línea visual que la factura)
+function fillReservation(r) {
+    const c = customers.find(x => x.id == r.customerId), sl = sellers.find(x => x.id == r.sellerId);
+    const set = (id, v) => { document.getElementById(id).innerText = v; };
+    const st = resState(r), bal = resBalance(r), rate = getRate(rateType);
+    set('rv-title', `Comprobante de ${resKindLabel(r)}`);
+    set('rv-item-title', r.kind === 'preventa' ? 'Producto en preventa' : 'Producto reservado');
+    set('rv-number', `N.º ${r.code}`);
+    set('rv-channel', r.channel === 'reventa' ? 'REVENTA' : 'TIENDA');
+    set('rv-date', r.date || '');
+    set('rv-expires', fmtDateISO(r.expiresAt));
+    const status = document.getElementById('rv-status');
+    status.innerText = st === 'activa' ? `${resKindLabel(r)} activa` : st === 'vencida' ? 'Vencida' : st === 'completada' ? 'Entregada' : 'ANULADA';
+    status.style.color = { activa: 'rgb(var(--brand))', vencida: '#B45309', completada: '#16A34A', cancelada: '#DC2626' }[st];
+    set('rv-seller', sl ? sl.name : 'S/D');
+    set('rv-customer', c ? c.name : 'S/D');
+    set('rv-customer-id', c ? (c.cedula || c.rif || 'S/D') : 'S/D');
+    set('rv-customer-email', c ? (c.email || 'S/D') : 'S/D');
+    set('rv-customer-phone', c ? (c.phone || 'S/D') : 'S/D');
+    const cancelled = st === 'cancelada';
+    document.getElementById('rv-watermark').classList.toggle('hidden', !cancelled);
+    document.getElementById('rv-cancel-box').classList.toggle('hidden', !cancelled);
+    set('rv-cancel-reason', cancelled ? `Motivo: ${r.cancelReason || ''} (${r.cancelDate || ''})` : '');
+    const it = r.item || {};
+    const desc = `${it.name || 'Producto'}${it.detail ? ' ' + it.detail : ''}${condOf(it) ? ' · ' + COND_LABEL[condOf(it)] : ''}`.toUpperCase();
+    const qty = r.qty || 1;
+    document.getElementById('rv-items').innerHTML = `<tr style="border-bottom:1px solid #ECECF3;">
+        <td class="py-3 px-3" style="color:#8A8AA0;">01</td><td class="py-3 px-3">${escHtml(desc)}</td>
+        <td class="py-3 px-3 text-right">${fmtMoney(r.total / qty)}</td><td class="py-3 px-3 text-center">${qty}</td>
+        <td class="py-3 px-3 text-right"><span style="color:#8A8AA0;">${appCurrency}</span> <strong>${fmtMoney(r.total)}</strong></td></tr>`;
+    document.getElementById('rv-payments').innerHTML = (r.payments || []).map(p => `
+        <div style="max-width:300px;"><div class="flex justify-between"><span>${escHtml(payName(p))}</span><span class="font-semibold">${p.currency === 'VES' && p.amountBs != null ? 'Bs. ' + fmtMoney(p.amountBs) : appCurrency + ' ' + fmtMoney(p.amount)}</span></div>
+        <p style="font-size:10px;color:#8A8AA0;">${escHtml(p.date || '')}${p.currency === 'VES' ? ` · ${appCurrency} ${fmtMoney(p.amount)} · Tasa ${escHtml(p.rateType || '')} ${fmtMoney(p.rate)}` : ''}</p></div>`).join('') || '<p style="color:#8A8AA0;">S/D</p>';
+    const pct = r.total > 0 ? Math.min(100, Math.round((r.paid / r.total) * 100)) : 0;
+    set('rv-pct', pct + '%');
+    document.getElementById('rv-bar').style.width = pct + '%';
+    set('rv-total', `${appCurrency} ${fmtMoney(r.total)}`);
+    set('rv-paid', `${appCurrency} ${fmtMoney(r.paid)}`);
+    document.getElementById('rv-balance').innerHTML = `<span style="font-size:12px;opacity:.8;">${appCurrency}</span> ${fmtMoney(st === 'completada' ? 0 : bal)}`;
+    set('rv-balance-bs', bal > 0 && rate > 0 && st !== 'completada' && !cancelled ? `Equivalente hoy: Bs. ${fmtMoney(bal * rate)} (Tasa ${rateType} ${fmtMoney(rate)})` : '');
+    set('rv-terms', r.terms || resTerms(r.kind));
+    const logo = document.getElementById('inv-logo');
+    if (logo) document.getElementById('rv-logo').src = logo.src;
+}
+function openReservationDoc(id) {
+    const r = reservations.find(x => x.id === id);
+    if (!r) return;
+    resDocId = id;
+    const c = customers.find(x => x.id == r.customerId);
+    document.getElementById('rdoc-kind').innerText = `Comprobante de ${resKindLabel(r).toLowerCase()} · ${RES_STATE_LABEL[resState(r)]}`;
+    document.getElementById('rdoc-code').innerText = r.code;
+    document.getElementById('rdoc-customer').innerText = `${c ? c.name : 'Cliente'} · ${resItemName(r)}`;
+    document.getElementById('rdoc-total').innerText = money(r.total);
+    document.getElementById('rdoc-paid').innerText = money(r.paid);
+    document.getElementById('rdoc-balance').innerText = money(r.status === 'completada' ? 0 : resBalance(r));
+    fillReservation(r);
+    openModal('modal-res-doc');
+}
+const resPdfOptions = (r) => ({ ...pdfOptions(r.code), filename: `DgtTec_${resKindLabel(r)}_${r.code}.pdf` });
+async function withDocVisible(id, fn) {
+    await loadPdfLib();
+    const el = document.getElementById(id);
+    el.classList.remove('print-only'); el.classList.add('block');
+    try { return await fn(el); } finally { el.classList.add('print-only'); el.classList.remove('block'); }
+}
+async function downloadReservationPDF() {
+    const r = reservations.find(x => x.id === resDocId);
+    if (!r) return;
+    fillReservation(r);
+    await withDocVisible('printable-reservation', el => html2pdf().set(resPdfOptions(r)).from(el).save());
+}
+function printReservation() {
+    const r = reservations.find(x => x.id === resDocId);
+    if (!r) return;
+    fillReservation(r);
+    document.body.dataset.print = 'reserva';
+    const done = () => { delete document.body.dataset.print; };
+    window.addEventListener('afterprint', done, { once: true });
+    window.print();
+    setTimeout(done, 60000);
+}
+async function shareReservation() {
+    const r = reservations.find(x => x.id === resDocId);
+    if (!r) return;
+    const c = customers.find(x => x.id == r.customerId);
+    const bal = r.status === 'completada' ? 0 : resBalance(r);
+    const text = `${resKindLabel(r)} ${r.code} · DGT Technology\n${resItemName(r)}\nTotal ${money(r.total)} · Abonado ${money(r.paid)} · Saldo pendiente ${money(bal)}\nVálida hasta ${fmtDateISO(r.expiresAt)}. ¡Gracias por su confianza!`;
+    try {
+        fillReservation(r);
+        const blob = await withDocVisible('printable-reservation', el => html2pdf().set(resPdfOptions(r)).from(el).outputPdf('blob'));
+        const file = new File([blob], `${r.code}.pdf`, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: `${resKindLabel(r)} ${r.code}`, text }); return; }
+    } catch (err) { if (err && err.name === 'AbortError') return; }
+    // En PC: descarga el PDF y abre WhatsApp con el mensaje para adjuntarlo
+    await downloadReservationPDF();
+    const phone = String(c?.phone || '').replace(/\D/g, '').replace(/^0/, '58');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text + '\n(Comprobante en PDF adjunto)')}`, '_blank', 'noopener');
 }
 
 // CANCEL / DELETE SALES
@@ -2420,7 +2842,7 @@ function deleteItem(arrayName, id, callback) {
 
 let syncChain = Promise.resolve();
 function save() {
-    const state = { brands, products, customers, sellers, payments, resale, sales };
+    const state = { brands, products, customers, sellers, payments, resale, reservations, sales };
     persistLocal(state);
     syncChain = syncChain.then(() => syncTables(state)).catch(async err => {
         alert('No se pudo guardar en la nube: ' + err.message + '\nSe recargarán los datos.');
@@ -2434,6 +2856,7 @@ async function reloadData() {
     const d = await fetchAll();
     products = d.products; brands = d.brands; customers = d.customers;
     sellers = d.sellers; payments = d.payments; sales = d.sales; resale = d.resale;
+    reservations = d.reservations || []; resReady = d.reservationsReady !== false;
     autoEmail = d.autoEmail; syncAutoEmailToggle();
     document.querySelectorAll('.resale-not-ready').forEach(el => el.classList.toggle('hidden', d.resaleReady));
     if (d.brandColor !== brandColor || d.brandLogo !== brandLogo) {
@@ -2456,6 +2879,7 @@ const SECTION_RENDER = {
     dashboard: () => updateDashboard(), brands: () => renderBrands(), inventory: () => renderInventory(), pos: () => renderPOS(),
     customers: () => renderCustomers(), sellers: () => renderSellers(), payments: () => renderPayments(), sales: () => renderSales(),
     'resale-items': () => renderResaleItems(), 'resale-sales': () => renderResaleSales(), 'resale-dashboard': () => renderResaleDashboard(),
+    reservations: () => renderReservations(),
 };
 let refreshQueued = false;
 function refreshAllViews() {
@@ -2671,6 +3095,6 @@ async function startApp(profile) {
 }
 
 // Funciones usadas desde los atributos onclick/onchange del HTML
-Object.assign(window, { selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
+Object.assign(window, { openReservationModal, setResDays, onResProduct, onResQty, updateResForm, saveReservation, setResFilter, renderReservations, openResAbono, updateAbonoBs, saveResAbono, cancelReservation, deleteReservation, deliverReservation, clearPendingReservation, openReservationDoc, downloadReservationPDF, printReservation, shareReservation, selectBoardSale, openBoardAll, openMethodSales, openTradeIn, closeTradeIn, addTradeIn, tradeInSuggest, setDelivery, updateDeliveryFromInputs, renderCustomerCard, pickCondition, suggestPrice, applySuggestedPrice, askPriceAI, emailInvoice, shareInvoice, setAutoEmail, openSaleDetail, openSalesList, openProductSales, showLowStock, offerLegacyRecovery, closeLogoModal, editResale, isAdmin, onLogoFile, openLogoModal, openResaleModal, pickLogoColor, renderResaleDashboard, renderResaleItems, renderResaleSales, resetBrand, saveBrandColor, saveLogoModal, selectSaleChannel, sellResale, setMode, setResaleFilter, toggleNav, togglePassword, updateResaleProfitHint, addPaymentRow, addToCart, changeQty, closeModal, deleteItem, deleteSale, downloadPDF, duplicateProduct, editBrand, editCustomer, editPayment, editProduct, editSeller, executeFinalSale, exportData, fetchLiveRates, fillInvoice, filterPOS, fmtBs, fmtMoney, formatUSD, getInitials, getProductHistory, getRate, importData, onPayMethodChange, onSaleRateInput, openCancelSale, openModal, openPaymentModal, openVariantSelector, refreshAllViews, refreshSalesViews, reloadData, removePaymentRow, renderAudit, renderBrands, renderCart, renderCustomers, renderInventory, renderPOS, renderPayments, renderSales, renderSellers, renderUsersAdmin, reprint, resetModal, save, selectColor, selectRateType, setDailyRate, setupProductModal, showSection, startApp, syncRateInputs, toggleCustomerHistory, toggleCustomerInvoices, toggleDarkMode, updateCurrency, updateDashboard, updateRate, updateSettleBalance, updateUser })
 
 export { startApp }
