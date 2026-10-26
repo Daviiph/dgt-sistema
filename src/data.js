@@ -246,7 +246,7 @@ async function fetchRemote() {
   out.appCurrency = s.currency || '$'
   out.globalRate = s.rate || '36.50'
   out.bcvRate = s.rate_bcv || out.globalRate
-  out.binanceRate = s.rate_binance || out.globalRate
+  out.binanceRate = s.rate_binance || ''
   out.rateDate = s.rate_date || ''
   out.brandColor = s.brand_color || ''
   out.brandLogo = await getLogo(s.brand_logo_at || '')

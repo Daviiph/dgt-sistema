@@ -824,8 +824,7 @@
                 <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border dark:border-gray-700 space-y-2">
                     <label class="block text-[10px] font-bold text-gray-400 uppercase">Tasa de Cambio</label>
                     <div class="flex gap-1">
-                        <button type="button" id="rate-btn-bcv" onclick="selectRateType('BCV')" class="flex-1 py-1 rounded-lg text-xs font-bold border transition">BCV</button>
-                        <button type="button" id="rate-btn-binance" onclick="selectRateType('Binance P2P')" class="flex-1 py-1 rounded-lg text-xs font-bold border transition">Binance P2P</button>
+                                                <button type="button" id="rate-btn-binance" disabled title="Todos los documentos usan la tasa Binance P2P del día" class="flex-1 py-1 rounded-lg text-xs font-bold border transition">Binance P2P</button>
                     </div>
                     <input type="number" id="sale-rate" step="0.01" min="0" class="w-full bg-transparent font-bold text-lg outline-none" oninput="onSaleRateInput(this.value)">
                 </div>

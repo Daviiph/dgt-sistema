@@ -14,8 +14,10 @@ let appCurrency = '$';
 let globalRate = '36.50';
 let currentProfile = null;
 let bcvRate = localStorage.getItem('ns_rate_bcv') || globalRate;
-let binanceRate = localStorage.getItem('ns_rate_binance') || globalRate;
-let rateType = localStorage.getItem('ns_rate_type') || 'BCV';
+let binanceRate = localStorage.getItem('ns_rate_binance') || '';
+// Todos los cálculos en Bs. de facturas, notas de entrega y comprobantes usan SIEMPRE la tasa Binance P2P del día
+let rateType = 'Binance P2P';
+try { localStorage.setItem('ns_rate_type', 'Binance P2P'); } catch { /* sin almacenamiento */ }
 let rateDate = localStorage.getItem('ns_rate_date') || '';
 let cart = [];
 
@@ -117,11 +119,8 @@ function syncRateInputs() {
     });
 }
 function selectRateType(type) {
-    rateType = type === 'Binance P2P' ? 'Binance P2P' : 'BCV';
-    localStorage.setItem('ns_rate_type', rateType);
-    const on = 'bg-brand text-white border-brand', off = 'bg-white dark:bg-gray-900 text-gray-500 border-gray-200 dark:border-gray-700';
-    document.getElementById('rate-btn-bcv').className = 'flex-1 py-1 rounded-lg text-xs font-bold border transition ' + (rateType === 'BCV' ? on : off);
-    document.getElementById('rate-btn-binance').className = 'flex-1 py-1 rounded-lg text-xs font-bold border transition ' + (rateType === 'Binance P2P' ? on : off);
+    rateType = 'Binance P2P';
+    document.getElementById('rate-btn-binance').className = 'flex-1 py-1 rounded-lg text-xs font-bold border transition bg-brand text-white border-brand';
     document.getElementById('sale-rate').value = getRate(rateType) || '';
     updateSettleBalance();
 }
