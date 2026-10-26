@@ -200,7 +200,7 @@ let invCond = 'todos', resaleCond = 'todos', posCond = 'todos';
 const condMatch = (filter, x) => filter === 'todos' || condOf(x) === filter;
 
 // NAVEGACIÓN SUPERIOR (PC): se arma a partir del menú lateral
-const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', reservations: 'Reservas', customers: 'Clientes', sellers: 'Vendedores', payments: 'Pagos', sales: 'Ventas', 'resale-sales': 'Ventas' };
+const TOP_LABEL = { dashboard: 'Inicio', 'resale-dashboard': 'Panel', brands: 'Marcas', inventory: 'Inventario', 'resale-items': 'Equipos', pos: 'Vender', reservations: 'Preventas', customers: 'Clientes', sellers: 'Vendedores', payments: 'Pagos', sales: 'Ventas', 'resale-sales': 'Ventas' };
 const TOP_ADMIN = ['brands', 'sellers', 'payments', 'resale-dashboard', 'resale-items'];
 const TOP_ORDER = ['dashboard', 'resale-dashboard', 'pos', 'sales', 'resale-sales', 'reservations', 'inventory', 'resale-items', 'customers', 'brands', 'sellers', 'payments'];
 function buildTopNav() {
@@ -1571,19 +1571,17 @@ const addDaysISO = (n) => { const d = new Date(); d.setDate(d.getDate() + n); re
 const fmtDateISO = (iso) => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const resBalance = (r) => Math.max(0, round2((Number(r.total) || 0) - (Number(r.paid) || 0)));
-const resKindLabel = (r) => (r && r.kind === 'preventa') ? 'Preventa' : 'Reserva';
+const resKindLabel = () => 'Preventa';
 const RES_STATE_LABEL = { activa: 'Activa', vencida: 'Vencida', completada: 'Entregada', cancelada: 'Anulada' };
 function resState(r) {
     if (r.status !== 'activa') return r.status;
     return r.expiresAt && r.expiresAt < todayISO() ? 'vencida' : 'activa';
 }
 const resItemName = (r) => [r.item && r.item.name, r.item && r.item.detail].filter(Boolean).join(' · ') || 'Producto';
-function resTerms(kind) {
-    return kind === 'preventa'
-        ? '1. El abono confirma el pedido del equipo descrito, que se encuentra en tránsito o por encargar.\n2. La fecha de vigencia es la fecha estimada de llegada. La tienda avisará al cliente cuando el equipo esté disponible.\n3. El saldo pendiente se cancela al momento de retirar el equipo. Los pagos en bolívares se calculan a la tasa del día del pago.\n4. Presente este comprobante y su documento de identidad al retirar.'
-        : '1. El abono aparta el equipo descrito hasta la fecha de vigencia indicada en este comprobante.\n2. El saldo pendiente se cancela al momento de retirar el equipo. Los pagos en bolívares se calculan a la tasa del día del pago.\n3. Si el saldo no se cancela antes del vencimiento, la tienda podrá liberar el equipo. Consulte con la tienda cómo se aplica el abono en ese caso.\n4. Presente este comprobante y su documento de identidad al retirar.';
+function resTerms() {
+    return '1. El abono confirma el pedido del equipo descrito, que se encuentra en tránsito o por encargar.\n2. La fecha de vigencia es la fecha estimada de llegada. La tienda avisará al cliente cuando el equipo esté disponible.\n3. El saldo pendiente se cancela al momento de retirar el equipo. Los pagos en bolívares se calculan a la tasa del día del pago.\n4. Presente este comprobante y su documento de identidad al retirar.';
 }
-const resKind = () => (document.querySelector('input[name="res-kind"]:checked') || {}).value || 'reserva';
+const resKind = () => 'preventa';
 
 function fillResCustomerSelect() {
     const sel = document.getElementById('res-customer'), prev = sel.value;
@@ -1629,7 +1627,7 @@ function openReservationModal(opts = {}) {
         const val = `${it.source === 'reventa' ? 'reventa' : 'tienda'}:${it.id}`;
         const sel = document.getElementById('res-product');
         if (sel.querySelector(`option[value="${val}"]`)) { sel.value = val; onResProduct(); document.getElementById('res-qty').value = it.qty || 1; onResQty(); }
-        if (cart.length > 1) toast('Una reserva lleva un solo producto: se tomó el primero del carrito.', 'info');
+        if (cart.length > 1) toast('Una preventa lleva un solo producto: se tomó el primero del carrito.', 'info');
     }
     updateResForm();
     openModal('modal-reservation');
@@ -1642,8 +1640,6 @@ function onResProduct() {
     const s = resSelected();
     if (s) {
         document.getElementById('res-total').value = round2(s.p.price * (parseInt(document.getElementById('res-qty').value) || 1)).toFixed(2);
-        // Sin existencia: es una preventa
-        if (s.src === 'tienda' && !(s.p.stock > 0)) document.querySelector('input[name="res-kind"][value="preventa"]').checked = true;
     }
     updateResForm();
 }
@@ -1671,15 +1667,14 @@ function updateResForm() {
     warn.innerText = msg; warn.classList.toggle('hidden', !msg);
     document.getElementById('res-save').disabled = !!msg;
     if (!resTermsEdited) document.getElementById('res-terms').value = resTerms(resKind());
-    const kind = resKind();
-    document.getElementById('res-save').innerHTML = `<i class="fas fa-receipt"></i> Guardar y emitir comprobante de ${kind === 'preventa' ? 'preventa' : 'reserva'}`;
+    document.getElementById('res-save').innerHTML = '<i class="fas fa-receipt"></i> Guardar y emitir comprobante de preventa';
 }
 
 function saveReservation() {
     const custId = document.getElementById('res-customer').value;
     if (!custId) return alert('Elija el cliente (o cree uno con "Nuevo").');
     const v = document.getElementById('res-product').value;
-    if (!v) return alert('Elija el producto que se reserva.');
+    if (!v) return alert('Elija el producto de la preventa.');
     const qty = Math.max(1, parseInt(document.getElementById('res-qty').value) || 1);
     const total = round2(document.getElementById('res-total').value);
     const paid = round2(document.getElementById('res-paid').value);
@@ -1705,7 +1700,7 @@ function saveReservation() {
     const currency = document.getElementById('res-currency').value;
     const rate = getRate(rateType) || 0;
     const r = {
-        id: stamp, code: 'RES-' + String(stamp).slice(-8), kind: resKind(), channel,
+        id: stamp, code: 'PRE-' + String(stamp).slice(-8), kind: 'preventa', channel,
         customerId: custId, sellerId: document.getElementById('res-seller').value,
         item, qty, total, paid,
         payments: [{ methodId: document.getElementById('res-method').value, amount: paid, currency, amountBs: currency === 'VES' ? round2(paid * rate) : null, rate, rateType, date: now.toLocaleString() }],
@@ -1727,8 +1722,7 @@ function renderReservations() {
     const act = reservations.filter(r => r.status === 'activa');
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
     set('res-k-active', act.length);
-    const pre = act.filter(r => r.kind === 'preventa').length;
-    set('res-k-active-sub', pre ? `${act.length - pre} reserva(s) · ${pre} preventa(s)` : 'apartados con abono');
+        set('res-k-active-sub', 'apartadas con abono');
     set('res-k-paid', money(act.reduce((a, r) => a + (Number(r.paid) || 0), 0)));
     set('res-k-balance', money(act.reduce((a, r) => a + resBalance(r), 0)));
     set('res-k-soon', act.filter(r => r.expiresAt && r.expiresAt <= addDaysISO(3)).length);
@@ -1752,10 +1746,10 @@ function renderReservations() {
                 ${btn(`openReservationDoc(${r.id})`, 'fa-receipt', 'Comprobante')}
                 ${open && bal > 0 ? btn(`openResAbono(${r.id})`, 'fa-hand-holding-dollar', 'Registrar abono') : ''}
                 ${open ? btn(`deliverReservation(${r.id})`, 'fa-box-open', 'Entregar y facturar el saldo') : ''}
-                ${open ? btn(`cancelReservation(${r.id})`, 'fa-ban', 'Anular reserva', 'hover:!text-red-500') : ''}
+                ${open ? btn(`cancelReservation(${r.id})`, 'fa-ban', 'Anular preventa', 'hover:!text-red-500') : ''}
                 ${st === 'cancelada' && isAdmin() ? btn(`deleteReservation(${r.id})`, 'fa-trash', 'Eliminar', 'hover:!text-red-500') : ''}
             </div></td></tr>`;
-    }).join('') : `<tr><td colspan="6" class="p-10 text-center text-gray-400"><i class="fas fa-bookmark text-2xl mb-3 block opacity-40"></i>${reservations.length ? 'No hay reservas en este filtro.' : 'Aún no hay reservas.'} <button onclick="openReservationModal()" class="text-brand font-semibold hover:underline">Crear una</button></td></tr>`;
+    }).join('') : `<tr><td colspan="6" class="p-10 text-center text-gray-400"><i class="fas fa-truck-ramp-box text-2xl mb-3 block opacity-40"></i>${reservations.length ? 'No hay preventas en este filtro.' : 'Aún no hay preventas.'} <button onclick="openReservationModal()" class="text-brand font-semibold hover:underline">Crear una</button></td></tr>`;
 }
 
 // Abonos adicionales
@@ -1795,7 +1789,7 @@ function saveResAbono() {
 function cancelReservation(id) {
     const r = reservations.find(x => x.id === id);
     if (!r) return;
-    const reason = prompt(`Motivo para anular ${r.code} (abonado ${money(r.paid)}):`);
+    const reason = prompt(`Motivo para anular la preventa ${r.code} (abonado ${money(r.paid)}):`);
     if (!reason || !reason.trim()) return;
     r.status = 'cancelada'; r.cancelReason = reason.trim(); r.cancelDate = new Date().toLocaleString();
     save(); renderReservations();
@@ -1821,10 +1815,10 @@ function deliverReservation(id) {
     const p = r.item && r.item.id != null ? (ch === 'reventa' ? resale : products).find(x => x.id == r.item.id) : null;
     if (!p || (p.stock || 0) < (r.qty || 1)) {
         const why = !p ? 'no está registrado en el inventario' : 'no tiene existencia suficiente en el inventario';
-        if (confirm(`"${resItemName(r)}" ${why}, así que no se puede facturar todavía.\n\n¿Marcar la ${resKindLabel(r).toLowerCase()} como entregada sin factura?`)) markResDelivered(r);
+        if (confirm(`"${resItemName(r)}" ${why}, así que no se puede facturar todavía.\n\n¿Marcar la preventa como entregada sin factura?`)) markResDelivered(r);
         return;
     }
-    if (cart.length && !confirm('Se vaciará el carrito actual para facturar esta reserva. ¿Continuar?')) return;
+    if (cart.length && !confirm('Se vaciará el carrito actual para facturar esta preventa. ¿Continuar?')) return;
     if (appMode !== ch) { appMode = ch; localStorage.setItem('ns_mode', ch); applyModeClasses(); }
     const unit = round2(r.total / (r.qty || 1));
     cart = [ch === 'reventa'
@@ -1845,7 +1839,7 @@ function updateResBanner() {
     const r = pendingReservation && reservations.find(x => x.id === pendingReservation);
     if (!r || !cart.length) { if (!cart.length) pendingReservation = null; el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    el.innerHTML = `<i class="fas fa-bookmark mt-0.5"></i><div class="flex-1 min-w-0">Entregando <b>${escHtml(r.code)}</b>. El abono de <b>${money(r.paid)}</b> ya cobrado se descuenta al liquidar. Saldo: <b>${money(resBalance(r))}</b></div><button onclick="clearPendingReservation()" class="shrink-0 opacity-70 hover:opacity-100" aria-label="Quitar reserva"><i class="fas fa-xmark"></i></button>`;
+    el.innerHTML = `<i class="fas fa-truck-ramp-box mt-0.5"></i><div class="flex-1 min-w-0">Entregando <b>${escHtml(r.code)}</b>. El abono de <b>${money(r.paid)}</b> ya cobrado se descuenta al liquidar. Saldo: <b>${money(resBalance(r))}</b></div><button onclick="clearPendingReservation()" class="shrink-0 opacity-70 hover:opacity-100" aria-label="Quitar reserva"><i class="fas fa-xmark"></i></button>`;
 }
 // En "Liquidar pago": una fila por cada abono ya cobrado
 function applyReservationPayments() {
@@ -1864,7 +1858,7 @@ function applyReservationPayments() {
         row.querySelector('.pay-currency').value = 'USD';
         row.querySelector('.pay-currency').disabled = true;
         row.dataset.reservation = r.code;
-        row.insertAdjacentHTML('afterbegin', `<span class="w-full text-xs font-semibold text-brand"><i class="fas fa-bookmark mr-1"></i>Abono de ${escHtml(r.code)} · ${escHtml(ab.date || '')} (ya cobrado)</span>`);
+        row.insertAdjacentHTML('afterbegin', `<span class="w-full text-xs font-semibold text-brand"><i class="fas fa-truck-ramp-box mr-1"></i>Abono de ${escHtml(r.code)} · ${escHtml(ab.date || '')} (ya cobrado)</span>`);
     });
     updateSettleBalance();
     addPaymentRow();
@@ -1885,13 +1879,13 @@ function fillReservation(r) {
     const set = (id, v) => { document.getElementById(id).innerText = v; };
     const st = resState(r), bal = resBalance(r), rate = getRate(rateType);
     set('rv-title', `Comprobante de ${resKindLabel(r)}`);
-    set('rv-item-title', r.kind === 'preventa' ? 'Producto en preventa' : 'Producto reservado');
+    set('rv-item-title', 'Producto en preventa');
     set('rv-number', `N.º ${r.code}`);
     set('rv-channel', r.channel === 'reventa' ? 'REVENTA' : 'TIENDA');
     set('rv-date', r.date || '');
     set('rv-expires', fmtDateISO(r.expiresAt));
     const status = document.getElementById('rv-status');
-    status.innerText = st === 'activa' ? `${resKindLabel(r)} activa` : st === 'vencida' ? 'Vencida' : st === 'completada' ? 'Entregada' : 'ANULADA';
+    status.innerText = st === 'activa' ? 'Preventa activa' : st === 'vencida' ? 'Vencida' : st === 'completada' ? 'Entregada' : 'ANULADA';
     status.style.color = { activa: 'rgb(var(--brand))', vencida: '#B45309', completada: '#16A34A', cancelada: '#DC2626' }[st];
     set('rv-seller', sl ? sl.name : 'S/D');
     set('rv-customer', c ? c.name : 'S/D');
